@@ -6,7 +6,8 @@ import { z } from "zod";
 // before relying on this for production - the upstream API can change.
 export const gradientTypeSchema = z.enum(["plane", "sphere", "waterPlane"]);
 export const shaderTypeSchema = z.enum(["defaults", "positionVaryingColor"]);
-export const lightTypeSchema = z.enum(["env", "point3d"]);
+export const lightTypeSchema = z.enum(["env", "3d"]);
+export const environmentPresetSchema = z.enum(["city", "dawn", "lobby"]);
 export const toggleSchema = z.enum(["on", "off"]);
 
 export const gradientConfigSchema = z.object({
@@ -24,7 +25,7 @@ export const gradientConfigSchema = z.object({
   uSpeed: z.number().min(0).max(1).default(0.3),
   uStrength: z.number().min(0).max(10).default(1.5),
   uDensity: z.number().min(0).max(4).default(1.3),
-  uFrequency: z.number().min(0).max(2).default(5.5),
+  uFrequency: z.number().min(0).max(10).default(5.5),
   uAmplitude: z.number().min(0).max(5).default(0),
 
   positionX: z.number().default(0),
@@ -41,7 +42,7 @@ export const gradientConfigSchema = z.object({
 
   lightType: lightTypeSchema.default("env"),
   brightness: z.number().min(0).max(3).default(1),
-  envPreset: z.string().default("city"),
+  envPreset: environmentPresetSchema.default("city"),
   reflection: z.number().min(0).max(1).default(0.1),
 });
 

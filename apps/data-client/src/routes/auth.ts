@@ -2,6 +2,8 @@ import { Hono } from "hono";
 import { getCookie, setCookie } from "hono/cookie";
 import type { Bindings } from "../types/env";
 import { buildAuthorizeUrl, exchangeCodeForToken } from "../lib/webflowApi";
+import { createDb } from "../db/client";
+import { installations } from "../db/schema";
 
 const SCOPES = ["sites:read", "sites:write", "assets:read", "assets:write"];
 
@@ -43,11 +45,8 @@ authRoutes.get("/callback", async (c) => {
   // TODO: call GET /v2/token/authorized_by (or /v2/sites) to resolve which
   // site(s) this token grants access to, then persist { siteId, accessToken }
   // instead of the token alone.
-  await c.env.DB.prepare(
-    "INSERT INTO installations (access_token, created_at) VALUES (?, ?)",
-  )
-    .bind(accessToken, new Date().toISOString())
-    .run();
+  const db = createDb(c.env.DATABASE_URL);
+  await db.insert(installations).values({ accessToken });
 
   return c.text("Fluxa is installed. You can close this tab.");
 });

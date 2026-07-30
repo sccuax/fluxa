@@ -1,15 +1,21 @@
 name = "fluxa-data-client"
 main = "src/index.ts"
-compatibility_date = "2024-08-01"
+compatibility_date = "2026-07-30"
+compatibility_flags = ["nodejs_compat"]
 
-[[d1_databases]]
-binding = "DB"
-database_name = "fluxa-db"
-database_id = "REPLACE_WITH_D1_DATABASE_ID"
+# D1 (fluxa-db) is no longer used - Postgres/Neon replaced it. The database
+# itself was left alone in Cloudflare (not deleted); remove it manually via
+# `wrangler d1 delete fluxa-db` if you're sure you don't need it.
 
 [vars]
-WEBFLOW_CLIENT_ID = "REPLACE_WITH_CLIENT_ID"
-WEBFLOW_REDIRECT_URI = "https://fluxa-data-client.<your-subdomain>.workers.dev/auth/callback"
+WEBFLOW_CLIENT_ID = "69de87bde618fafc0c3c4571eaf4f8c917b54bd9d4c140dcf806b8a0fa79211e"
+WEBFLOW_REDIRECT_URI = "https://fluxa-data-client.jojanmartinez533.workers.dev/auth/callback"
+BETTER_AUTH_URL = "https://fluxa-data-client.jojanmartinez533.workers.dev"
+DESIGNER_EXTENSION_ORIGIN = "https://6a6bb6b4db84ef2c530166e7.webflow-ext.com"
 
-# Secret, do NOT put the real value here - set it with:
+# Secrets, do NOT put real values here - set them with:
 #   wrangler secret put WEBFLOW_CLIENT_SECRET
+#   wrangler secret put DATABASE_URL           (Neon connection string)
+#   wrangler secret put BETTER_AUTH_SECRET     (random 32+ byte string)
+#   wrangler secret put GOOGLE_CLIENT_ID
+#   wrangler secret put GOOGLE_CLIENT_SECRET

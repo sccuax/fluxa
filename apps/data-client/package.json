@@ -9,17 +9,25 @@
     "build": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "db:migrate": "wrangler d1 execute fluxa-db --file=src/db/schema.sql"
+    "db:generate": "drizzle-kit generate",
+    "db:push": "drizzle-kit push",
+    "auth:generate": "better-auth generate --config auth-cli.config.ts --output src/db/auth-schema.ts -y"
   },
   "dependencies": {
     "@fluxa/gradient-core": "workspace:*",
+    "@neondatabase/serverless": "^1.1.0",
+    "better-auth": "^1.6.25",
+    "drizzle-orm": "^0.45.2",
     "hono": "^4.5.8",
     "zod": "^3.23.8"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20240806.0",
+    "@better-auth/cli": "^1.4.21",
+    "@cloudflare/workers-types": "^5.20260730.1",
+    "dotenv": "^17.4.2",
+    "drizzle-kit": "^0.31.10",
     "typescript": "^5.5.4",
     "vitest": "^2.0.5",
-    "wrangler": "^3.68.0"
+    "wrangler": "^4.116.0"
   }
 }
