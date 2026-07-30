@@ -1,0 +1,16 @@
+{
+  "name": "fluxa",
+  "private": true,
+  "version": "0.1.0",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "dev:extension": "pnpm --filter @fluxa/designer-extension dev",
+    "dev:api": "pnpm --filter @fluxa/data-client dev",
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test"
+  }
+}

@@ -1,0 +1,5 @@
+{
+  "name": "fluxa",
+  "publicDir": "apps/designer-extension/dist",
+  "size": "large"
+}

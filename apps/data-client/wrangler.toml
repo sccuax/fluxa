@@ -1,0 +1,15 @@
+name = "fluxa-data-client"
+main = "src/index.ts"
+compatibility_date = "2024-08-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "fluxa-db"
+database_id = "REPLACE_WITH_D1_DATABASE_ID"
+
+[vars]
+WEBFLOW_CLIENT_ID = "REPLACE_WITH_CLIENT_ID"
+WEBFLOW_REDIRECT_URI = "https://fluxa-data-client.<your-subdomain>.workers.dev/auth/callback"
+
+# Secret, do NOT put the real value here - set it with:
+#   wrangler secret put WEBFLOW_CLIENT_SECRET
