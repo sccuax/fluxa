@@ -1,5 +1,13 @@
 {
   "name": "fluxa",
   "publicDir": "apps/designer-extension/dist",
-  "size": "large"
+  "size": "large",
+  "apiVersion": "2",
+  "telemetry": {
+    "global": {
+      "allowTelemetry": true,
+      "lastPrompted": 1785469618234,
+      "version": "2.2.0"
+    }
+  }
 }

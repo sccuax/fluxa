@@ -10,5 +10,6 @@ dist
 .DS_Store
 *.log
 coverage
+CLAUDE.md
 .vscode/*
 !.vscode/extensions.json

@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
 import { getWebflowDesigner } from "../services/webflowDesigner";
-import type { WebflowElement } from "../types/webflow";
 
 interface SelectedElementState {
-  element: WebflowElement | null;
+  element: AnyElement | null;
   loading: boolean;
   error: string | null;
 }

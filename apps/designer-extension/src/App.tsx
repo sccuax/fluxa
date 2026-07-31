@@ -1,15 +1,8 @@
-import { GradientCanvas } from "./components/GradientCanvas";
-import { ControlPanel } from "./components/ControlPanel";
+import { WelcomeScreen } from "./components/WelcomeScreen";
 
+// Swapped in for the initial Webflow smoke test (verifies the Designer
+// connection and the backend are both reachable) before wiring the actual
+// gradient panel (GradientCanvas + ControlPanel) back in as the default view.
 export default function App() {
-  return (
-    <div className="grid h-screen grid-cols-[1fr_260px] bg-neutral-950 text-neutral-100">
-      <div className="relative">
-        <GradientCanvas />
-      </div>
-      <aside className="overflow-y-auto border-l border-neutral-800">
-        <ControlPanel />
-      </aside>
-    </div>
-  );
+  return <WelcomeScreen />;
 }
