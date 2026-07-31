@@ -1,5 +1,6 @@
 import type { GradientConfig } from "@fluxa/gradient-core";
 import { useGradientStore } from "../store/gradientStore";
+import { formatSliderValue } from "../helpers/format";
 
 interface NumberField {
   label: string;
@@ -16,7 +17,7 @@ const NUMBER_FIELDS: NumberField[] = [
   { label: "Speed", key: "uSpeed", min: 0, max: 1, step: 0.01 },
   { label: "Strength", key: "uStrength", min: 0, max: 10, step: 0.1 },
   { label: "Density", key: "uDensity", min: 0, max: 4, step: 0.1 },
-  { label: "Frequency", key: "uFrequency", min: 0, max: 2, step: 0.01 },
+  { label: "Frequency", key: "uFrequency", min: 0, max: 10, step: 0.01 },
   { label: "Camera distance", key: "cDistance", min: 1, max: 10, step: 0.1 },
 ];
 
@@ -45,7 +46,12 @@ export function ControlPanel() {
 
       {NUMBER_FIELDS.map(({ label, key, min, max, step }) => (
         <label key={key} className="flex flex-col gap-1">
-          <span>{label}</span>
+          <span className="flex justify-between">
+            <span>{label}</span>
+            <span className="tabular-nums text-neutral-400">
+              {formatSliderValue(config[key], step)}
+            </span>
+          </span>
           <input
             type="range"
             min={min}

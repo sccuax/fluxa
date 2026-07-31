@@ -1,15 +1,9 @@
 import { Hono } from "hono";
-import { z } from "zod";
 import { eq } from "drizzle-orm";
-import { gradientConfigSchema } from "@fluxa/gradient-core";
 import type { Bindings } from "../types/env";
 import { createDb } from "../db/client";
 import { presets } from "../db/schema";
-
-const createPresetSchema = z.object({
-  name: z.string().min(1).max(80),
-  config: gradientConfigSchema,
-});
+import { createPresetSchema } from "../schema";
 
 export const presetRoutes = new Hono<{ Bindings: Bindings }>();
 

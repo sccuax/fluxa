@@ -1,12 +1,13 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import type { Bindings } from "./types/env";
+import type { AppEnv } from "./types";
 import { createAuth } from "./lib/auth";
+import { sessionMiddleware } from "./middleware";
 import { authRoutes } from "./routes/auth";
 import { assetRoutes } from "./routes/assets";
 import { presetRoutes } from "./routes/presets";
 
-const app = new Hono<{ Bindings: Bindings }>();
+const app = new Hono<AppEnv>();
 
 app.use(
   "*",
@@ -19,7 +20,13 @@ app.use(
   }),
 );
 
+// Populates c.get("user")/c.get("session") for every route below (doesn't
+// gate access by itself - see middleware/requireAuth.ts for that).
+app.use("*", sessionMiddleware);
+
 app.get("/health", (c) => c.json({ ok: true }));
+
+app.get("/api/me", (c) => c.json({ user: c.get("user") }));
 
 // better-auth's own routes: sign-up/sign-in (email+password), Google OAuth,
 // session management. See src/lib/auth.ts for provider config.
