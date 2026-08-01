@@ -11,14 +11,31 @@ import {
 } from "drizzle-orm/pg-core";
 import { user } from "./auth-schema";
 
-export const installations = pgTable("installations", {
-  id: text("id")
-    .primaryKey()
-    .$defaultFn(() => crypto.randomUUID()),
-  siteId: text("site_id"),
-  accessToken: text("access_token").notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+export const installations = pgTable(
+  "installations",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    siteId: text("site_id"),
+    accessToken: text("access_token").notNull(),
+    // Which Fluxa account ran the Webflow install OAuth flow (`/auth/install`
+    // -> `/auth/callback`). Nullable because rows created before this column
+    // existed have no owner - back-populate before relying on it for authz.
+    userId: text("user_id").references(() => user.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [index("installations_userId_idx").on(table.userId)],
+);
+
+export const installationRelations = relations(installations, ({ one }) => ({
+  user: one(user, {
+    fields: [installations.userId],
+    references: [user.id],
+  }),
+}));
 
 export const presets = pgTable(
   "presets",

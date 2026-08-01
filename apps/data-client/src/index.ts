@@ -1,5 +1,8 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
+import { secureHeaders } from "hono/secure-headers";
+import { HTTPException } from "hono/http-exception";
+import { ZodError } from "zod";
 import type { AppEnv } from "./types";
 import { createAuth } from "./lib/auth";
 import { sessionMiddleware } from "./middleware";
@@ -8,6 +11,8 @@ import { assetRoutes } from "./routes/assets";
 import { presetRoutes } from "./routes/presets";
 
 const app = new Hono<AppEnv>();
+
+app.use(secureHeaders());
 
 app.use(
   "*",
@@ -19,6 +24,18 @@ app.use(
     credentials: true,
   }),
 );
+
+// Catches anything a route handler throws (e.g. a raw `schema.parse()` call)
+// so a validation failure or bug returns a clean JSON error instead of
+// Hono's default response, which can include the raw error message/stack.
+app.onError((err, c) => {
+  if (err instanceof HTTPException) return err.getResponse();
+  if (err instanceof ZodError) {
+    return c.json({ error: "invalid_request", issues: err.issues }, 400);
+  }
+  console.error(err);
+  return c.json({ error: "internal_error" }, 500);
+});
 
 // Populates c.get("user")/c.get("session") for every route below (doesn't
 // gate access by itself - see middleware/requireAuth.ts for that).
