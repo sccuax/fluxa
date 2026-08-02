@@ -1,0 +1,13 @@
+{
+  "name": "@fluxa/design-tokens",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "style-dictionary build --config sd.config.mjs"
+  },
+  "devDependencies": {
+    "@tokens-studio/sd-transforms": "^2.0.3",
+    "style-dictionary": "^5.5.0"
+  }
+}

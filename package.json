@@ -7,6 +7,7 @@
     "node": ">=18"
   },
   "scripts": {
+    "postinstall": "pnpm --filter @fluxa/design-tokens build",
     "dev:extension": "concurrently \"pnpm --filter @fluxa/designer-extension build:watch\" \"webflow extension serve\"",
     "dev:extension:browser": "pnpm --filter @fluxa/designer-extension dev",
     "dev:api": "pnpm --filter @fluxa/data-client dev",

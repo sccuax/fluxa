@@ -1,0 +1,22 @@
+{
+  "Bricolage Grotesque": {
+    "$extensions": {
+      "com.figma.scopes": [
+        "FONT_FAMILY"
+      ],
+      "com.figma.hiddenFromPublishing": true
+    },
+    "$type": "text",
+    "$value": "Bricolage Grotesque"
+  },
+  "General Sans": {
+    "$extensions": {
+      "com.figma.scopes": [
+        "FONT_FAMILY"
+      ],
+      "com.figma.hiddenFromPublishing": true
+    },
+    "$type": "text",
+    "$value": "General Sans"
+  }
+}
