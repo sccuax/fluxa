@@ -1,7 +1,7 @@
 {
   "name": "fluxa",
   "publicDir": "apps/designer-extension/dist",
-  "size": "large",
+  "size": "comfortable",
   "apiVersion": "2",
   "telemetry": {
     "global": {

@@ -13,3 +13,4 @@ coverage
 CLAUDE.md
 .vscode/*
 !.vscode/extensions.json
+copy-paste
