@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
 import { SVGLoader } from "three/examples/jsm/loaders/SVGLoader.js";
+import gsap from "gsap";
 
 // SVG original (viewBox 0 0 49 49)
 const SVG_MARKUP = `<svg><path d="M48.1599 36.1218C48.1599 42.775 42.7674 48.1599 36.1218 48.1599C29.4762 48.1599 24.0837 42.7674 24.0837 36.1218C24.0837 42.775 18.6913 48.1599 12.0457 48.1599C5.40004 48.1599 0 42.7674 0 36.1218C0 29.4762 5.39245 24.0837 12.0381 24.0837C5.39245 24.0762 0 18.6913 0 12.0381C0 8.71147 1.34432 5.70385 3.52408 3.52408C5.70385 1.34432 8.71147 0 12.0381 0H36.1142C42.7598 0 48.1523 5.39245 48.1523 12.0381C48.1523 15.3647 46.808 18.3723 44.6282 20.5521C42.4485 22.7318 39.4408 24.0762 36.1142 24.0762C42.7598 24.0762 48.1523 29.4686 48.1523 36.1142L48.1599 36.1218Z"/></svg>`;
@@ -164,6 +165,27 @@ export function Svg3DPreview({
     };
     positionCamera(height);
 
+    // Entrance: pop in from scale 0 with a bounce, plus a small extra spin that
+    // decays into the normal auto-rotate. Camera framing above was measured
+    // against the group's real rest scale/pose - only *after* that do we zero
+    // the scale to animate in, so the framing itself is never computed against
+    // a collapsed (scale 0) bounding sphere.
+    const restScale = group.scale.clone();
+    group.scale.set(0, 0, 0);
+    const entrySpin = { extra: -0.55 };
+    const entranceScaleTween = gsap.to(group.scale, {
+      x: restScale.x,
+      y: restScale.y,
+      z: restScale.z,
+      duration: 0.55,
+      ease: "back.out(1.8)",
+    });
+    const entranceSpinTween = gsap.to(entrySpin, {
+      extra: 0,
+      duration: 0.55,
+      ease: "back.out(1.6)",
+    });
+
     // --- Rotación con drag + auto-rotate ---
     let isDragging = false;
     let prevX = 0;
@@ -199,7 +221,7 @@ export function Svg3DPreview({
     const animate = () => {
       rafId = requestAnimationFrame(animate);
       if (!isDragging) rotY += autoRotateSpeed;
-      group.rotation.y = rotY;
+      group.rotation.y = rotY + entrySpin.extra;
       group.rotation.x = rotX;
       renderer.render(scene, camera);
     };
@@ -217,6 +239,8 @@ export function Svg3DPreview({
 
     return () => {
       cancelAnimationFrame(rafId);
+      entranceScaleTween.kill();
+      entranceSpinTween.kill();
       window.removeEventListener("resize", onResize);
       window.removeEventListener("pointerup", onPointerUp);
       window.removeEventListener("pointermove", onPointerMove);
