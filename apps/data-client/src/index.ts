@@ -9,6 +9,7 @@ import { sessionMiddleware } from "./middleware";
 import { authRoutes } from "./routes/auth";
 import { assetRoutes } from "./routes/assets";
 import { presetRoutes } from "./routes/presets";
+import { oauthPopupRoutes } from "./routes/oauthPopup";
 
 const app = new Hono<AppEnv>();
 
@@ -57,5 +58,6 @@ app.on(["POST", "GET"], "/api/auth/*", (c) => {
 app.route("/auth", authRoutes);
 app.route("/api/assets", assetRoutes);
 app.route("/api/presets", presetRoutes);
+app.route("/oauth-popup-callback", oauthPopupRoutes);
 
 export default app;

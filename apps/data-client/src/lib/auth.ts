@@ -17,6 +17,13 @@ export function createAuth(env: Bindings) {
       google: {
         clientId: env.GOOGLE_CLIENT_ID,
         clientSecret: env.GOOGLE_CLIENT_SECRET,
+        // Reject sign-in for a Google account with no existing Fluxa user
+        // instead of silently creating one - the Designer Extension's Google
+        // button is sign-in only; account creation is a separate sign-up flow.
+        // better-auth's oauth2/link-account.mjs returns `error: "signup disabled"`
+        // in this case, which the callback route turns into a redirect to
+        // `?error=signup_disabled` on the popup callback page below.
+        disableImplicitSignUp: true,
       },
     },
     secret: env.BETTER_AUTH_SECRET,
