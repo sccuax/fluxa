@@ -13,13 +13,27 @@ import { oauthPopupRoutes } from "./routes/oauthPopup";
 
 const app = new Hono<AppEnv>();
 
-app.use(secureHeaders());
+// crossOriginOpenerPolicy defaults to "same-origin", which severs the
+// window.opener relationship as soon as the Google sign-in popup navigates
+// cross-origin (to Google, then back to /oauth-popup-callback) - the opener
+// sees popup.closed flip to true almost immediately, well before the OAuth
+// round trip finishes. "same-origin-allow-popups" keeps the same isolation
+// but preserves the opener link for windows this app itself opens.
+app.use(secureHeaders({ crossOriginOpenerPolicy: "same-origin-allow-popups" }));
 
 app.use(
   "*",
   cors({
     origin: (origin, c) => {
-      const allowed = [c.env.DESIGNER_EXTENSION_ORIGIN, "http://localhost:1337"];
+      const allowed = [
+        c.env.DESIGNER_EXTENSION_ORIGIN,
+        "http://localhost:1337",
+        // TEMPORARY - Cloudflare quick tunnel for a live demo of the
+        // extension running standalone (not through the Designer iframe).
+        // Quick tunnel URLs are random per run and expire when the tunnel is
+        // stopped - remove this line once the demo is done.
+        "https://festival-scheme-morgan-tries.trycloudflare.com",
+      ];
       return allowed.includes(origin) ? origin : undefined;
     },
     credentials: true,

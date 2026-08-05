@@ -6,18 +6,24 @@ import { EyeIcon } from "../components/EyeIcon";
 import { EyeOffIcon } from "../components/EyeOffIcon";
 import { Modal } from "../components/Modal";
 import { openGoogleSignInPopup } from "../services/googleSignIn";
+import { DATA_CLIENT_URL } from "../services/apiClient";
+
+interface SignInScreenProps {
+  onCreateAccount: () => void;
+}
 
 // Structural skeleton only - layout/spacing (flex, gap, position) mirrors the
 // Figma export 1:1, but colors/fonts/borders are intentionally left out so
 // tokens from @fluxa/design-tokens can be applied on top via className.
 // Banner + logo lockup are left as empty placeholders on purpose (pending design).
-export function SignInScreen() {
+export function SignInScreen({ onCreateAccount }: SignInScreenProps) {
   useExtensionSize({ width: 320, height: 552 });
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [emailError, setEmailError] = useState<string | null>(null);
   const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const formValidation = useFormValidation(email, password);
   const [showCreateAccountModal, setShowCreateAccountModal] = useState(false);
 
@@ -34,33 +40,66 @@ export function SignInScreen() {
       // else: success - a session cookie is set; navigating away from this
       // screen once that flow exists is out of scope for now.
     } catch {
-      // Popup blocked or closed by the user before finishing - no feedback
-      // needed for a manual close.
+      // Popup blocked, or closed with no session and no message - a genuine
+      // user cancel, or an error page they closed themselves (see
+      // oauthPopup.ts, which shows its own feedback directly since it
+      // usually can't relay one back here - see googleSignIn.ts).
     }
   };
 
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    // TODO: wire this to the real sign-in call (see routes/auth.ts's
-    // better-auth mount) once this screen talks to the backend. Email format
-    // can be checked locally; "incorrect password" only makes sense as a
-    // server response (it's a DB match, not a format rule), so it's left
-    // unset here on purpose until that call exists.
-    setEmailError(formValidation.isEmailValid ? null : "Invalid email");
+    // Email format is a client-side check; whether the email/password pair
+    // actually matches a row in the database can only be answered by the
+    // server, so that half is left to the API call below.
+    if (!formValidation.isEmailValid) {
+      setEmailError("Invalid email");
+      return;
+    }
+    setEmailError(null);
     setPasswordError(null);
+    setIsSubmitting(true);
+    try {
+      const res = await fetch(`${DATA_CLIENT_URL}/api/auth/sign-in/email`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+      if (!res.ok) {
+        // better-auth intentionally returns the same generic error whether
+        // the email isn't registered or the password is wrong (it even hashes
+        // a dummy password in the "no such user" case) - this prevents an
+        // attacker from using the login form to enumerate registered emails,
+        // so we surface that same generic message rather than a more
+        // specific "this user doesn't exist".
+        setPasswordError("Invalid email or password");
+        return;
+      }
+      // else: success - a session cookie is set; navigating away from this
+      // screen once that flow exists is out of scope for now.
+    } catch {
+      setPasswordError("Something went wrong. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
-    <div className="relative w-full h-auto bg-white">
-      {/* Decorative header banner - empty on purpose, pending design */}
-      <div className="absolute left-0 top-0 h-[86px] w-full">
-
+    <div className="relative w-full h-screen bg-white">
+      {/* Decorative header banner - gradient blob artwork from Figma, clipped
+          to this exact 320x86 box. The source SVG's own viewBox already
+          matches these dimensions, so the browser's default SVG viewport
+          clipping reproduces Figma's vector mask without needing a separate
+          clip-path here. */}
+      <div className="absolute left-0 top-0 h-[86px] w-[320px] overflow-hidden">
+        <img src="/images/signin-header-bg.svg" alt="" className="h-full w-full" />
       </div>
 
       <div className="absolute left-0 top-[90px] flex min-h-[430px] w-[320px] flex-col items-center gap-[48px]">
         <div className="flex min-h-[368px] w-full flex-col items-center gap-[32px] px-[24px]">
           {/* Logo lockup (mark + wordmark) - empty on purpose, pending design */}
-          <div className="flex h-[32px] w-[88.47px] items-center gap-[16px]">
+          <div className="flex items-center gap-[16px]">
             <svg width="137" height="32" viewBox="0 0 137 32" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M32 24.0013C32 28.422 28.417 32 24.0013 32C19.5856 32 16.0025 28.417 16.0025 24.0013C16.0025 28.422 12.4195 32 8.00379 32C3.58808 32 0 28.417 0 24.0013C0 19.5856 3.58303 16.0025 7.99874 16.0025C3.58303 15.9975 0 12.4195 0 7.99874C0 5.78836 0.893234 3.78994 2.34159 2.34159C3.78994 0.893234 5.78836 0 7.99874 0H23.9962C28.4119 0 31.995 3.58303 31.995 7.99874C31.995 10.2091 31.1017 12.2075 29.6534 13.6559C28.205 15.1042 26.2066 15.9975 23.9962 15.9975C28.4119 15.9975 31.995 19.5805 31.995 23.9962L32 24.0013Z" fill="url(#paint0_linear_69_1249)" />
               <path d="M52.5872 8.62705V15.4298H64.0075V19.25H52.5872V28.6718H47.9999V4.66553H65.4609V8.62705H52.5872Z" fill="#0B0D12" />
@@ -98,7 +137,7 @@ export function SignInScreen() {
                         setEmailError(null);
                       }}
                       placeholder="name@mail.com"
-                      className="w-full flex-1 text-text-sm-regular"
+                      className="w-full flex-1 text-text-sm-regular focus:outline-none"
                     />
                     {emailError && (
                       <span className="absolute right-0 top-full mt-1 text-[10px] text-error-800">{emailError}</span>
@@ -140,15 +179,21 @@ export function SignInScreen() {
                   >
                     {showPassword ? <EyeOffIcon /> : <EyeIcon />}
                   </button>
-                  {passwordError && (
-                    <span className="absolute right-0 top-full mt-1 text-[10px] text-error-800">{passwordError}</span>
-                  )}
                 </div>
+                {passwordError && (
+                  <span className="text-[10px] text-error-800">{passwordError}</span>
+                )}
               </div>
 
               {/* Submit + forgot password */}
               <div className="flex min-h-[66px] w-full flex-col items-center gap-[8px]">
-                <ButtonPrimary type="submit">Sign in</ButtonPrimary>
+                <ButtonPrimary
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="shadow-[3px_0_6px_0_rgba(0,0,0,0.25)_inset,-10px_47px_13px_0_rgba(33,33,33,0.00),-6px_30px_12px_0_rgba(33,33,33,0.01),-4px_17px_10px_0_rgba(33,33,33,0.05),-2px_7px_8px_0_rgba(33,33,33,0.09),0_2px_4px_0_rgba(33,33,33,0.10)]"
+                >
+                  {isSubmitting ? "Signing in..." : "Sign in"}
+                </ButtonPrimary>
                 <div className="flex min-h-[16px] w-full justify-end">
                   <button type="button" className="text-mobile-text-md-medium text-text-black hover:underline">Forgot Password</button>
                 </div>
@@ -178,8 +223,15 @@ export function SignInScreen() {
 
                 Sign in with Google
               </button>
-              <p className="text-center text-[12px]">
-                Not registered? <button type="button">Create account</button>
+              <p className="text-center text-mobile-text-md-regular text-text-secondary">
+                Not registered?{" "}
+                <button
+                  type="button"
+                  onClick={onCreateAccount}
+                  className="text-text-black text-mobile-text-md-medium hover:underline"
+                >
+                  Create account
+                </button>
               </p>
             </div>
           </div>
@@ -187,8 +239,12 @@ export function SignInScreen() {
 
         {/* Footer links */}
         <div className="flex flex-row items-center gap-[12px]">
-          <a href="#">Privacy policy</a>
-          <a href="#">Terms of use</a>
+          <a href="#" className="text-mobile-text-md-regular text-text-secondary hover:underline">
+            Privacy policy
+          </a>
+          <a href="#" className="text-mobile-text-md-regular text-text-secondary hover:underline">
+            Terms of use
+          </a>
         </div>
       </div>
 

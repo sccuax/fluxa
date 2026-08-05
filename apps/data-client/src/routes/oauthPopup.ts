@@ -8,22 +8,45 @@ export const oauthPopupRoutes = new Hono<AppEnv>();
 // redirects the popup here (as callbackURL on success, errorCallbackURL on
 // failure - see auth.ts's disableImplicitSignUp) once it's already done all
 // the real work (exchanging the code, setting the session cookie or not).
-// This page's only job is to relay that outcome back to the extension iframe
-// that opened it via postMessage, then close itself.
+//
+// This page tries to relay the outcome back to the extension iframe that
+// opened it via postMessage, then close itself - but that relay is
+// best-effort, not guaranteed: accounts.google.com sets
+// Cross-Origin-Opener-Policy: same-origin on its own pages, and the popup
+// passed through there earlier in the flow, so window.opener is usually
+// already null by the time we get here (confirmed via manual testing). On
+// error, render feedback directly in this page instead of auto-closing, since
+// that's the one thing guaranteed to reach the user regardless of whether the
+// relay above works - googleSignIn.ts also polls /api/me from the extension
+// side as its own success-detection fallback, independent of this relay.
 oauthPopupRoutes.get("/", (c) => {
   const error = c.req.query("error") ?? null;
   const targetOrigin = c.env.DESIGNER_EXTENSION_ORIGIN;
 
+  const feedback =
+    error === "signup_disabled"
+      ? "This Google account isn't linked to a Fluxa account yet. Close this window, then create an account first."
+      : error
+        ? "Something went wrong signing in with Google. Close this window and try again."
+        : null;
+
   return c.html(`<!doctype html>
 <html>
-<body>
+<body style="font-family: sans-serif; padding: 24px; text-align: center;">
+${feedback ? `<p>${feedback}</p><p id="raw-error" style="font-family: monospace; color: #888; font-size: 12px;"></p><button onclick="window.close()">Close</button>` : ""}
 <script>
   (function () {
-    var message = { source: "fluxa-google-auth", error: ${JSON.stringify(error)} };
+    var payload = { source: "fluxa-google-auth", error: ${JSON.stringify(error)} };
+    // TEMPORARY: show the raw error code via textContent (safe from HTML
+    // injection) to diagnose which error better-auth is actually sending -
+    // remove once we've mapped the codes we can see in practice to friendly
+    // messages above.
+    var rawErrorEl = document.getElementById("raw-error");
+    if (rawErrorEl && payload.error) rawErrorEl.textContent = "(" + payload.error + ")";
     if (window.opener) {
-      window.opener.postMessage(message, ${JSON.stringify(targetOrigin)});
+      window.opener.postMessage(payload, ${JSON.stringify(targetOrigin)});
     }
-    window.close();
+    ${error ? "" : "window.close();"}
   })();
 </script>
 </body>

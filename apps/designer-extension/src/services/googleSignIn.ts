@@ -1,6 +1,7 @@
 import { DATA_CLIENT_URL } from "./apiClient";
 
 const POPUP_CALLBACK_URL = `${DATA_CLIENT_URL}/oauth-popup-callback`;
+const SESSION_POLL_INTERVAL_MS = 1000;
 
 interface GoogleAuthMessage {
   source: "fluxa-google-auth";
@@ -11,13 +12,35 @@ function isGoogleAuthMessage(data: unknown): data is GoogleAuthMessage {
   return typeof data === "object" && data !== null && (data as { source?: unknown }).source === "fluxa-google-auth";
 }
 
+async function hasActiveSession(): Promise<boolean> {
+  const res = await fetch(`${DATA_CLIENT_URL}/api/me`, { credentials: "include" });
+  if (!res.ok) return false;
+  const data = (await res.json()) as { user: unknown };
+  return data.user != null;
+}
+
 // Opens a popup that runs the whole Google OAuth round trip against the
-// deployed Data Client, then resolves once the popup (see the Worker's
-// /oauth-popup-callback route) posts its result back and closes itself.
+// deployed Data Client. Success/failure is detected two ways, since neither
+// is reliable alone:
+//  - postMessage from the popup (see the Worker's /oauth-popup-callback
+//    route) - works when the browsing context stays connected to this
+//    opener.
+//  - polling /api/me for a session cookie - works even when it doesn't,
+//    because cookies aren't affected by window-reference isolation.
+// The second path exists because accounts.google.com sets
+// Cross-Origin-Opener-Policy: same-origin on its own pages. The moment the
+// popup navigates there mid-flow, the browser permanently severs
+// window.opener for the rest of that popup's lifetime (confirmed via manual
+// testing - Chrome logs "Cross-Origin-Opener-Policy policy would block the
+// window.closed call"), so postMessage back to this window silently never
+// arrives - not something fixable via this app's own COOP settings, since
+// it's Google's header, not ours.
 // `error` is null on success, or a code like "signup_disabled" (see
 // data-client's auth.ts - disableImplicitSignUp) on failure.
-// Rejects if the popup is blocked, or if the user closes it manually before
-// the flow finishes.
+// Rejects if the popup is blocked, or if it closes with neither a session
+// nor a message (user cancelled, or closed an error page themselves - see
+// oauthPopup.ts, which renders its own feedback for that case since it
+// usually can't relay one back here).
 export function openGoogleSignInPopup(): Promise<{ error: string | null }> {
   return new Promise((resolve, reject) => {
     const popup = window.open("", "fluxa-google-signin", "width=480,height=640");
@@ -27,25 +50,48 @@ export function openGoogleSignInPopup(): Promise<{ error: string | null }> {
     }
 
     let settled = false;
+    let closeCheckInFlight = false;
 
     const cleanup = () => {
       window.removeEventListener("message", onMessage);
       window.clearInterval(pollClosed);
+      window.clearInterval(pollSession);
+    };
+
+    const settle = (result: { error: string | null } | null, err?: Error) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      try {
+        popup.close();
+      } catch {
+        // best-effort - may already be closed, or its browsing context is
+        // isolated from us by now (see comment above)
+      }
+      if (result) resolve(result);
+      else reject(err ?? new Error("popup_closed"));
     };
 
     const onMessage = (event: MessageEvent) => {
       if (event.origin !== new URL(DATA_CLIENT_URL).origin) return;
       if (!isGoogleAuthMessage(event.data)) return;
-      settled = true;
-      cleanup();
-      resolve({ error: event.data.error });
+      settle({ error: event.data.error });
     };
     window.addEventListener("message", onMessage);
 
+    const pollSession = window.setInterval(() => {
+      hasActiveSession().then((active) => {
+        if (active) settle({ error: null });
+      });
+    }, SESSION_POLL_INTERVAL_MS);
+
     const pollClosed = window.setInterval(() => {
-      if (popup.closed) {
-        cleanup();
-        if (!settled) reject(new Error("popup_closed"));
+      if (popup.closed && !closeCheckInFlight) {
+        closeCheckInFlight = true;
+        // One last session check before giving up - the popup closing and
+        // the session cookie landing can race right at the end of a
+        // successful flow.
+        hasActiveSession().then((active) => settle(active ? { error: null } : null));
       }
     }, 300);
 
@@ -64,10 +110,6 @@ export function openGoogleSignInPopup(): Promise<{ error: string | null }> {
         if (!data.url) throw new Error("no_redirect_url");
         popup.location.href = data.url;
       })
-      .catch((err) => {
-        popup.close();
-        cleanup();
-        reject(err);
-      });
+      .catch((err) => settle(null, err));
   });
 }

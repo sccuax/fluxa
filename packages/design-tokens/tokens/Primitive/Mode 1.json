@@ -610,7 +610,7 @@
   "Gradient": {
     "Gradient": {
       "$type": "color",
-      "$value": "linear-gradient(19deg, #6ff5f1 0%, #3b9cd6 25.48%, #0955e5 50%, #8e54c5 75%, #e23f8c 100%)"
+      "$value": "linear-gradient(3deg, #6ff5f1 8.4%, #3b9cd6 29.6%, #0955e5 50%, #8e54c5 70.8%, #e23f8c 91.6%)"
     }
   },
   "Grayscale": {

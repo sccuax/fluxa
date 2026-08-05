@@ -26,6 +26,25 @@ export function createAuth(env: Bindings) {
         disableImplicitSignUp: true,
       },
     },
+    account: {
+      // The Google sign-in flow spans two separate top-level browsing
+      // contexts: the extension iframe's fetch() to /api/auth/sign-in/social
+      // (which sets better-auth's extra CSRF "state" cookie) and the
+      // *separate* popup window that later lands on
+      // /api/auth/callback/google (which needs that same cookie). Even
+      // though both hit the same data-client domain, a cookie set from
+      // inside a cross-origin iframe doesn't reliably reach a genuinely
+      // separate top-level popup window - observed in practice as a
+      // `state_mismatch` error on every attempt, regardless of whether the
+      // Google account was registered. The primary CSRF guarantee (a random
+      // state nonce checked against a single-use row in the `verification`
+      // table, since storeStateStrategy defaults to "database" whenever a
+      // database is configured, which it is here) doesn't depend on this
+      // cookie - it's a secondary defense-in-depth check that assumes a
+      // single-window flow, so it's safe to skip for this app's popup-based
+      // architecture.
+      skipStateCookieCheck: true,
+    },
     secret: env.BETTER_AUTH_SECRET,
     baseURL: env.BETTER_AUTH_URL,
     trustedOrigins: [
@@ -34,6 +53,9 @@ export function createAuth(env: Bindings) {
       // origin here once that app exists.
       env.DESIGNER_EXTENSION_ORIGIN,
       "http://localhost:1337",
+      // TEMPORARY - see matching note in index.ts's CORS config. Remove once
+      // the live demo over the Cloudflare quick tunnel is done.
+      "https://festival-scheme-morgan-tries.trycloudflare.com",
     ],
   });
 }
