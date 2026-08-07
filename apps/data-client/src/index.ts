@@ -32,7 +32,7 @@ app.use(
         // extension running standalone (not through the Designer iframe).
         // Quick tunnel URLs are random per run and expire when the tunnel is
         // stopped - remove this line once the demo is done.
-        "https://festival-scheme-morgan-tries.trycloudflare.com",
+        "https://platinum-double-nuke-reward.trycloudflare.com",
       ];
       return allowed.includes(origin) ? origin : undefined;
     },

@@ -23,12 +23,21 @@ oauthPopupRoutes.get("/", (c) => {
   const error = c.req.query("error") ?? null;
   const targetOrigin = c.env.DESIGNER_EXTENSION_ORIGIN;
 
+  // "already_registered" isn't a real auth failure (a session is set just
+  // like a normal sign-in - see googleSignIn.ts's requestSignUp branch), but
+  // it still needs to not auto-close and show something, since this inline
+  // message is the one channel guaranteed to reach the user - postMessage
+  // back to the extension is unreliable (see the class comment below) and
+  // the extension's own session poll can't tell "existing account" apart
+  // from "brand new account" (both just look like an active session).
   const feedback =
     error === "signup_disabled"
       ? "This Google account isn't linked to a Fluxa account yet. Close this window, then create an account first."
-      : error
-        ? "Something went wrong signing in with Google. Close this window and try again."
-        : null;
+      : error === "already_registered"
+        ? "You already have a Fluxa account with this Google account. Close this window and sign in instead."
+        : error
+          ? "Something went wrong signing in with Google. Close this window and try again."
+          : null;
 
   return c.html(`<!doctype html>
 <html>

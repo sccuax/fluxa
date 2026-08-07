@@ -1,6 +1,11 @@
 import { DATA_CLIENT_URL } from "./apiClient";
 
 const POPUP_CALLBACK_URL = `${DATA_CLIENT_URL}/oauth-popup-callback`;
+// Not a real auth failure (a session is still set - the user does have a
+// legitimate account) - just a signal for the popup callback page to show
+// "you already have an account" instead of the normal success page. See the
+// requestSignUp branch below and oauthPopup.ts.
+const ALREADY_REGISTERED_CALLBACK_URL = `${POPUP_CALLBACK_URL}?error=already_registered`;
 const SESSION_POLL_INTERVAL_MS = 1000;
 
 interface GoogleAuthMessage {
@@ -41,7 +46,11 @@ async function hasActiveSession(): Promise<boolean> {
 // nor a message (user cancelled, or closed an error page themselves - see
 // oauthPopup.ts, which renders its own feedback for that case since it
 // usually can't relay one back here).
-export function openGoogleSignInPopup(): Promise<{ error: string | null }> {
+// `requestSignUp` is better-auth's sanctioned way to let this same Google
+// provider config serve both a disableImplicitSignUp-guarded sign-in button
+// and a sign-up button that actually creates the account - see CLAUDE.md's
+// "Google sign-in popup flow" section.
+export function openGoogleSignInPopup(options?: { requestSignUp?: boolean }): Promise<{ error: string | null }> {
   return new Promise((resolve, reject) => {
     const popup = window.open("", "fluxa-google-signin", "width=480,height=640");
     if (!popup) {
@@ -101,8 +110,19 @@ export function openGoogleSignInPopup(): Promise<{ error: string | null }> {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         provider: "google",
-        callbackURL: POPUP_CALLBACK_URL,
+        // For a plain sign-in, an already-linked account is the whole
+        // point, so `callbackURL` (better-auth's default redirect target)
+        // is just the normal success page. For sign-up, that same "account
+        // already existed" outcome should instead read as "you already
+        // have an account" - better-auth only distinguishes the two via
+        // `newUserCallbackURL`, which it uses in place of `callbackURL`
+        // specifically when a *new* user was just registered (see
+        // callback.mjs's `result.isRegister` check) - so for requestSignUp
+        // we swap which URL means what.
+        callbackURL: options?.requestSignUp ? ALREADY_REGISTERED_CALLBACK_URL : POPUP_CALLBACK_URL,
+        ...(options?.requestSignUp ? { newUserCallbackURL: POPUP_CALLBACK_URL } : {}),
         errorCallbackURL: POPUP_CALLBACK_URL,
+        ...(options?.requestSignUp ? { requestSignUp: true } : {}),
       }),
     })
       .then((res) => res.json())

@@ -2,8 +2,9 @@ import { useEffect, useState } from "react";
 import { WelcomeScreen } from "./screen/WelcomeScreen";
 import { SignInScreen } from "./screen/SignInScreen";
 import { SignUpScreen } from "./screen/SignUpScreen";
+import { DashboardScreen } from "./screen/DashboardScreen";
 
-type Screen = "welcome" | "signin" | "signup";
+type Screen = "welcome" | "signin" | "signup" | "dashboard";
 
 // Matches the welcome intro's 3s animation timeline (see WelcomeScreen.tsx)
 // plus a short hold so the finished state is visible before moving on.
@@ -17,7 +18,15 @@ export default function App() {
     return () => clearTimeout(timer);
   }, []);
 
-  if (screen === "signin") return <SignInScreen onCreateAccount={() => setScreen("signup")} />;
+  if (screen === "signin") {
+    return (
+      <SignInScreen
+        onCreateAccount={() => setScreen("signup")}
+        onSignInSuccess={() => setScreen("dashboard")}
+      />
+    );
+  }
   if (screen === "signup") return <SignUpScreen onBackToSignIn={() => setScreen("signin")} />;
+  if (screen === "dashboard") return <DashboardScreen />;
   return <WelcomeScreen />;
 }

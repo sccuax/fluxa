@@ -47,6 +47,20 @@ export function createAuth(env: Bindings) {
     },
     secret: env.BETTER_AUTH_SECRET,
     baseURL: env.BETTER_AUTH_URL,
+    advanced: {
+      // The Designer Extension iframe and this Worker are different sites,
+      // so every authenticated call from the extension (the /api/me poll in
+      // googleSignIn.ts, presetRoutes, etc.) is a cross-site fetch. better-
+      // auth's default session cookie is SameSite=Lax, which browsers only
+      // send on top-level navigations, never on cross-site fetch/XHR - so
+      // the extension could never actually read back its own session cookie
+      // with the default. baseURL is HTTPS here, so `secure` already
+      // defaults true; SameSite=None is the piece that needs to be explicit.
+      defaultCookieAttributes: {
+        sameSite: "none",
+        secure: true,
+      },
+    },
     trustedOrigins: [
       // Webflow Designer Extension iframe origin (apps/data-client/wrangler.toml
       // has the matching value - keep both in sync). Add the Fluxa dashboard's
@@ -55,7 +69,7 @@ export function createAuth(env: Bindings) {
       "http://localhost:1337",
       // TEMPORARY - see matching note in index.ts's CORS config. Remove once
       // the live demo over the Cloudflare quick tunnel is done.
-      "https://festival-scheme-morgan-tries.trycloudflare.com",
+      "https://platinum-double-nuke-reward.trycloudflare.com",
     ],
   });
 }
