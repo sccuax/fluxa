@@ -13,12 +13,10 @@ interface AuthTextFieldProps {
 }
 
 // Plain single-line field (email, full name, ...) - label + input + an
-// error rendered absolutely below the box. Only safe for messages that are
-// short and fixed-length (e.g. "Invalid email"), since absolute positioning
-// doesn't reserve layout space - a longer/variable message would overlap
-// whatever comes next. Password fields have their own component
-// (AuthPasswordField) since their behavior (show/hide toggle, masking)
-// isn't just a style variant of this one.
+// error rendered in normal flow below the box, left-aligned, matching
+// AuthPasswordField's error so both field types read consistently.
+// Password fields have their own component (AuthPasswordField) since their
+// behavior (show/hide toggle, masking) isn't just a style variant of this one.
 export function AuthTextField({
   id,
   name,
@@ -36,7 +34,7 @@ export function AuthTextField({
         <label className="text-mobile-text-md-medium font-sans" htmlFor={id}>
           {label}
         </label>
-        <div className="relative w-full h-[36px] flex justify-center border border-border-border pl-4 rounded-4">
+        <div className="relative w-full h-[36px] flex justify-center border border-border-border focus-within:border-[#858179] pl-4 rounded-4 overflow-hidden">
           <input
             id={id}
             name={name}
@@ -47,10 +45,8 @@ export function AuthTextField({
             autoComplete={autoComplete}
             className="w-full flex-1 text-text-sm-regular focus:outline-none"
           />
-          {error && (
-            <span className="absolute right-0 top-full mt-1 text-[10px] text-error-800">{error}</span>
-          )}
         </div>
+        {error && <span className="text-[10px] text-error-800">{error}</span>}
       </div>
     </div>
   );

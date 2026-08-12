@@ -1,6 +1,7 @@
-import { useState, type FormEvent } from "react";
+import { useLayoutEffect, useRef, useState, type FormEvent } from "react";
+import gsap from "gsap";
 import { useExtensionSize } from "../hooks/useExtensionSize";
-import { useFormValidation } from "../hooks/useFormValidation";
+import { getEmailErrorMessage, getPasswordErrorMessage } from "../helpers/formRegex";
 import { ButtonPrimary } from "../components/ButtonPrimary";
 import { Modal } from "../components/Modal";
 import { AuthHeaderBanner } from "../components/AuthHeaderBanner";
@@ -21,12 +22,52 @@ interface SignUpScreenProps {
 // punctuation/spaces).
 const USER_ALREADY_EXISTS_CODE = "USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL";
 
+// The lockup's natural SVG height is 32px (see FluxaLogoLockup); the
+// entrance animation below shrinks it to this height once it settles
+// flush-left with the field labels.
+const LOGO_SHRUNK_HEIGHT = 16;
+const LOGO_NATURAL_HEIGHT = 32;
+
 export function SignUpScreen({ onBackToSignIn }: SignUpScreenProps) {
   // Taller than SignInScreen's 552 to fit the two extra fields (full name,
   // confirm password) - no Figma spec exists yet for this screen, so this
   // is a functional estimate built from the same field-row heights used
   // there, not a pixel-exact value.
   useExtensionSize({ width: 320, height: 684 });
+
+  const logoRef = useRef<HTMLDivElement>(null);
+
+  // Entrance animation: the logo renders full-size and centered (its normal
+  // CSS layout, same as SignInScreen), then slides left until flush with the
+  // field labels below it while shrinking to LOGO_SHRUNK_HEIGHT. Only the
+  // ending x position is computed from measurements (how far left it has to
+  // travel to go from centered to flush-left) - the scale target is a fixed
+  // ratio, so this doesn't depend on any hardcoded container width.
+  // transform-origin "left center" keeps the (moving) left edge as the scale
+  // pivot so the slide and the shrink read as one continuous motion instead
+  // of fighting each other.
+  useLayoutEffect(() => {
+    const logoEl = logoRef.current;
+    const container = logoEl?.parentElement;
+    if (!logoEl || !container) return;
+
+    const { paddingLeft, paddingRight } = getComputedStyle(container);
+    const contentWidth = container.clientWidth - parseFloat(paddingLeft) - parseFloat(paddingRight);
+    const centeredOffset = (contentWidth - logoEl.offsetWidth) / 2;
+
+    const tween = gsap.to(logoEl, {
+      x: -centeredOffset,
+      scale: LOGO_SHRUNK_HEIGHT / LOGO_NATURAL_HEIGHT,
+      transformOrigin: "left center",
+      duration: 0.8,
+      delay: 0.2,
+      ease: "power2.inOut",
+    });
+
+    return () => {
+      tween.kill();
+    };
+  }, []);
 
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -37,7 +78,6 @@ export function SignUpScreen({ onBackToSignIn }: SignUpScreenProps) {
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [confirmPasswordError, setConfirmPasswordError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const formValidation = useFormValidation(email, password);
   const [showAlreadyRegisteredModal, setShowAlreadyRegisteredModal] = useState(false);
   const [showAccountCreatedModal, setShowAccountCreatedModal] = useState(false);
 
@@ -80,19 +120,21 @@ export function SignUpScreen({ onBackToSignIn }: SignUpScreenProps) {
     const trimmedName = fullName.trim();
     let hasError = false;
     if (!trimmedName) {
-      setNameError("Full name is required");
+      setNameError("Enter your name");
       hasError = true;
     } else {
       setNameError(null);
     }
-    if (!formValidation.isEmailValid) {
-      setEmailError("Invalid email");
+    const emailErrorMessage = getEmailErrorMessage(email);
+    if (emailErrorMessage) {
+      setEmailError(emailErrorMessage);
       hasError = true;
     } else {
       setEmailError(null);
     }
-    if (!formValidation.password.isValid) {
-      setPasswordError("Password must be at least 10 characters, with uppercase, lowercase, and a special character");
+    const passwordErrorMessage = getPasswordErrorMessage(password);
+    if (passwordErrorMessage) {
+      setPasswordError(passwordErrorMessage);
       hasError = true;
     } else {
       setPasswordError(null);
@@ -134,19 +176,19 @@ export function SignUpScreen({ onBackToSignIn }: SignUpScreenProps) {
   };
 
   return (
-    <div className="relative w-full h-screen bg-white">
+    <div className="relative w-full h-screen overflow-y-auto overflow-x-hidden bg-white">
       <AuthHeaderBanner />
 
-      <div className="absolute left-0 top-[90px] flex min-h-[562px] w-[320px] flex-col items-center gap-[48px]">
-        <div className="flex min-h-[500px] w-full flex-col items-center gap-[32px] px-[24px]">
-          <FluxaLogoLockup />
+      <div className="absolute left-0 top-[90px] flex min-h-[562px] w-full flex-col items-center gap-[24px]">
+        <div className="flex min-h-[500px] w-full flex-col items-center gap-6 px-[24px]">
+          <FluxaLogoLockup ref={logoRef} />
 
           <div className="flex min-h-[436px] w-full flex-col items-center justify-center gap-[12px]">
-            <form className="flex w-full flex-col items-center gap-3" onSubmit={handleSubmit}>
+            <form className="flex w-full flex-col items-center gap-3" onSubmit={handleSubmit} noValidate>
               <AuthTextField
                 id="fullName"
                 name="fullName"
-                label="Full name"
+                label="Full name*"
                 value={fullName}
                 onChange={(e) => {
                   setFullName(e.target.value);
@@ -160,7 +202,7 @@ export function SignUpScreen({ onBackToSignIn }: SignUpScreenProps) {
               <AuthTextField
                 id="email"
                 name="email"
-                label="Your email"
+                label="Your email*"
                 type="email"
                 value={email}
                 onChange={(e) => {
@@ -175,7 +217,7 @@ export function SignUpScreen({ onBackToSignIn }: SignUpScreenProps) {
               <AuthPasswordField
                 id="password"
                 name="password"
-                label="Password"
+                label="Password*"
                 value={password}
                 onChange={(e) => {
                   setPassword(e.target.value);
@@ -188,7 +230,7 @@ export function SignUpScreen({ onBackToSignIn }: SignUpScreenProps) {
               <AuthPasswordField
                 id="confirmPassword"
                 name="confirmPassword"
-                label="Confirm password"
+                label="Confirm password*"
                 value={confirmPassword}
                 onChange={(e) => {
                   setConfirmPassword(e.target.value);

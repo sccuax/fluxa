@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { useExtensionSize } from "../hooks/useExtensionSize";
-import { useFormValidation } from "../hooks/useFormValidation";
+import { getEmailErrorMessage } from "../helpers/formRegex";
 import { ButtonPrimary } from "../components/ButtonPrimary";
 import { Modal } from "../components/Modal";
 import { AuthHeaderBanner } from "../components/AuthHeaderBanner";
@@ -14,16 +14,16 @@ import { DATA_CLIENT_URL } from "../services/apiClient";
 interface SignInScreenProps {
   onCreateAccount: () => void;
   onSignInSuccess: () => void;
+  onForgotPassword: () => void;
 }
 
-export function SignInScreen({ onCreateAccount, onSignInSuccess }: SignInScreenProps) {
+export function SignInScreen({ onCreateAccount, onSignInSuccess, onForgotPassword }: SignInScreenProps) {
   useExtensionSize({ width: 320, height: 552 });
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [emailError, setEmailError] = useState<string | null>(null);
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const formValidation = useFormValidation(email, password);
   const [showCreateAccountModal, setShowCreateAccountModal] = useState(false);
 
   const handleGoogleSignIn = async () => {
@@ -51,8 +51,9 @@ export function SignInScreen({ onCreateAccount, onSignInSuccess }: SignInScreenP
     // Email format is a client-side check; whether the email/password pair
     // actually matches a row in the database can only be answered by the
     // server, so that half is left to the API call below.
-    if (!formValidation.isEmailValid) {
-      setEmailError("Invalid email");
+    const emailErrorMessage = getEmailErrorMessage(email);
+    if (emailErrorMessage) {
+      setEmailError(emailErrorMessage);
       return;
     }
     setEmailError(null);
@@ -84,15 +85,15 @@ export function SignInScreen({ onCreateAccount, onSignInSuccess }: SignInScreenP
   };
 
   return (
-    <div className="relative w-full h-screen bg-white">
+    <div className="relative w-full h-screen overflow-y-auto overflow-x-hidden bg-white">
       <AuthHeaderBanner />
 
-      <div className="absolute left-0 top-[90px] flex min-h-[430px] w-[320px] flex-col items-center gap-8">
+      <div className="absolute left-0 top-[90px] flex min-h-[430px] w-full flex-col items-center gap-8">
         <div className="flex min-h-[368px] w-full flex-col items-center gap-[32px] px-[24px]">
           <FluxaLogoLockup />
 
           <div className="flex min-h-[304px] w-full flex-col items-center justify-center gap-[12px]">
-            <form className="flex w-full flex-col items-center gap-3" onSubmit={handleSubmit}>
+            <form className="flex w-full flex-col items-center gap-3" onSubmit={handleSubmit} noValidate>
               <AuthTextField
                 id="email"
                 name="email"
@@ -129,7 +130,13 @@ export function SignInScreen({ onCreateAccount, onSignInSuccess }: SignInScreenP
                   {isSubmitting ? "Signing in..." : "Sign in"}
                 </ButtonPrimary>
                 <div className="flex min-h-[16px] w-full justify-center">
-                  <button type="button" className="text-mobile-text-md-medium text-text-black hover:underline">Forgot Password</button>
+                  <button
+                    type="button"
+                    onClick={onForgotPassword}
+                    className="text-mobile-text-md-medium text-text-black hover:underline"
+                  >
+                    Forgot Password
+                  </button>
                 </div>
                 <div className="flex flex-row gap-3 w-full items-center justify-center">
                   <div className="h-[1px] w-full bg-border-border"></div>

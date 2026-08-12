@@ -1,6 +1,11 @@
-export function FluxaLogoLockup() {
+import { forwardRef } from "react";
+
+// forwardRef so screens that animate the lockup (see SignUpScreen) can
+// target its root box directly - SignInScreen renders it with no ref and
+// gets the exact same static markup as before.
+export const FluxaLogoLockup = forwardRef<HTMLDivElement>(function FluxaLogoLockup(_props, ref) {
   return (
-    <div className="flex items-center gap-[16px]">
+    <div ref={ref} className="flex items-center gap-[16px]">
       <svg width="137" height="32" viewBox="0 0 137 32" fill="none" xmlns="http://www.w3.org/2000/svg">
         <path d="M32 24.0013C32 28.422 28.417 32 24.0013 32C19.5856 32 16.0025 28.417 16.0025 24.0013C16.0025 28.422 12.4195 32 8.00379 32C3.58808 32 0 28.417 0 24.0013C0 19.5856 3.58303 16.0025 7.99874 16.0025C3.58303 15.9975 0 12.4195 0 7.99874C0 5.78836 0.893234 3.78994 2.34159 2.34159C3.78994 0.893234 5.78836 0 7.99874 0H23.9962C28.4119 0 31.995 3.58303 31.995 7.99874C31.995 10.2091 31.1017 12.2075 29.6534 13.6559C28.205 15.1042 26.2066 15.9975 23.9962 15.9975C28.4119 15.9975 31.995 19.5805 31.995 23.9962L32 24.0013Z" fill="url(#paint0_linear_69_1249)" />
         <path d="M52.5872 8.62705V15.4298H64.0075V19.25H52.5872V28.6718H47.9999V4.66553H65.4609V8.62705H52.5872Z" fill="#0B0D12" />
@@ -20,4 +25,4 @@ export function FluxaLogoLockup() {
       </svg>
     </div>
   );
-}
+});

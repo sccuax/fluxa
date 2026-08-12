@@ -36,7 +36,7 @@ export function AuthPasswordField({
       <label className="text-mobile-text-md-medium font-sans" htmlFor={id}>
         {label}
       </label>
-      <div className="relative flex min-h-[36px] w-full items-center rounded-4 border border-border-border pl-4 pr-3">
+      <div className="relative flex min-h-[36px] w-full items-center rounded-4 border border-border-border focus-within:border-[#858179] pl-4 pr-3 overflow-hidden">
         <input
           id={id}
           name={name}
