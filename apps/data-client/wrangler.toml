@@ -19,3 +19,13 @@ DESIGNER_EXTENSION_ORIGIN = "https://6a6bb6b4db84ef2c530166e7.webflow-ext.com"
 #   wrangler secret put BETTER_AUTH_SECRET     (random 32+ byte string)
 #   wrangler secret put GOOGLE_CLIENT_ID
 #   wrangler secret put GOOGLE_CLIENT_SECRET
+
+# Cloudflare Email Service binding - used by lib/auth.ts's emailOTP plugin to
+# send the password-reset code. fluxa.agency must be onboarded first via
+# `wrangler email sending enable fluxa.agency` (requires the domain's
+# nameservers to be pointed at Cloudflare and the zone active), otherwise
+# sends fail with E_SENDER_NOT_VERIFIED. For local `wrangler dev` testing,
+# temporarily add `remote = true` here to actually deliver emails instead of
+# just simulating the send - remove it again before deploying.
+[[send_email]]
+name = "EMAIL"

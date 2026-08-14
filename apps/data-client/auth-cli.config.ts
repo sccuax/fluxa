@@ -5,6 +5,7 @@
 // loadable by plain Node with process.env, which Workers bindings aren't.
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { emailOTP } from "better-auth/plugins";
 import { drizzle } from "drizzle-orm/neon-http";
 import { neon } from "@neondatabase/serverless";
 import { config } from "dotenv";
@@ -22,6 +23,16 @@ export const auth = betterAuth({
       clientId: process.env.GOOGLE_CLIENT_ID ?? "placeholder",
       clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? "placeholder",
     },
+  },
+  // Mirrors src/lib/auth.ts's plugin/rateLimit config so `auth:generate`
+  // emits the same tables (the emailOTP plugin itself adds none - it reuses
+  // `verification` - but rateLimit.storage: "database" below is what makes
+  // the generator add the `rateLimit` table). sendVerificationOTP is never
+  // actually invoked by the CLI, so a no-op stub is enough here.
+  plugins: [emailOTP({ sendVerificationOTP: async () => {} })],
+  rateLimit: {
+    enabled: true,
+    storage: "database",
   },
   secret: process.env.BETTER_AUTH_SECRET,
   baseURL: process.env.BETTER_AUTH_URL,

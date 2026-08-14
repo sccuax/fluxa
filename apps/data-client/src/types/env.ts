@@ -8,4 +8,7 @@ export interface Bindings {
   DESIGNER_EXTENSION_ORIGIN: string;
   GOOGLE_CLIENT_ID: string;
   GOOGLE_CLIENT_SECRET: string;
+  // Cloudflare Email Service binding (send_email in wrangler.toml) - used for
+  // the password-reset OTP email, see lib/auth.ts's emailOTP plugin config.
+  EMAIL: SendEmail;
 }

@@ -1,25 +1,64 @@
-import { useState, type FormEvent } from "react";
+import { useLayoutEffect, useRef, useState, type FormEvent } from "react";
+import gsap from "gsap";
 import { useExtensionSize } from "../hooks/useExtensionSize";
 import { getEmailErrorMessage } from "../helpers/formRegex";
 import { ButtonPrimary } from "../components/ButtonPrimary";
 import { AuthHeaderBanner } from "../components/AuthHeaderBanner";
 import { FluxaLogoLockup } from "../components/FluxaLogoLockup";
 import { AuthTextField } from "../components/AuthTextField";
+import { DATA_CLIENT_URL } from "../services/apiClient";
 
 interface ForgotPasswordScreenProps {
   onBackToSignIn: () => void;
+  onCodeRequested: (email: string) => void;
 }
 
-export function ForgotPasswordScreen({ onBackToSignIn }: ForgotPasswordScreenProps) {
+// The lockup's natural SVG height is 32px (see FluxaLogoLockup); the
+// entrance animation below shrinks it to this height once it settles
+// flush-left with the field label (same as SignUpScreen).
+const LOGO_SHRUNK_HEIGHT = 16;
+const LOGO_NATURAL_HEIGHT = 32;
+
+export function ForgotPasswordScreen({ onBackToSignIn, onCodeRequested }: ForgotPasswordScreenProps) {
   // Shorter than SignInScreen's 552 since this screen only has one field and
   // no Google/divider block - a functional estimate built from the same
   // field-row heights used there, not a pixel-exact value (no Figma spec yet).
   useExtensionSize({ width: 320, height: 420 });
 
+  const logoRef = useRef<HTMLDivElement>(null);
+
+  // Same entrance animation as SignUpScreen: the logo renders full-size and
+  // centered, then slides left while shrinking to LOGO_SHRUNK_HEIGHT until
+  // flush with the field label below it. See SignUpScreen for the full
+  // rationale (transform-origin, why only the x offset is measured).
+  useLayoutEffect(() => {
+    const logoEl = logoRef.current;
+    const container = logoEl?.parentElement;
+    if (!logoEl || !container) return;
+
+    const { paddingLeft, paddingRight } = getComputedStyle(container);
+    const contentWidth = container.clientWidth - parseFloat(paddingLeft) - parseFloat(paddingRight);
+    const centeredOffset = (contentWidth - logoEl.offsetWidth) / 2;
+
+    const tween = gsap.to(logoEl, {
+      x: -centeredOffset,
+      scale: LOGO_SHRUNK_HEIGHT / LOGO_NATURAL_HEIGHT,
+      transformOrigin: "left center",
+      duration: 0.8,
+      delay: 0.2,
+      ease: "power2.inOut",
+    });
+
+    return () => {
+      tween.kill();
+    };
+  }, []);
+
   const [email, setEmail] = useState("");
   const [emailError, setEmailError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const emailErrorMessage = getEmailErrorMessage(email);
     if (emailErrorMessage) {
@@ -27,9 +66,27 @@ export function ForgotPasswordScreen({ onBackToSignIn }: ForgotPasswordScreenPro
       return;
     }
     setEmailError(null);
-    // TODO: wire to the real password-reset request once that endpoint
-    // exists (better-auth's forgetPassword/resetPassword flow) - this is
-    // UI-only for now.
+    setIsSubmitting(true);
+    try {
+      // better-auth's /email-otp/request-password-reset always returns
+      // { success: true } regardless of whether the email is registered (no
+      // verification row gets created for an unknown email, so no OTP is
+      // ever sent) - same anti-enumeration stance as sign-in (see CLAUDE.md's
+      // "Email+password sign-in..." section), so this moves on to
+      // ResetCodeScreen unconditionally rather than branching on a "found"
+      // vs "not found" response that doesn't exist.
+      await fetch(`${DATA_CLIENT_URL}/api/auth/email-otp/request-password-reset`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      onCodeRequested(email);
+    } catch {
+      setEmailError("Something went wrong. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -38,7 +95,7 @@ export function ForgotPasswordScreen({ onBackToSignIn }: ForgotPasswordScreenPro
 
       <div className="absolute left-0 top-[90px] flex min-h-[300px] w-full flex-col items-center gap-8">
         <div className="flex min-h-[238px] w-full flex-col items-center gap-[32px] px-[24px]">
-          <FluxaLogoLockup />
+          <FluxaLogoLockup ref={logoRef} />
 
           <div className="flex min-h-[174px] w-full flex-col items-center justify-center gap-[12px]">
             <form className="flex w-full flex-col items-center gap-3" onSubmit={handleSubmit} noValidate>
@@ -57,11 +114,8 @@ export function ForgotPasswordScreen({ onBackToSignIn }: ForgotPasswordScreenPro
               />
 
               <div className="flex min-h-[66px] w-full flex-col items-center gap-3">
-                <ButtonPrimary
-                  type="submit"
-                  className="shadow-[3px_0_6px_0_rgba(0,0,0,0.25)_inset,-10px_47px_13px_0_rgba(33,33,33,0.00),-6px_30px_12px_0_rgba(33,33,33,0.01),-4px_17px_10px_0_rgba(33,33,33,0.05),-2px_7px_8px_0_rgba(33,33,33,0.09),0_2px_4px_0_rgba(33,33,33,0.10)]"
-                >
-                  Send an email
+                <ButtonPrimary type="submit" disabled={isSubmitting} className="">
+                  {isSubmitting ? "Sending..." : "Send an email"}
                 </ButtonPrimary>
               </div>
             </form>

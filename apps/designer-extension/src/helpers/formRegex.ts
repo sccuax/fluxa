@@ -8,6 +8,9 @@ export const DIGIT_REGEX = /[0-9]/;
 
 export const PASSWORD_MIN_LENGTH = 10;
 
+export const OTP_CODE_LENGTH = 6;
+export const OTP_CODE_REGEX = /^\d{6}$/;
+
 const PASSWORD_RULE_MESSAGE =
   "Password must be at least 10 characters, with uppercase, lowercase, and a special character.";
 
@@ -43,6 +46,14 @@ export function getPasswordErrorMessage(password: string): string | null {
   }
   if (password.length < PASSWORD_MIN_LENGTH) return PASSWORD_RULE_MESSAGE;
 
+  return null;
+}
+
+// The reset-code screen's OTP field: exactly 6 digits, nothing else -
+// see helpers this pairs with in ResetCodeScreen.tsx.
+export function getOtpCodeErrorMessage(code: string): string | null {
+  if (code.length === 0) return "Enter the code we sent you";
+  if (!OTP_CODE_REGEX.test(code)) return `Enter the ${OTP_CODE_LENGTH}-digit code`;
   return null;
 }
 

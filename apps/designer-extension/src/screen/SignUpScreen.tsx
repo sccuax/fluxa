@@ -275,7 +275,7 @@ export function SignUpScreen({ onBackToSignIn }: SignUpScreenProps) {
         </div>
 
         {/* Footer links */}
-        <div className="flex flex-row items-center gap-[12px]">
+        <div className="flex flex-row items-center gap-[12px] pb-8">
           <a href="#" className="text-mobile-text-md-regular text-text-secondary hover:underline">
             Privacy policy
           </a>

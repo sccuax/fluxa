@@ -1,7 +1,13 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { emailOTP } from "better-auth/plugins";
 import { createDb } from "../db/client";
 import type { Bindings } from "../types/env";
+
+// Sender for the emailOTP plugin below - fluxa.agency is onboarded onto
+// Cloudflare Email Service (see wrangler.toml's send_email binding). Not a
+// real inbox, purely an outbound address.
+const RESET_CODE_FROM_ADDRESS = { email: "noreply@fluxa.agency", name: "Fluxa" };
 
 // Built per-request from Worker bindings (Cloudflare env isn't available at
 // module scope), so this is a factory rather than a module-level singleton.
@@ -45,6 +51,56 @@ export function createAuth(env: Bindings) {
       // architecture.
       skipStateCookieCheck: true,
     },
+    // Powers the "forgot password" flow's OTP step (ForgotPasswordScreen ->
+    // ResetCodeScreen -> ResetPasswordScreen in the Designer Extension) via
+    // the plugin's /email-otp/request-password-reset, /email-otp/check-
+    // verification-otp, and /email-otp/reset-password endpoints. Only the
+    // "forget-password" OTP type is actually used by this app right now -
+    // sign-in-otp, email-verification, and change-email aren't wired up on
+    // the frontend, so sendVerificationOTP below only handles that one case.
+    plugins: [
+      emailOTP({
+        otpLength: 6,
+        expiresIn: 300,
+        // Applies to every email-otp/* and sign-in/email-otp endpoint this
+        // plugin registers (each tracked as its own bucket, keyed by
+        // client IP + path - see rate-limiter/index.mjs's
+        // createRateLimitKey - so this doesn't share a budget across
+        // different endpoints). The frontend's own 90s resend cooldown
+        // (ResetCodeScreen) is a separate, shorter UX throttle layered on
+        // top of this - this is the real ceiling: at most 5 requests to
+        // request-password-reset per IP per 24h, enforced server-side
+        // regardless of what the client does.
+        rateLimit: { window: 60 * 60 * 24, max: 5 },
+        sendVerificationOTP: async ({ email, otp, type }) => {
+          if (type !== "forget-password") {
+            console.error(`emailOTP: no email template wired up for OTP type "${type}"`);
+            return;
+          }
+          await env.EMAIL.send({
+            to: email,
+            from: RESET_CODE_FROM_ADDRESS,
+            subject: "Your Fluxa password reset code",
+            text: `Your password reset code is ${otp}. It expires in 5 minutes. If you didn't request this, you can ignore this email.`,
+            html: `<p>Your password reset code is <strong>${otp}</strong>.</p><p>It expires in 5 minutes. If you didn't request this, you can ignore this email.</p>`,
+          });
+        },
+      }),
+    ],
+    // better-auth's rate limiter defaults to an in-memory store and only
+    // enables itself when it detects a "production" environment - neither
+    // assumption holds reliably on Workers (isolates are short-lived and
+    // don't share memory across requests/edge locations, so a Map-backed
+    // counter doesn't actually limit anything across the fleet), so both
+    // are set explicitly here rather than trusting the defaults. "database"
+    // persists counts to the `rateLimit` table (Neon) via the drizzle
+    // adapter above, which is what makes the emailOTP plugin's rateLimit
+    // option above actually enforceable network-wide instead of best-effort
+    // per-isolate.
+    rateLimit: {
+      enabled: true,
+      storage: "database",
+    },
     secret: env.BETTER_AUTH_SECRET,
     baseURL: env.BETTER_AUTH_URL,
     advanced: {
@@ -59,6 +115,13 @@ export function createAuth(env: Bindings) {
       defaultCookieAttributes: {
         sameSite: "none",
         secure: true,
+      },
+      // better-auth's IP resolution only checks x-forwarded-for by default,
+      // which isn't the header Cloudflare's edge sets for the real client
+      // IP - without this, the rate limiter above would key off a missing/
+      // wrong IP and fall back to one shared bucket for every caller.
+      ipAddress: {
+        ipAddressHeaders: ["cf-connecting-ip"],
       },
     },
     trustedOrigins: [
