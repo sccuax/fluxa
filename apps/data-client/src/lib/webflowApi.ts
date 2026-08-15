@@ -21,6 +21,7 @@ export async function exchangeCodeForToken(params: {
   clientId: string;
   clientSecret: string;
   code: string;
+  redirectUri: string;
 }) {
   const response = await fetch(WEBFLOW_TOKEN_URL, {
     method: "POST",
@@ -30,6 +31,10 @@ export async function exchangeCodeForToken(params: {
       client_secret: params.clientSecret,
       code: params.code,
       grant_type: "authorization_code",
+      // Required per OAuth2 (RFC 6749 4.1.3) whenever redirect_uri was sent
+      // in the authorize request, which buildAuthorizeUrl above always does
+      // - Webflow rejects the exchange with a 400 if it's missing here.
+      redirect_uri: params.redirectUri,
     }),
   });
 
@@ -38,6 +43,25 @@ export async function exchangeCodeForToken(params: {
   }
 
   return response.json() as Promise<{ access_token: string }>;
+}
+
+// Resolves which site(s) an installation's access token grants access to -
+// GET /v2/sites, scope sites:read (already requested, see SCOPES in
+// routes/auth.ts). Webflow's standard Site-level Marketplace App install
+// flow (user installs from a specific site's Apps panel) scopes the
+// resulting token to exactly that one site, so callers should normally
+// expect a single-element array - verified against
+// https://developers.webflow.com/data/reference/sites/list.
+export async function listAuthorizedSites(params: { accessToken: string }) {
+  const response = await fetch(`${WEBFLOW_API_BASE}/sites`, {
+    headers: { Authorization: `Bearer ${params.accessToken}` },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Webflow site list failed: ${response.status}`);
+  }
+
+  return response.json() as Promise<{ sites: Array<{ id: string; displayName?: string }> }>;
 }
 
 // Webflow's Assets API uses a two-step, presigned-upload flow: create asset

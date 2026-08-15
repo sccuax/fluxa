@@ -1,6 +1,5 @@
 import { useState, type ChangeEvent } from "react";
-import { EyeIcon } from "./EyeIcon";
-import { EyeOffIcon } from "./EyeOffIcon";
+import { Icon } from "./Icon";
 
 interface AuthPasswordFieldProps {
   id: string;
@@ -62,7 +61,7 @@ export function AuthPasswordField({
           aria-label={showPassword ? "Hide password" : "Show password"}
           className="shrink-0 text-text-secondary"
         >
-          {showPassword ? <EyeOffIcon /> : <EyeIcon />}
+          <Icon name={showPassword ? "eyeOff" : "eye"} />
         </button>
       </div>
       {error && <span className="text-[10px] text-error-800">{error}</span>}

@@ -19,9 +19,10 @@ const siteIdParamSchema = z.object({
 presetRoutes.use(requireAuth);
 
 // A site only "belongs" to the caller if they hold an installation for it -
-// see the userId column added to `installations` for this. Until the
-// siteId-resolution TODO in routes/auth.ts is done, installations.siteId is
-// always null, so this fails closed (no access) rather than open.
+// see the userId column added to `installations` for this. installations.siteId
+// is resolved in routes/auth.ts's /callback (GET /v2/sites right after the
+// token exchange) - rows created before that existed still have siteId null,
+// which fails closed here (no access) rather than open.
 async function ownsSite(db: Database, siteId: string, userId: string) {
   const [installation] = await db
     .select({ id: installations.id })

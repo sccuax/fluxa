@@ -149,7 +149,7 @@ export function ResetPasswordScreen({ email, otp, onBackToSignIn }: ResetPasswor
                 <ButtonPrimary
                   type="submit"
                   disabled={isSubmitting}
-                  className="shadow-[3px_0_6px_0_rgba(0,0,0,0.25)_inset,-10px_47px_13px_0_rgba(33,33,33,0.00),-6px_30px_12px_0_rgba(33,33,33,0.01),-4px_17px_10px_0_rgba(33,33,33,0.05),-2px_7px_8px_0_rgba(33,33,33,0.09),0_2px_4px_0_rgba(33,33,33,0.10)]"
+                  className=""
                 >
                   {isSubmitting ? "Changing password..." : "Reset password"}
                 </ButtonPrimary>

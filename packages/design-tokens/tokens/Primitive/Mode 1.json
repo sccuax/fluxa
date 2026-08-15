@@ -1286,8 +1286,8 @@
         "$value": {
           "fontFamily": "{General Sans}",
           "fontWeight": "{fontWeights.general-sans-4}",
-          "lineHeight": "{lineHeights.14}",
-          "fontSize": "{fontSize.7}",
+          "lineHeight": "{lineHeights.5}",
+          "fontSize": "{fontSize.3}",
           "letterSpacing": "{letterSpacing.1}",
           "paragraphSpacing": "{paragraphSpacing.0}",
           "paragraphIndent": "{paragraphIndent.0}",

@@ -13,6 +13,12 @@ interface ForgotPasswordScreenProps {
   onCodeRequested: (email: string) => void;
 }
 
+// Mirrors ResetCodeScreen's RATE_LIMIT_MESSAGE - same server-side ceiling (5
+// request-password-reset calls / 24h / IP, see auth.ts's emailOTP rateLimit
+// config), just phrased for the first request rather than a resend. Detected
+// from the real 429 response, not counted client-side.
+const RATE_LIMIT_MESSAGE = "You've reached the daily limit for reset emails. Please try again in 24 hours.";
+
 // The lockup's natural SVG height is 32px (see FluxaLogoLockup); the
 // entrance animation below shrinks it to this height once it settles
 // flush-left with the field label (same as SignUpScreen).
@@ -75,12 +81,21 @@ export function ForgotPasswordScreen({ onBackToSignIn, onCodeRequested }: Forgot
       // "Email+password sign-in..." section), so this moves on to
       // ResetCodeScreen unconditionally rather than branching on a "found"
       // vs "not found" response that doesn't exist.
-      await fetch(`${DATA_CLIENT_URL}/api/auth/email-otp/request-password-reset`, {
+      const res = await fetch(`${DATA_CLIENT_URL}/api/auth/email-otp/request-password-reset`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
       });
+      // Rate limit is the one case worth breaking the "always advance"
+      // anti-enumeration stance above for: it doesn't depend on whether the
+      // email is registered (it's keyed by IP), so surfacing it here doesn't
+      // leak anything - and advancing to ResetCodeScreen anyway would just
+      // strand the user waiting on a code the server never sent.
+      if (res.status === 429) {
+        setEmailError(RATE_LIMIT_MESSAGE);
+        return;
+      }
       onCodeRequested(email);
     } catch {
       setEmailError("Something went wrong. Please try again.");

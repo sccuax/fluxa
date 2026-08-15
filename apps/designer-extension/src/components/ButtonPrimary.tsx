@@ -42,7 +42,7 @@ export function ButtonPrimary({
         setHovered(false);
         onPointerLeave?.(e);
       }}
-      className={`relative isolate overflow-hidden w-full h-10 rounded-4 bg-gradient-gradient py-3 font-sans text-text-sm-medium text-text-white disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-none disabled:bg-background-white-2 disabled:border disabled:border-border-border hover:shadow-[3px_0_6px_0_rgba(0,0,0,0.25)_inset,-10px_47px_13px_0_rgba(33,33,33,0.00),-6px_30px_12px_0_rgba(33,33,33,0.01),-4px_17px_10px_0_rgba(33,33,33,0.05),-2px_7px_8px_0_rgba(33,33,33,0.09),0_2px_4px_0_rgba(33,33,33,0.10)] disabled:text-text-secondary ${className}`}
+      className={`relative isolate overflow-hidden w-full h-10 rounded-4 transition-shadow duration-300 ease-in-out bg-gradient-gradient py-3 font-sans text-text-sm-medium text-text-white disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-none disabled:bg-background-white-2 disabled:border disabled:border-border-border hover:shadow-[3px_0_6px_0_rgba(0,0,0,0.25)_inset,-10px_47px_13px_0_rgba(33,33,33,0.00),-6px_30px_12px_0_rgba(33,33,33,0.01),-4px_17px_10px_0_rgba(33,33,33,0.05),-2px_7px_8px_0_rgba(33,33,33,0.09),0_2px_4px_0_rgba(33,33,33,0.10)] disabled:text-text-secondary ${className}`}
       {...rest}
     >
       {!disabled && <LiquidGradientBackground active={hovered} />}

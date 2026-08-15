@@ -3,13 +3,29 @@ import { zValidator } from "@hono/zod-validator";
 import { getCookie, setCookie, deleteCookie } from "hono/cookie";
 import { z } from "zod";
 import type { AppEnv } from "../types";
-import { buildAuthorizeUrl, exchangeCodeForToken } from "../lib/webflowApi";
+import { buildAuthorizeUrl, exchangeCodeForToken, listAuthorizedSites } from "../lib/webflowApi";
 import { createDb } from "../db/client";
 import { installations } from "../db/schema";
 import { requireAuth } from "../middleware/requireAuth";
 import { onValidationError } from "../lib/validation";
 
-const SCOPES = ["sites:read", "sites:write", "assets:read", "assets:write"];
+// Must match exactly what's enabled for this app in Webflow's own App
+// dashboard - Webflow rejects the authorize request with
+// `error=invalid_scope` for any scope requested here that isn't enabled
+// there (learned this the hard way: sites:read/sites:write were already
+// listed here but never enabled in the dashboard, so /auth/install never
+// actually worked until both sides were brought in sync). custom_code:read/
+// custom_code:write are for the not-yet-built "Apply gradient" -> Custom
+// Code injection flow (see CLAUDE.md's "Important product correction") -
+// requested now so enabling scopes in the dashboard only has to happen once.
+const SCOPES = [
+  "sites:read",
+  "sites:write",
+  "assets:read",
+  "assets:write",
+  "custom_code:read",
+  "custom_code:write",
+];
 
 const OAUTH_COOKIE_OPTS = {
   httpOnly: true,
@@ -61,13 +77,30 @@ authRoutes.get(
       clientId: c.env.WEBFLOW_CLIENT_ID,
       clientSecret: c.env.WEBFLOW_CLIENT_SECRET,
       code,
+      redirectUri: c.env.WEBFLOW_REDIRECT_URI,
     });
 
-    // TODO: call GET /v2/token/authorized_by (or /v2/sites) to resolve which
-    // site(s) this token grants access to, then persist { siteId, accessToken }
-    // instead of the token alone.
+    // Resolve which site this token grants access to. Webflow's standard
+    // Site-level Marketplace App install flow scopes the token to exactly
+    // one site, so the expected case is sites.length === 1. Zero sites
+    // (shouldn't happen for a completed install) or more than one (would
+    // mean a Workspace-level grant - not a case the current one-row-per-
+    // install `installations` schema is designed to disambiguate) both fall
+    // back to leaving siteId null - this fails closed the same way the
+    // ownership check in presetRoutes.ts already does for a null siteId,
+    // rather than guessing which site to attribute the row to.
+    let siteId: string | null = null;
+    const { sites } = await listAuthorizedSites({ accessToken });
+    if (sites.length === 1) {
+      siteId = sites[0].id;
+    } else {
+      console.error(
+        `/auth/callback: expected exactly 1 authorized site, got ${sites.length} - leaving installations.siteId null`,
+      );
+    }
+
     const db = createDb(c.env.DATABASE_URL);
-    await db.insert(installations).values({ accessToken, userId });
+    await db.insert(installations).values({ accessToken, userId, siteId });
 
     return c.text("Fluxa is installed. You can close this tab.");
   },

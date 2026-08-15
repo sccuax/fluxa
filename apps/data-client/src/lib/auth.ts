@@ -2,6 +2,7 @@ import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { emailOTP } from "better-auth/plugins";
 import { createDb } from "../db/client";
+import { ensureDestinationVerified } from "./emailRoutingGuard";
 import type { Bindings } from "../types/env";
 
 // Sender for the emailOTP plugin below - fluxa.agency is onboarded onto
@@ -75,6 +76,15 @@ export function createAuth(env: Bindings) {
         sendVerificationOTP: async ({ email, otp, type }) => {
           if (type !== "forget-password") {
             console.error(`emailOTP: no email template wired up for OTP type "${type}"`);
+            return;
+          }
+          // TEMPORARY (see lib/emailRoutingGuard.ts) - Workers Free's Email
+          // Sending sandbox only delivers to Cloudflare-verified addresses.
+          // If this one isn't verified yet, this kicks off Cloudflare's own
+          // verification email instead and skips the doomed send below - the
+          // user needs to click that link, then request the code again.
+          // Remove this check once the account is on Workers Paid.
+          if (!(await ensureDestinationVerified(env, email))) {
             return;
           }
           await env.EMAIL.send({
