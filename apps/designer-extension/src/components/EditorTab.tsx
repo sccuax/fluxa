@@ -1,4 +1,8 @@
+import { useState } from "react";
 import { useSelectedElement } from "../hooks/useSelectedElement";
+import { useGradientStore } from "../store/gradientStore";
+import { applyGradientToElement, canApplyGradient } from "../services/applyGradient";
+import { getWebflowDesigner } from "../services/webflowDesigner";
 import { EditorEmptyState } from "./EditorEmptyState";
 import { SupportedElementsGuide } from "./SupportedElementsGuide";
 import { ControlPanel } from "./ControlPanel";
@@ -24,7 +28,31 @@ import { ButtonPrimary } from "./ButtonPrimary";
 // by `disabled`.
 export function EditorTab() {
   const { element } = useSelectedElement();
+  const config = useGradientStore((state) => state.config);
   const hasSelection = element !== null;
+  const [applying, setApplying] = useState(false);
+
+  async function handleApplyGradient() {
+    if (!canApplyGradient(element)) {
+      getWebflowDesigner().notify({
+        type: "Error",
+        message: "This element type doesn't support a background gradient.",
+      });
+      return;
+    }
+    setApplying(true);
+    try {
+      await applyGradientToElement(element, config);
+      getWebflowDesigner().notify({type: "Success", message: "Gradient applied!"});
+    } catch (error) {
+      getWebflowDesigner().notify({
+        type: "Error",
+        message: error instanceof Error ? error.message : "Failed to apply the gradient.",
+      });
+    } finally {
+      setApplying(false);
+    }
+  }
 
   return (
     <div className="flex justify-between h-full w-full flex-col">
@@ -33,7 +61,9 @@ export function EditorTab() {
       <div className="w-full">{hasSelection ? <ControlPanel /> : <SupportedElementsGuide />}</div>
 
       <div className="w-full px-[20px] py-[12px]">
-        <ButtonPrimary disabled={!hasSelection}>Apply gradient</ButtonPrimary>
+        <ButtonPrimary disabled={!hasSelection || applying} onClick={handleApplyGradient}>
+          {applying ? "Applying…" : "Apply gradient"}
+        </ButtonPrimary>
       </div>
     </div>
   );
