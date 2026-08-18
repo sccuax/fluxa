@@ -28,6 +28,13 @@ export const gradientConfigSchema = z.object({
   uFrequency: z.number().min(0).max(10).default(5.5),
   uAmplitude: z.number().min(0).max(5).default(0),
 
+  // Bounds the animation's time loop to [rangeStart, rangeEnd] instead of
+  // running unbounded - "enabled"/"disabled" (not a bare boolean) and the
+  // 0/40 defaults match @shadergradient/react's own real preset defaults.
+  range: z.enum(["enabled", "disabled"]).default("disabled"),
+  rangeStart: z.number().min(0).default(0),
+  rangeEnd: z.number().min(0).default(40),
+
   positionX: z.number().default(0),
   positionY: z.number().default(0),
   positionZ: z.number().default(0),
@@ -44,6 +51,12 @@ export const gradientConfigSchema = z.object({
   brightness: z.number().min(0).max(3).default(1),
   envPreset: environmentPresetSchema.default("city"),
   reflection: z.number().min(0).max(1).default(0.1),
+
+  // Not a <ShaderGradient> mesh prop like the rest of this schema - it's a
+  // <ShaderGradientCanvas> prop (canvas resolution multiplier, like devicePixelRatio).
+  // Kept in the same flat config anyway since GradientCanvas.tsx/gradientEmbedScript.ts
+  // already thread one single config object through both layers.
+  pixelDensity: z.number().min(0.5).max(3).default(1),
 });
 
 export type GradientConfig = z.infer<typeof gradientConfigSchema>;

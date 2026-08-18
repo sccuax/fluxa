@@ -55,7 +55,7 @@ export function EditorTab() {
   }
 
   return (
-    <div className="flex justify-between h-full w-full flex-col">
+    <div className="flex h-full w-full flex-col">
       <div className="min-h-[195px] w-full">{hasSelection ? <GradientCanvas /> : <EditorEmptyState />}</div>
 
       <div className="w-full">{hasSelection ? <ControlPanel /> : <SupportedElementsGuide />}</div>

@@ -18,7 +18,12 @@ export function GradientCanvas() {
   const config = useGradientStore((state) => state.config);
 
   return (
-    <ShaderGradientCanvas className="h-full w-full" pointerEvents="none" lazyLoad={false}>
+    <ShaderGradientCanvas
+      className="h-full w-full"
+      pointerEvents="none"
+      lazyLoad={false}
+      pixelDensity={config.pixelDensity}
+    >
       <ShaderGradient {...config} />
     </ShaderGradientCanvas>
   );
