@@ -27,11 +27,14 @@ export function DashboardScreen() {
       <DashboardHeader onOpenMenu={() => {}} />
       {/* flex-1 (not h-full - see CLAUDE.md's SignIn/SignUp layout gotchas
           for the same class of bug) so this takes exactly the remaining
-          space between header and nav; overflow-y-auto so content taller
-          than that (e.g. ControlPanel's full field list) scrolls internally
-          instead of pushing the nav/Apply button out of the fixed-height
-          panel entirely. */}
-      <div className="flex-1 overflow-y-auto bg-background-white">
+          space between header and nav. overflow-hidden (not overflow-y-auto
+          - moved down into EditorTab's own ControlPanel fields container, so
+          only that scrolls and the preview/tab bar/Apply button stay fixed
+          in view) + min-h-0 so this flex child is actually allowed to be
+          constrained to the available height instead of growing to fit
+          EditorTab's content (the default flex min-height:auto would
+          otherwise let it overflow the fixed-height panel). */}
+      <div className="flex-1 min-h-0 overflow-hidden bg-background-white">
         {activeTab === "editor" && <EditorTab />}
       </div>
       <DashboardNav activeTab={activeTab} onTabChange={setActiveTab} />

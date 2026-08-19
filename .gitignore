@@ -14,3 +14,7 @@ CLAUDE.md
 .vscode/*
 !.vscode/extensions.json
 copy-paste
+
+# Local-only component/screen testing sandbox (see sandbox/README.md) -
+# never committed, deliberately kept out of the tracked app/backend code.
+/sandbox

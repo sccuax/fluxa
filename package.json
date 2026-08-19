@@ -11,6 +11,7 @@
     "dev:extension": "concurrently \"pnpm --filter @fluxa/designer-extension build:watch\" \"webflow extension serve\"",
     "dev:extension:browser": "pnpm --filter @fluxa/designer-extension dev",
     "dev:api": "pnpm --filter @fluxa/data-client dev",
+    "dev:sandbox": "pnpm --dir sandbox dev",
     "build": "pnpm -r build",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test"

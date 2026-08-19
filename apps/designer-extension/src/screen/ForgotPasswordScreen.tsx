@@ -114,6 +114,9 @@ export function ForgotPasswordScreen({ onBackToSignIn, onCodeRequested }: Forgot
 
           <div className="flex min-h-[174px] w-full flex-col items-center justify-center gap-[12px]">
             <form className="flex w-full flex-col items-center gap-3" onSubmit={handleSubmit} noValidate>
+              <p className="text-mobile-text-md-regular text-text-secondary">
+                Enter your email and we’ll send you a code to reset your password.
+              </p>
               <AuthTextField
                 id="email"
                 name="email"

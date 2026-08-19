@@ -184,19 +184,31 @@ export function ResetPasswordScreen({ email, otp, onBackToSignIn }: ResetPasswor
           errors elsewhere, per the design token's `success` color scale
           (packages/design-tokens - the same source as `error`/`warning`). */}
       <Modal open={showSuccessModal} onClose={onBackToSignIn}>
-        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-success-100">
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-            <path
-              d="M4 10.5L8 14.5L16 6"
-              className="stroke-success-500"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
+        <div className="flex h-10 w-10 items-center justify-center rounded-full">
+          <svg width="38" height="32" viewBox="0 0 38 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="25.9287" cy="12" r="5" fill="#E23F8C" />
+          <circle cx="32.9287" cy="5" r="5" fill="#E23F8C" />
+          <path
+            d="M15.5358 15.5357C17.4884 13.5831 20.6544 13.5831 22.607 15.5357C24.5595 17.4883 24.5596 20.6544 22.607 22.607L16.0641 29.149C15.9254 29.3327 15.7735 29.5099 15.6061 29.6773C14.6258 30.6576 13.3401 31.1452 12.0553 31.1412C10.7573 31.1555 9.45488 30.6686 8.46446 29.6783C8.29341 29.5072 8.13777 29.3263 7.99669 29.1382L1.46446 22.607C-0.488156 20.6544 -0.488154 17.4883 1.46446 15.5357C3.41709 13.5831 6.58313 13.5831 8.53575 15.5357L12.0348 19.0357L15.5358 15.5357Z"
+            fill="url(#paint0_linear_381_2635)"
+          />
+          <defs>
+            <linearGradient id="paint0_linear_381_2635" x1="7.89148" y1="31.1413" x2="12.2915" y2="13.1218" gradientUnits="userSpaceOnUse">
+              <stop stopColor="#6FF5F1" />
+              <stop offset="0.2548" stopColor="#3B9CD6" />
+              <stop offset="0.5" stopColor="#0955E5" />
+              <stop offset="0.75" stopColor="#8E54C5" />
+              <stop offset="1" stopColor="#E23F8C" />
+            </linearGradient>
+          </defs>
+        </svg>
         </div>
-        <p className="text-text-sm-medium font-sans text-success-500">Password changed successfully</p>
-        <ButtonPrimary onClick={onBackToSignIn}>Continue to Sign In</ButtonPrimary>
+        <p className="text-mobile-header-h1 mt-3 font-display text-text-black">
+          Password changed successfully
+        </p>
+        <p className="text-mobile-text-md-regular  font-sans text-text-secondary">
+          You can now sign in with your new password.
+        </p>
       </Modal>
     </div>
   );

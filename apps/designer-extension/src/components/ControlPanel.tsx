@@ -2,20 +2,21 @@ import { useState } from "react";
 import type { GradientConfig } from "@fluxa/gradient-core";
 import { useGradientStore } from "../store/gradientStore";
 import { formatSliderValue } from "../helpers/format";
+import { RangeSlider } from "./RangeSlider";
 
-type ControlTab = "type" | "shape" | "colors" | "motion";
+type ControlTab = "shape" | "colors" | "motion" | "camera";
 
 const TABS: Array<{ tab: ControlTab; label: string }> = [
-  { tab: "type", label: "Type" },
   { tab: "shape", label: "Shape" },
   { tab: "colors", label: "Colors" },
   { tab: "motion", label: "Motion" },
+  { tab: "camera", label: "Camera" },
 ];
 
 const TYPE_OPTIONS: Array<{ label: string; value: GradientConfig["type"] }> = [
   { label: "Plane", value: "plane" },
   { label: "Sphere", value: "sphere" },
-  { label: "Water", value: "waterPlane" },
+  { label: "Liquid", value: "waterPlane" },
 ];
 
 const GRAIN_OPTIONS: Array<{ label: string; value: GradientConfig["grain"] }> = [
@@ -29,7 +30,7 @@ const GRAIN_OPTIONS: Array<{ label: string; value: GradientConfig["grain"] }> = 
 // hidden when lightType==="env", envPreset/reflection hidden when
 // lightType==="3d") rather than something invented for this app.
 const LIGHT_TYPE_OPTIONS: Array<{ label: string; value: GradientConfig["lightType"] }> = [
-  { label: "3D Light", value: "3d" },
+  { label: "3D", value: "3d" },
   { label: "Environment", value: "env" },
 ];
 
@@ -64,20 +65,24 @@ interface NumberField {
   step: number;
 }
 
-// Strength/Density/Frequency shape the noise wave pattern itself (a spatial
-// property of the mesh), and Camera distance/Pixel density frame/resolve
-// that shape - all live under Shape. Speed is the only temporal one, so it
-// stays under Motion (see the tab-grouping comment on ControlPanel below).
+// Strength/Density/Pixel density/Frequency shape the noise wave pattern
+// itself (a spatial property of the mesh) - all live under Shape, below the
+// Type segmented control (Shape no longer has its own tab - see the
+// tab-grouping comment on ControlPanel below). Speed is the only temporal
+// one, so it stays under Motion; Camera distance now has its own Camera tab.
 const SHAPE_NUMBER_FIELDS: NumberField[] = [
-  { label: "Strength", key: "uStrength", min: 0, max: 10, step: 0.1 },
-  { label: "Density", key: "uDensity", min: 0, max: 4, step: 0.1 },
+  { label: "Distortion", key: "uStrength", min: 0, max: 10, step: 0.1 },
+  { label: "Detail", key: "uDensity", min: 0, max: 4, step: 0.1 },
+  { label: "Quality", key: "pixelDensity", min: 0.5, max: 3, step: 0.1 },
   { label: "Frequency", key: "uFrequency", min: 0, max: 10, step: 0.01 },
-  { label: "Camera distance", key: "cDistance", min: 1, max: 10, step: 0.1 },
-  { label: "Pixel density", key: "pixelDensity", min: 0.5, max: 3, step: 0.1 },
 ];
 
 const MOTION_NUMBER_FIELDS: NumberField[] = [
   { label: "Speed", key: "uSpeed", min: 0, max: 1, step: 0.01 },
+];
+
+const CAMERA_NUMBER_FIELDS: NumberField[] = [
+  { label: "Camera distance", key: "cDistance", min: 1, max: 10, step: 0.1 },
 ];
 
 const RANGE_NUMBER_FIELDS: NumberField[] = [
@@ -99,21 +104,20 @@ function NumberFieldList({ fields, config, setConfig }: {
   return (
     <>
       {fields.map(({ label, key, min, max, step }) => (
-        <label key={key} className="flex flex-col gap-1">
-          <span className="flex justify-between">
-            <span>{label}</span>
-            <span className="tabular-nums text-neutral-400">
-              {formatSliderValue(config[key], step)}
-            </span>
+        <label key={key} className="flex flex-row items-center justify-end gap-[17px]">
+          <span className="flex justify-between mr-auto">
+            <span className="font-sans mr-auto text-mobile-header-h2 text-text-black">{label}</span>
           </span>
-          <input
-            type="range"
+          <RangeSlider
             min={min}
             max={max}
             step={step}
             value={config[key]}
-            onChange={(event) => setConfig({ [key]: Number(event.target.value) })}
+            onChange={(value) => setConfig({ [key]: value })}
           />
+          <span className="min-w-[25px] shrink-0 text-right text-mobile-text-md-medium font-sans text-text-secondary">
+            {formatSliderValue(config[key], step)}
+          </span>
         </label>
       ))}
     </>
@@ -162,26 +166,36 @@ function SegmentedRow<T extends string>({ label, options, value, onChange }: {
 // Tab grouping, cross-checked against @shadergradient/react's own reference
 // Framer controls (its "Shape"/"Colors"/"Effects" activeTab groups) but
 // mapped onto this app's four tabs per explicit user direction rather than
-// copied 1:1 - Type/Shape/Colors/Motion, not Shape/Colors/Effects/View:
-// - Type: `type` (Plane/Sphere/Water).
-// - Shape: the noise-pattern/framing/resolution fields (Strength/Density/
-//   Frequency/Camera distance/Pixel density) plus Grain.
-// - Colors: color1-3, Brightness, and the Environment toggle (`lightType`) -
-//   when Environment is on (`lightType === "env"`), Env preset + Reflection
-//   replace Brightness, matching @shadergradient/react's own reference
-//   controls' hidden-field logic exactly (brightness hidden when
-//   lightType==="env", envPreset/reflection hidden when lightType==="3d").
+// copied 1:1 - Shape/Colors/Motion/Camera, not Shape/Colors/Effects/View.
+// There used to be a separate Type tab - removed per a later redistribution,
+// `type` now lives at the top of Shape instead:
+// - Shape: `type` (Plane/Sphere/Liquid) first, then the noise-pattern fields
+//   (Strength/Density/Pixel density/Frequency).
+// - Colors: color1-3, Grain, Brightness, and the Environment toggle
+//   (`lightType`) - when Environment is on (`lightType === "env"`), Env
+//   preset + Reflection replace Brightness, matching @shadergradient/react's
+//   own reference controls' hidden-field logic exactly (brightness hidden
+//   when lightType==="env", envPreset/reflection hidden when
+//   lightType==="3d").
 // - Motion: Speed, plus Range (bounds the animation's time loop to
 //   [rangeStart, rangeEnd] instead of running unbounded) and its two bounds,
 //   shown only when Range is enabled.
+// - Camera: Camera distance - its own tab now, split out of Shape.
 export function ControlPanel() {
   const config = useGradientStore((state) => state.config);
   const setConfig = useGradientStore((state) => state.setConfig);
-  const [activeTab, setActiveTab] = useState<ControlTab>("type");
+  const [activeTab, setActiveTab] = useState<ControlTab>("shape");
 
   return (
-    <div className="flex w-full flex-col text-sm">
-      <div className="flex bg-background-white-2 border-b border-border-border gap-[8px] px-[20px] pt-[12px]">
+    // h-full min-h-0 so this fills EditorTab's flex-1 middle region exactly
+    // (not more, not less) - required for the fields list below to be able
+    // to overflow-y-auto against a real bounded height instead of just
+    // growing the whole panel.
+    <div className="flex h-full min-h-0 w-full flex-col text-sm">
+      {/* shrink-0: the tab bar itself never scrolls, only the fields below
+          it do - see the "only the controls container scrolls" direction
+          on EditorTab.tsx above this component. */}
+      <div className="flex shrink-0 bg-background-white-2 border-b border-border-border gap-[8px] px-[20px] pt-[12px]">
         {TABS.map(({ tab, label }) => {
           const isActive = tab === activeTab;
           return (
@@ -201,25 +215,20 @@ export function ControlPanel() {
         })}
       </div>
 
-      <div className="flex flex-col gap-2 px-5 py-3">
-        {activeTab === "type" && (
-          <SegmentedRow
-            label="Type"
-            options={TYPE_OPTIONS}
-            value={config.type}
-            onChange={(value) => setConfig({ type: value })}
-          />
-        )}
-
+      {/* The only scrolling region in the Editor tab - flex-1 min-h-0 to
+          actually claim/be bounded by the remaining height, overflow-y-auto
+          so a tab's full field list (e.g. Shape) scrolls internally instead
+          of pushing the tab bar or Apply button off screen. */}
+      <div className="flex flex-1 min-h-0 flex-col gap-3 overflow-y-auto px-5 py-3">
         {activeTab === "shape" && (
           <>
-            <NumberFieldList fields={SHAPE_NUMBER_FIELDS} config={config} setConfig={setConfig} />
             <SegmentedRow
-              label="Grain"
-              options={GRAIN_OPTIONS}
-              value={config.grain}
-              onChange={(value) => setConfig({ grain: value })}
+              label="Type"
+              options={TYPE_OPTIONS}
+              value={config.type}
+              onChange={(value) => setConfig({ type: value })}
             />
+            <NumberFieldList fields={SHAPE_NUMBER_FIELDS} config={config} setConfig={setConfig} />
           </>
         )}
 
@@ -237,7 +246,14 @@ export function ControlPanel() {
             ))}
 
             <SegmentedRow
-              label="Environment"
+              label="Noise"
+              options={GRAIN_OPTIONS}
+              value={config.grain}
+              onChange={(value) => setConfig({ grain: value })}
+            />
+
+            <SegmentedRow
+              label="Lighting"
               options={LIGHT_TYPE_OPTIONS}
               value={config.lightType}
               onChange={(value) => setConfig({ lightType: value })}
@@ -280,6 +296,10 @@ export function ControlPanel() {
               <NumberFieldList fields={RANGE_NUMBER_FIELDS} config={config} setConfig={setConfig} />
             )}
           </>
+        )}
+
+        {activeTab === "camera" && (
+          <NumberFieldList fields={CAMERA_NUMBER_FIELDS} config={config} setConfig={setConfig} />
         )}
       </div>
     </div>
