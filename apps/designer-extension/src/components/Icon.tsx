@@ -1,6 +1,16 @@
 import type { ReactElement, SVGProps } from "react";
 
-export type IconName = "eye" | "eyeOff" | "chevronDown" | "threeDots" | "editor" | "presets" | "account";
+export type IconName =
+  | "eye"
+  | "eyeOff"
+  | "chevronDown"
+  | "threeDots"
+  | "editor"
+  | "presets"
+  | "account"
+  | "remove"
+  | "add"
+  | "close";
 
 // SVG markup lives inline here (not imported from an assets folder) so
 // adding a new icon is a one-file edit - see the paste.txt example this
@@ -90,6 +100,27 @@ const icons: Record<IconName, (props: SVGProps<SVGSVGElement>) => ReactElement> 
         strokeLinecap="round"
         strokeLinejoin="round"
       />
+    </svg>
+  ),
+  remove: (props) => (
+    <svg width="12" height="14" viewBox="0 0 12 14" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+      <path
+        d="M4.66699 5.99984V9.99984M7.33366 5.99984V9.99984M0.666992 3.33317H11.3337M10.667 3.33317L10.089 11.4278C10.065 11.7642 9.91452 12.079 9.66774 12.3089C9.42095 12.5387 9.09623 12.6665 8.75899 12.6665H3.24166C2.90442 12.6665 2.5797 12.5387 2.33292 12.3089C2.08613 12.079 1.9356 11.7642 1.91166 11.4278L1.33366 3.33317H10.667ZM8.00033 3.33317V1.33317C8.00033 1.15636 7.93009 0.98679 7.80506 0.861766C7.68004 0.736742 7.51047 0.666504 7.33366 0.666504H4.66699C4.49018 0.666504 4.32061 0.736742 4.19559 0.861766C4.07056 0.98679 4.00033 1.15636 4.00033 1.33317V3.33317H8.00033Z"
+        stroke="currentColor"
+        strokeWidth="1.33333"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  ),
+  add: (props) => (
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+      <path d="M6 3V6M6 6V9M6 6H9M6 6H3" stroke="#2D2C29" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  ),
+  close: (props) => (
+    <svg width="11" height="11" viewBox="0 0 11 11" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+      <path d="M1 1L10 10M1 10L10 1L1 10Z" stroke="#2D2C29" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   ),
 };

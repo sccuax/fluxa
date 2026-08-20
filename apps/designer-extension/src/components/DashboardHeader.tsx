@@ -15,7 +15,10 @@ export function DashboardHeader({ onOpenMenu }: DashboardHeaderProps) {
   const { label } = useSelectedElement();
 
   return (
-    <header className="flex max-h-[48px] w-full items-center justify-between bg-background-dark px-[20px] py-[12px]">
+    <header
+      id="dashboard-header"
+      className="flex max-h-[48px] w-full items-center justify-between bg-background-dark px-[20px] py-[12px]"
+    >
       <FluxaLogoLockup variant="light" className="h-4 w-auto" />
 
       <div className="flex items-center gap-[16px]">

@@ -142,7 +142,7 @@ export function createAuth(env: Bindings) {
       "http://localhost:1337",
       // TEMPORARY - see matching note in index.ts's CORS config. Remove once
       // the live demo over the Cloudflare quick tunnel is done.
-      "https://platinum-double-nuke-reward.trycloudflare.com",
+      "https://inspector-dimension-against-wave.trycloudflare.com",
     ],
   });
 }

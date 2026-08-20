@@ -985,6 +985,10 @@
     "17": {
       "$type": "lineHeights",
       "$value": 20
+    },
+    "18": {
+      "$type": "lineHeights",
+      "$value": 12
     }
   },
   "fontWeights": {
@@ -1049,6 +1053,10 @@
     "9": {
       "$type": "fontSizes",
       "$value": 200
+    },
+    "10": {
+      "$type": "fontSizes",
+      "$value": 11
     }
   },
   "letterSpacing": {
@@ -1250,6 +1258,22 @@
     }
   },
   "Mobile": {
+    "Text sm": {
+      "Regular": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{General Sans}",
+          "fontWeight": "{fontWeights.general-sans-2}",
+          "lineHeight": "{lineHeights.18}",
+          "fontSize": "{fontSize.10}",
+          "letterSpacing": "{letterSpacing.2}",
+          "paragraphSpacing": "{paragraphSpacing.0}",
+          "paragraphIndent": "{paragraphIndent.0}",
+          "textCase": "{textCase.none}",
+          "textDecoration": "{textDecoration.none}"
+        }
+      }
+    },
     "Text md": {
       "Regular": {
         "$type": "typography",

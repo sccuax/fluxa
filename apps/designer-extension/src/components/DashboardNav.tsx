@@ -23,7 +23,7 @@ const TABS: Array<{ tab: DashboardTab; icon: IconName; label: string }> = [
 // be highlighted dynamically instead of each icon owning a fixed color.
 export function DashboardNav({ activeTab, onTabChange }: DashboardNavProps) {
   return (
-    <nav className="flex w-full items-center bg-background-dark justify-between px-[20px] py-[12px]">
+    <nav id="dashboard-nav" className="flex w-full items-center bg-background-dark justify-between px-[20px] py-[12px]">
       {TABS.map(({ tab, icon, label }) => {
         const isActive = tab === activeTab;
         return (

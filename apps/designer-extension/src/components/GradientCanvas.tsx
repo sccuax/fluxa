@@ -1,4 +1,5 @@
 import { ShaderGradientCanvas, ShaderGradient } from "@shadergradient/react";
+import { getEffectiveGradientColors } from "@fluxa/gradient-core";
 import { useGradientStore } from "../store/gradientStore";
 
 // Prop names are spread straight from GradientConfig (packages/gradient-core)
@@ -23,8 +24,13 @@ export function GradientCanvas() {
       pointerEvents="none"
       lazyLoad={false}
       pixelDensity={config.pixelDensity}
+      fov={config.fov}
     >
-      <ShaderGradient {...config} />
+      {/* colorCount is app-level only (see gradient-core's schema.ts) - the
+          override spread must come after {...config} so a "2 colors"
+          selection actually collapses color3 into color2 here too, not just
+          in the published embed. */}
+      <ShaderGradient {...config} {...getEffectiveGradientColors(config)} />
     </ShaderGradientCanvas>
   );
 }

@@ -1,4 +1,4 @@
-import type { GradientConfig } from "@fluxa/gradient-core";
+import { getEffectiveGradientColors, type GradientConfig } from "@fluxa/gradient-core";
 
 // Pinned to the exact versions installed locally (package.json / GradientCanvas.tsx's
 // working preview) so the published embed renders identically to what the panel already
@@ -36,7 +36,11 @@ export const GRADIENT_EMBED_MARKER = "<!-- fluxa-gradient -->";
 // properties of undefined (reading 'S')` - see the comment on REACT_THREE_FIBER_VERSION
 // above.
 export function buildGradientEmbedCode(config: GradientConfig, rootId: string): string {
-  const configJson = JSON.stringify(config);
+  // colorCount is app-level only (see gradient-core's schema.ts) - resolved
+  // to a plain color3 value here so the injected script itself stays a dumb
+  // ShaderGradient prop dump, with no knowledge of the app's own "2 colors"
+  // toggle needed at runtime on the published site.
+  const configJson = JSON.stringify({ ...config, ...getEffectiveGradientColors(config) });
 
   return `${GRADIENT_EMBED_MARKER}
 <div id="${rootId}" style="position:absolute;inset:0;width:100%;height:100%;"></div>
@@ -51,7 +55,7 @@ if (mount) {
   createRoot(mount).render(
     React.createElement(
       ShaderGradientCanvas,
-      { style: { width: "100%", height: "100%" }, pointerEvents: "none", lazyLoad: false, pixelDensity: config.pixelDensity },
+      { style: { width: "100%", height: "100%" }, pointerEvents: "none", lazyLoad: false, pixelDensity: config.pixelDensity, fov: config.fov },
       React.createElement(ShaderGradient, config)
     )
   );
