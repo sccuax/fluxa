@@ -37,6 +37,7 @@ import { ButtonPrimary } from "./ButtonPrimary";
 export function EditorTab() {
   const { element } = useSelectedElement();
   const config = useGradientStore((state) => state.config);
+  const colorModalOpen = useGradientStore((state) => state.colorModalOpen);
   const hasSelection = element !== null;
   const [applying, setApplying] = useState(false);
 
@@ -65,7 +66,15 @@ export function EditorTab() {
   return (
     <div className="flex h-full min-h-0 w-full flex-col">
       <div className="min-h-[195px] w-full shrink-0">
-        {hasSelection ? <GradientCanvas /> : <EditorEmptyState />}
+        {/* colorModalOpen: fully unmounted, not just hidden, while a color
+            modal is open - GradientCanvas keeps its own R3F render loop
+            running continuously regardless of CSS visibility, and
+            ShaderGradientCanvas exposes no way to pause that loop from
+            outside. It's also completely covered by the modal the whole
+            time anyway (FullViewModal spans this entire header-to-nav
+            area), so there's nothing lost by not rendering anything here
+            in its place. */}
+        {hasSelection ? (colorModalOpen ? null : <GradientCanvas />) : <EditorEmptyState />}
       </div>
 
       <div className="w-full items-center flex min-h-0 flex-1">{hasSelection ? <ControlPanel /> : <SupportedElementsGuide />}</div>

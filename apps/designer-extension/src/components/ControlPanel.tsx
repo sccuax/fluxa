@@ -1,10 +1,18 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
-import { getEffectiveGradientColors, type GradientConfig } from "@fluxa/gradient-core";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import type { GradientConfig } from "@fluxa/gradient-core";
 import { useGradientStore } from "../store/gradientStore";
 import { formatSliderValue } from "../helpers/format";
 import { RangeSlider } from "./RangeSlider";
 import { Icon } from "./Icon";
-import { ColorPicker, hexToHslString, hexToRgbString, parseHex, parseHslString, parseRgbString } from "./ColorPicker";
+import {
+  ColorPicker,
+  clamp,
+  hexToHslString,
+  hexToRgbString,
+  parseHex,
+  parseHslString,
+  parseRgbString,
+} from "./ColorPicker";
 
 type ControlTab = "shape" | "colors" | "motion" | "camera";
 
@@ -19,6 +27,24 @@ const TYPE_OPTIONS: Array<{ label: string; value: GradientConfig["type"] }> = [
   { label: "Plane", value: "plane" },
   { label: "Sphere", value: "sphere" },
   { label: "Liquid", value: "waterPlane" },
+];
+
+// A real @shadergradient/react prop that had no UI control at all until now
+// (found while auditing the schema for fields with zero UI exposure) - type
+// + shader together select which of the library's compiled GLSL shader
+// variants actually runs (see ColorRow's own comment above on why color
+// blending can't be reached by schema fields alone). Trying it per explicit
+// user direction ("si no me gusta lo eliminamos") - not a confirmed keeper
+// yet. Options match gradient-core's shaderTypeSchema exactly - the four
+// real variant names verified against the installed package's own compiled
+// export list (dist/shaders/index.mjs), not the single invalid value this
+// schema field originally shipped with (see that schema's own comment for
+// the crash it caused).
+const SHADER_OPTIONS: Array<{ label: string; value: GradientConfig["shader"] }> = [
+  { label: "Default", value: "defaults" },
+  { label: "Cosmic", value: "cosmic" },
+  { label: "Glass", value: "glass" },
+  { label: "Position mix", value: "positionMix" },
 ];
 
 const GRAIN_OPTIONS: Array<{ label: string; value: GradientConfig["grain"] }> = [
@@ -160,6 +186,18 @@ const COLOR_FIELDS: { label: string; key: "color1" | "color2" | "color3" }[] = [
 const DEFAULT_EDITABLE_VALUE_CLASSNAME = () =>
   "max-w-[25px] shrink-0 appearance-none border-none bg-transparent text-right text-mobile-text-md-medium font-sans text-text-secondary focus:outline-none";
 
+// Every row shape in this panel (NumberFieldList/IconInputRow/SegmentedRow)
+// pushes its own left-hand label out via mr-auto, then packs its
+// buttons/pills/value-readout into one right-hand group - this caps that
+// group's combined width at 203px across every one of them, so a row's
+// right-hand content lines up to the same width no matter which tab or row
+// shape it's in, without touching any left-hand label. Not an arbitrary
+// number: it's exactly RangeSlider's own 161px TRACK_MAX_WIDTH + a 17px gap
+// + a 25px value readout (NumberFieldList's own row), which the other row
+// shapes' own per-pill max-widths were already independently tuned to land
+// on too.
+const ROW_CONTROLS_MAX_WIDTH = "max-w-[203px]";
+
 // Generic version of the draft/commit/cancel machinery above - `format`
 // turns the real value into the text shown at rest, `parse` turns typed
 // text back into a real value (returning null rejects the edit, same as a
@@ -279,20 +317,27 @@ function NumberFieldList({ fields, config, setConfig }: {
           <span className="flex justify-between mr-auto">
             <span className="font-sans mr-auto text-mobile-header-h2 text-text-black">{label}</span>
           </span>
-          <RangeSlider
-            min={min}
-            max={max}
-            step={step}
-            value={config[key]}
-            onChange={(value) => setConfig({ [key]: value })}
-          />
-          <EditableNumberValue
-            min={min}
-            max={max}
-            step={step}
-            value={config[key]}
-            onCommit={(value) => setConfig({ [key]: value })}
-          />
+          {/* Everything right of the label - slider + its value readout,
+              combined - is capped at ROW_CONTROLS_MAX_WIDTH (203px), the same
+              cap IconInputRow/SegmentedRow's own right-side groups share
+              below, so every tab's rows line up to the same right-hand
+              width regardless of row shape. */}
+          <div className={`flex w-full items-center gap-[17px] ${ROW_CONTROLS_MAX_WIDTH}`}>
+            <RangeSlider
+              min={min}
+              max={max}
+              step={step}
+              value={config[key]}
+              onChange={(value) => setConfig({ [key]: value })}
+            />
+            <EditableNumberValue
+              min={min}
+              max={max}
+              step={step}
+              value={config[key]}
+              onCommit={(value) => setConfig({ [key]: value })}
+            />
+          </div>
         </label>
       ))}
     </>
@@ -362,7 +407,7 @@ function IconInputRow({ label, fields, config, setConfig, renderMarker, inputCla
   return (
     <div className="flex w-full items-center justify-end gap-[8px]">
       <p className="font-sans mr-auto text-mobile-header-h2 text-text-black">{label}</p>
-      <div className="flex items-center gap-[8px]">
+      <div className={`flex w-full items-center gap-[8px] ${ROW_CONTROLS_MAX_WIDTH}`}>
         {fields.map((field) => (
           <div key={field.key} className="flex items-center gap-[8px]">
             {renderMarker(field)}
@@ -385,32 +430,35 @@ function IconInputRow({ label, fields, config, setConfig, renderMarker, inputCla
 // left via mr-auto, options pushed right, min-w-[61px] pills, bg-accent-50
 // tint on the active pill) - reused here so Grain/Environment/Env preset/
 // Range don't each reimplement it.
-function SegmentedRow<T extends string>({ label, options, value, onChange }: {
-  label: string;
+function SegmentedRow<T extends string>({ label, options, value, onChange, className = "" }: {
+  label?: string;
   options: Array<{ label: string; value: T }>;
   value: T;
   onChange: (value: T) => void;
+  className?: string;
 }) {
   return (
     <div className="flex w-full justify-end items-center gap-[8px]">
-      <p className="font-sans mr-auto text-mobile-header-h2 text-text-black">{label}</p>
-      {options.map(({ label: optionLabel, value: optionValue }) => {
-        const isActive = value === optionValue;
-        return (
-          <button
-            key={optionValue}
-            type="button"
-            onClick={() => onChange(optionValue)}
-            className={`flex py-1 min-w-[61px] size-fit items-center justify-center rounded-[4px] border px-2 font-sans text-mobile-text-md-regular ${
-              isActive
-                ? "border-accent-500 text-accent-500 bg-accent-50"
-                : "border-border-border text-text-secondary"
-            }`}
-          >
-            {optionLabel}
-          </button>
-        );
-      })}
+      {label && <p className="font-sans mr-auto text-mobile-header-h2 text-text-black">{label}</p>}
+      <div className={`flex w-full items-center justify-end gap-[8px] ${className || ROW_CONTROLS_MAX_WIDTH}`}>
+        {options.map(({ label: optionLabel, value: optionValue }) => {
+          const isActive = value === optionValue;
+          return (
+            <button
+              key={optionValue}
+              type="button"
+              onClick={() => onChange(optionValue)}
+              className={`flex py-1 w-full size-fit items-center justify-center rounded-[4px] border px-2 font-sans text-mobile-text-md-regular ${
+                isActive
+                  ? "border-accent-500 text-accent-500 bg-accent-50"
+                  : "border-border-border text-text-secondary"
+              }`}
+            >
+              {optionLabel}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -469,59 +517,6 @@ function Tooltip({ text, side, children }: { text: string; side: "left" | "right
   );
 }
 
-// The gradient preview bar above the color rows: a 6px-tall strip painted
-// with the currently *effective* colors (getEffectiveGradientColors - so a
-// colorCount==="2" gradient shows a real 2-color bar, not a 3-stop one with
-// a hidden third stop), plus one 12x12 ring marker per active color -
-// background-white fill, a 1.5px stroke in that marker's own color - evenly
-// spaced along the bar (0%/100% for two, 0%/50%/100% for three).
-function GradientColorsBar({ config }: { config: GradientConfig }) {
-  const effective = getEffectiveGradientColors(config);
-  const colors = config.colorCount === "3"
-    ? [effective.color1, effective.color2, effective.color3]
-    : [effective.color1, effective.color2];
-
-  return (
-    <div
-      className="relative mb-[2px] h-[6px] w-full rounded-[4px]"
-      style={{ background: `linear-gradient(90deg, ${colors.join(", ")})` }}
-    >
-      {colors.map((color, index) => {
-        // A marker's *center* sits at this %, but the marker itself is 12px
-        // wide (h-3 w-3) and centered via -translate-x-1/2, so a plain 0%/
-        // 100% at the extremes lets its outer edge hang 6px (half its own
-        // width) past the bar's own edge - a real, measured bug (confirmed
-        // in the sandbox: scrollWidth 6px > clientWidth on both the bar and
-        // its scrolling ancestor). Insetting the travel range by half the
-        // marker's width (6px) on each side keeps the center's 0%/100%
-        // extremes exactly at the marker's own outer edge instead, so it
-        // never crosses the bar's bounds.
-        const percent = (index / (colors.length - 1)) * 100;
-        return (
-          <div
-            key={index}
-            className="absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-background-white"
-            style={{
-              left: `calc(6px + (100% - 12px) * ${percent / 100})`,
-              borderWidth: 1.5,
-              borderStyle: "solid",
-              borderColor: color,
-            }}
-          />
-        );
-      })}
-    </div>
-  );
-}
-
-// Same pill styling as Orbit/Axis's inputs (border-border-border, rounded-[4px],
-// text-color-only focus state) - the percentage input just gets a narrower
-// 48px cap, the hex input 64px, per explicit design spec.
-const PERCENT_INPUT_CLASSNAME = (focused: boolean) =>
-  `flex max-w-[48px] size-fit items-center justify-center rounded-[4px] border border-border-border px-2 py-1 text-center font-sans text-mobile-text-md-regular appearance-none focus:outline-none ${
-    focused ? "text-text-color-accent" : "text-text-secondary"
-  }`;
-
 // px-1 (not px-2 like every other pill input in this file) - a real bug
 // found by testing in the sandbox: a 7-char "#rrggbb" value needs ~65px of
 // text width on its own, so px-2's 16px of combined padding left this input
@@ -529,7 +524,7 @@ const PERCENT_INPUT_CLASSNAME = (focused: boolean) =>
 // the extra room while keeping the 64px cap intact.
 const HEX_INPUT_CLASSNAME = (focused: boolean) =>
   `flex max-w-[64px] size-fit items-center justify-center rounded-[4px] border border-border-border px-1 py-1 text-center font-sans text-mobile-text-md-regular appearance-none focus:outline-none ${
-    focused ? "text-text-color-accent" : "text-text-secondary"
+    focused ? "text-text-color-accent" : "text-text-black"
   }`;
 
 // DashboardHeader/DashboardNav aren't fixed-height in code (header has a
@@ -566,18 +561,58 @@ function useChromeInsets() {
 // real page with distant DOM nodes to escape. Unlike Modal.tsx's `inset-0`
 // though, this one insets `top`/`bottom` to useChromeInsets()'s measured
 // values instead of covering the full panel.
+//
+// animate-modal-slide-up/animate-modal-slide-down (tailwind.config.js) fade +
+// slide the whole modal between 24px below its final position and there -
+// plain CSS @keyframes (same pattern as WelcomeScreen's animate-fill-bar).
+// ColorSwatchPicker's `open` state still fully mounts/unmounts this
+// component, but the *close* button here doesn't call the real `onClose`
+// (which would unmount instantly, cutting the animation off) - it flips a
+// local `closing` flag to swap in the reverse animation first, then delays
+// the real `onClose` by MODAL_ANIMATION_MS so the exit actually gets to play
+// before the component disappears. That constant has to stay in sync with
+// the animate-modal-slide-down duration in tailwind.config.js - there's no
+// single source of truth linking a Tailwind animation's CSS duration to a JS
+// timer, so both were set to the same 320ms deliberately and must be changed
+// together.
+const MODAL_ANIMATION_MS = 540;
+
 function FullViewModal({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
   const { top, bottom } = useChromeInsets();
+  const [closing, setClosing] = useState(false);
+
+  function handleClose() {
+    setClosing(true);
+    setTimeout(onClose, MODAL_ANIMATION_MS);
+  }
 
   return (
-    <div className="fixed left-0 right-0 z-40 flex flex-col bg-background-white" style={{ top, bottom }}>
-      <div className="flex h-[48px] shrink-0 items-center justify-between border-b border-border-border px-[20px] py-[12px]">
-        <span className="font-display text-mobile-header-h1 text-text-black">{title}</span>
-        <button type="button" onClick={onClose} aria-label="Close">
-          <Icon name="close" />
-        </button>
+    // The outer div is a fixed-size clipping mask (exactly the
+    // header-to-nav rect, overflow-hidden) - the inner div is what actually
+    // carries the slide animation. Without this split, translateY(100%)
+    // (a % transform is relative to the element's own height) moves the
+    // *whole* header-to-nav box down by its own full height - since that box
+    // already ends flush with the nav's top edge, sliding it down by its own
+    // height lands its new top edge exactly at the nav's top edge too,
+    // rendering the modal on top of the nav for most of the animation
+    // instead of hidden below it. Clipping the outer box to that same rect
+    // means anything the inner div slides past that boundary just gets cut
+    // off there, so the modal appears to rise from behind/under the nav and
+    // sink back below it, never actually covering it.
+    <div className="fixed left-0 right-0 z-40 overflow-hidden" style={{ top, bottom }}>
+      <div
+        className={`flex h-full w-full flex-col bg-background-white ${
+          closing ? "animate-modal-slide-down" : "animate-modal-slide-up"
+        }`}
+      >
+        <div className="flex h-[48px] bg-background-white-2 shrink-0 items-center justify-between border-b border-border-border px-[20px] py-[12px]">
+          <span className="font-display text-mobile-display-d1 text-text-black">{title}</span>
+          <button type="button" onClick={handleClose} aria-label="Close">
+            <Icon name="close" />
+          </button>
+        </div>
+        <div className="flex-1 min-h-0 overflow-y-auto">{children}</div>
       </div>
-      <div className="flex-1 min-h-0 overflow-y-auto">{children}</div>
     </div>
   );
 }
@@ -590,42 +625,337 @@ const FORMAT_OPTIONS: Array<{ label: string; value: ColorFormat }> = [
   { label: "HSL", value: "hsl" },
 ];
 
-// Wider than the row's own HEX_INPUT_CLASSNAME (which is sized tight for a
-// 7-char "#rrggbb" only) - this one lives in the spacious modal and needs to
-// fit "rgb(255, 255, 255)"-length strings too, so it's w-full instead of a
-// small max-width pill.
+// Lives in the spacious modal, below ColorPicker, and needs to fit
+// "rgb(255, 255, 255)"-length strings too, so it's w-full/flex-1 rather than
+// a small max-width pill like the row's own HEX_INPUT_CLASSNAME. Border
+// itself lives on the wrapper (see ColorValueField below), not here - pr-8
+// reserves room so typed text never runs under the copy icon sitting inside
+// the input's own right edge.
 const COLOR_VALUE_INPUT_CLASSNAME = (focused: boolean) =>
-  `w-full rounded-[4px] border border-border-border px-2 py-1 text-center font-sans text-mobile-text-md-regular appearance-none focus:outline-none ${
-    focused ? "text-text-color-accent" : "text-text-secondary"
+  `w-full min-w-0 pl-2 pr-8 py-1 text-left font-sans text-mobile-text-md-medium appearance-none focus:outline-none ${
+    focused ? "text-text-color-accent" : "text-text-black"
   }`;
 
-// The modal's format-aware value input (ColorSwatchPicker below) - same
-// EditableValue machinery as every other editable field in this file, just
-// with format/parse swapped per the selected ColorFormat. The stored value
-// is always hex underneath (gradient-core's schema only knows color1-3 as
-// hex strings), so switching format never changes what's actually saved -
-// only how it's displayed/typed here.
-function ColorValueInput({ format, value, onChange }: {
+const FORMAT_LABEL: Record<ColorFormat, string> = { hex: "Hex", rgb: "RGB", hsl: "HSL" };
+
+function formatColorValue(format: ColorFormat, hex: string): string {
+  if (format === "rgb") return hexToRgbString(hex);
+  if (format === "hsl") return hexToHslString(hex);
+  return hex;
+}
+
+// The modal's format-aware value field (ColorSwatchPicker below) - a label
+// naming the current format ("Hex"/"RGB"/"HSL") above an EditableValue input
+// (same machinery as every other editable field in this file, with
+// format/parse swapped per the selected ColorFormat), with a copy button
+// sitting inside the input's own bordered box (same relative-wrapper +
+// absolutely-positioned-icon pattern AuthPasswordField.tsx already uses for
+// its show/hide toggle) rather than beside it. rounded-4/border are the
+// wrapper's own (a real border-radius token, 4px - not Tailwind's built-in
+// border-4 border-*width* utility, which would make the border itself 4px),
+// so the input can stay a plain flex-1 text field with no border/radius of
+// its own. The stored value is always hex underneath (gradient-core's
+// schema only knows color1-3 as hex strings), so switching format never
+// changes what's actually saved - only how it's displayed/typed/copied here.
+function ColorValueField({ format, value, onChange }: {
   format: ColorFormat;
   value: string;
   onChange: (value: string) => void;
 }) {
   return (
-    <EditableValue
-      value={value}
-      format={(hex) => {
-        if (format === "rgb") return hexToRgbString(hex);
-        if (format === "hsl") return hexToHslString(hex);
-        return hex;
+    <div className="flex flex-col gap-1">
+      <span className="font-sans text-mobile-text-md-medium text-text-black">{FORMAT_LABEL[format]}</span>
+      <div className="relative flex items-center rounded-4 border border-border-border">
+        <EditableValue
+          value={value}
+          format={(hex) => formatColorValue(format, hex)}
+          parse={(raw) => {
+            if (format === "rgb") return parseRgbString(raw);
+            if (format === "hsl") return parseHslString(raw);
+            return parseHex(raw);
+          }}
+          onCommit={onChange}
+          className={COLOR_VALUE_INPUT_CLASSNAME}
+        />
+        <div className="absolute right-2 flex">
+          <Tooltip side="left" text="Copy">
+            <button
+              type="button"
+              aria-label="Copy color code"
+              onClick={() => {
+                navigator.clipboard.writeText(formatColorValue(format, value)).catch(() => {});
+              }}
+              className="shrink-0 text-text-secondary transition-transform duration-150 ease-out hover:scale-110 hover:text-text-color-accent active:scale-90"
+            >
+              <Icon name="copy" />
+            </button>
+          </Tooltip>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Same pill styling as HEX_INPUT_CLASSNAME (the row's own hex input) - only
+// the padding (px-2 here, not px-1 - a percent value never runs as tight on
+// space as a 7-char "#rrggbb") and the resting text color (text-secondary,
+// not text-black) differ, per explicit design spec.
+const OPACITY_INPUT_CLASSNAME = (focused: boolean) =>
+  `flex max-w-[64px] size-fit items-center justify-center rounded-[4px] border border-border-border px-2 py-1 text-center font-sans text-mobile-text-md-regular appearance-none focus:outline-none ${
+    focused ? "text-text-color-accent" : "text-text-secondary"
+  }`;
+
+const OPACITY_THUMB_SIZE = 12;
+
+// Same bleed-fix pattern as every other thumb in this file (ColorPicker.tsx's
+// insetPercent, GradientColorsBar's old markers) - insets the 0%/100%
+// extremes by half the thumb's own size so its center lands exactly on the
+// track's outer edge instead of hanging half its own width past it.
+function insetOpacityPercent(fraction: number): string {
+  return `calc(${OPACITY_THUMB_SIZE / 2}px + (100% - ${OPACITY_THUMB_SIZE}px) * ${fraction})`;
+}
+
+// Decorative triangle tiling behind the alpha gradient below (paste.txt's
+// own pasted svg was actually still the hue thumb's line-and-circles asset,
+// not a new pattern one, so this is a hand-built approximation, not a copied
+// Figma asset like everything else in this file - re-paste the real one if
+// this doesn't match). Two triangles per 16x6 tile, base-to-base at each
+// tile edge with their apexes meeting at the tile's own horizontal center -
+// a bowtie, fully contained within the bar's own 6px height rather than a
+// shape clipped in from outside the viewBox (a diamond was tried first) -
+// repeated via background-repeat: repeat-x rather than drawn once and
+// stretched.
+const TRIANGLE_PATTERN_URL = `url("data:image/svg+xml,${encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="6" viewBox="0 0 16 6"><polygon points="0,0 0,6 8,3" fill="#D9D3C6"/><polygon points="16,0 16,6 8,3" fill="#D9D3C6"/></svg>',
+)}")`;
+
+// The slider's own thumb - a real Figma Dev Mode SVG (copy-paste'd, see
+// paste.txt), not a plain flat-color circle: the stroke itself is the brand
+// 5-stop gradient (same stops as RangeSlider.tsx's ACTIVE_FILL_GRADIENT/the
+// gradient-gradient design token), not a solid color, so it has to stay real
+// SVG rather than a div with a border color. useId() namespaces the
+// <linearGradient>'s id per instance - only one OpacitySlider is ever
+// mounted at a time in this app today (one modal open at once), but a
+// hardcoded id would silently break the moment that stops being true, since
+// SVG gradient ids are global to the document.
+function OpacityThumb({ left }: { left: string }) {
+  const gradientId = useId();
+
+  return (
+    <svg
+      width="12"
+      height="12"
+      viewBox="0 0 12 12"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      style={{ left }}
+      className="pointer-events-none absolute top-1/2 -translate-x-1/2 -translate-y-1/2"
+    >
+      <circle cx="6" cy="6" r="5.25" fill="#FBFBFA" stroke={`url(#${gradientId})`} strokeWidth="1.5" />
+      <defs>
+        <linearGradient
+          id={gradientId}
+          x1="3.93403"
+          y1="12"
+          x2="8.06597"
+          y2="-4.34155e-08"
+          gradientUnits="userSpaceOnUse"
+        >
+          <stop stopColor="#6FF5F1" />
+          <stop offset="0.2548" stopColor="#3B9CD6" />
+          <stop offset="0.5" stopColor="#0955E5" />
+          <stop offset="0.75" stopColor="#8E54C5" />
+          <stop offset="1" stopColor="#E23F8C" />
+        </linearGradient>
+      </defs>
+    </svg>
+  );
+}
+
+// The always-visible alpha scale for the color currently open in the modal -
+// a horizontal 6px bar, not a RangeSlider-style split fill/track, since the
+// point is to show what every opacity level from 0-100% looks like at once
+// (the same "always render the full range, drag a thumb over it" shape
+// ColorPicker.tsx's own hue bar already uses, just horizontal here instead
+// of vertical). Two background-image layers: the triangle tiling behind a
+// left-to-right transparent -> opaque-`color` gradient - the triangle
+// backdrop is what makes "0% opacity" read as "this color, fully
+// see-through" rather than just empty space, the same role a checkerboard
+// plays behind alpha sliders elsewhere.
+function OpacitySlider({ color, value, onChange }: {
+  color: string;
+  value: number;
+  onChange: (value: number) => void;
+}) {
+  const trackRef = useRef<HTMLDivElement>(null);
+  const draggingRef = useRef(false);
+  // Same "latest ref" fix as ColorPicker.tsx's onChangeRef - `onChange` is a
+  // fresh inline function every render at the call site (ColorRow's
+  // `(value) => setConfig({ [opacityKey]: value })`), which used to make the
+  // effect below tear down and re-add both window listeners on every single
+  // pointermove -> onChange -> store update -> re-render cycle for the whole
+  // duration of a drag - a real, measured cause of the lag reported across
+  // all three thumbs (this slider's own listener churn added on top of
+  // ColorPicker's identical pre-existing one).
+  const onChangeRef = useRef(onChange);
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
+
+  const rafRef = useRef<number | null>(null);
+  const pendingValueRef = useRef<number | null>(null);
+
+  // Same rAF-coalescing fix as ColorPicker.tsx's scheduleOnChange (see its
+  // own comment for the full diagnosis) - onChange cascades into the
+  // Zustand store and a full GradientCanvas 3D re-render (even hidden behind
+  // this modal - it stays mounted, see EditorTab.tsx), which is too
+  // expensive to run on every single native pointermove event without
+  // visibly delaying this thumb's own next paint. Only the last value
+  // computed within a frame is ever sent onward.
+  function scheduleOnChange(nextValue: number) {
+    pendingValueRef.current = nextValue;
+    if (rafRef.current === null) {
+      rafRef.current = requestAnimationFrame(() => {
+        rafRef.current = null;
+        if (pendingValueRef.current !== null) {
+          onChangeRef.current(pendingValueRef.current);
+          pendingValueRef.current = null;
+        }
+      });
+    }
+  }
+
+  // Mounts its window listeners once ([] deps) rather than on every render.
+  useEffect(() => {
+    function handleMove(event: PointerEvent) {
+      if (!draggingRef.current || !trackRef.current) return;
+      const rect = trackRef.current.getBoundingClientRect();
+      const fraction = clamp((event.clientX - rect.left) / rect.width, 0, 1);
+      scheduleOnChange(Math.round(fraction * 100));
+    }
+    function handleUp() {
+      draggingRef.current = false;
+    }
+    window.addEventListener("pointermove", handleMove);
+    window.addEventListener("pointerup", handleUp);
+    return () => {
+      window.removeEventListener("pointermove", handleMove);
+      window.removeEventListener("pointerup", handleUp);
+      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+    };
+  }, []);
+
+  return (
+    <div
+      ref={trackRef}
+      onPointerDown={(event) => {
+        // Suppresses the browser's native drag-select gesture - without
+        // this, a fast drag off the track ends the gesture under a
+        // "not-allowed" cursor, the same real bug already found and fixed on
+        // ColorPicker.tsx's saturation/hue drag handlers.
+        event.preventDefault();
+        draggingRef.current = true;
+        const rect = event.currentTarget.getBoundingClientRect();
+        const fraction = clamp((event.clientX - rect.left) / rect.width, 0, 1);
+        onChange(Math.round(fraction * 100));
       }}
-      parse={(raw) => {
-        if (format === "rgb") return parseRgbString(raw);
-        if (format === "hsl") return parseHslString(raw);
-        return parseHex(raw);
+      className="relative h-[6px] flex-1 touch-none select-none cursor-pointer rounded-[4px]"
+      style={{
+        backgroundImage: `linear-gradient(to right, transparent, ${color}), ${TRIANGLE_PATTERN_URL}`,
+        backgroundRepeat: "no-repeat, repeat-x",
+        backgroundSize: "auto, 16px 6px",
       }}
-      onCommit={onChange}
-      className={COLOR_VALUE_INPUT_CLASSNAME}
-    />
+    >
+      <OpacityThumb left={insetOpacityPercent(value / 100)} />
+    </div>
+  );
+}
+
+// Same overall shape as ColorValueField above (a label, then a row below it)
+// but with a 12px gap between them (gap-3) instead of ColorValueField's 4px
+// (gap-1), and the row itself holds the slider + a percent input rather than
+// one full-width text field - gap-2 (8px) between those two, per spec.
+function OpacityField({ color, opacity, onOpacityChange }: {
+  color: string;
+  opacity: number;
+  onOpacityChange: (value: number) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-3">
+      <span className="font-sans text-mobile-text-md-medium text-text-black">Opacity</span>
+      <div className="flex items-center gap-2">
+        <OpacitySlider color={color} value={opacity} onChange={onOpacityChange} />
+        <EditableValue
+          value={opacity}
+          format={(v) => `${Math.round(v)}%`}
+          parse={(raw) => {
+            const parsed = Number(raw.replace(/[^0-9.]/g, ""));
+            return Number.isFinite(parsed) ? clamp(parsed, 0, 100) : null;
+          }}
+          onCommit={onOpacityChange}
+          className={OPACITY_INPUT_CLASSNAME}
+        />
+      </div>
+    </div>
+  );
+}
+
+// Real OS/browser-level color sampling (window.EyeDropper), not a DOM-content
+// trick - it samples the actual composited screen pixels (per its own spec),
+// so it can pick up a color from anywhere the OS renders anything, including
+// Webflow's own Designer canvas (a completely different iframe/origin from
+// this extension) - CORS/iframe content boundaries don't apply the way they
+// would to reading DOM/canvas pixels directly, since this reads the final
+// screen buffer instead. Chromium-only as of this writing (Chrome/Edge/
+// Opera) - also absent from this repo's installed TypeScript's own
+// lib.dom.d.ts, hence the ambient declaration in types/eyedropper.d.ts.
+// Feature-detected once at module load (the API's availability can't change
+// mid-session) rather than assumed; unsupported browsers get a disabled
+// button with a Tooltip explaining why - the same disabled-button-with-
+// Tooltip pattern ColorRow's own non-removable color rows already use.
+// NOT YET verified inside the real Designer iframe specifically - only
+// buildable/typecheckable from here. Webflow's own iframe embedding could
+// still block it via a permissions policy this repo doesn't control (it
+// wasn't hit by any of the iframe-specific bugs documented elsewhere in this
+// codebase, but none of those were tested for this API either) - confirm in
+// the actual Designer before trusting this fully, per this file's own
+// established practice for anything iframe-specific.
+const EYEDROPPER_SUPPORTED = typeof window !== "undefined" && !!window.EyeDropper;
+
+function EyeDropperButton({ onPick }: { onPick: (hex: string) => void }) {
+  async function handleClick() {
+    if (!window.EyeDropper) return;
+    try {
+      const result = await new window.EyeDropper().open();
+      onPick(result.sRGBHex);
+    } catch {
+      // AbortError - the user pressed Escape or clicked away to cancel the
+      // pick. Not a real failure, nothing to surface.
+    }
+  }
+
+  const button = (
+    <button
+      type="button"
+      disabled={!EYEDROPPER_SUPPORTED}
+      onClick={handleClick}
+      aria-label="Pick color from screen"
+      className={`flex h-8 w-full justify-center items-center gap-2 rounded-4 border border-border-border py-2 px-2 font-sans text-mobile-text-md-regular ${
+        EYEDROPPER_SUPPORTED
+          ? "text-text-secondary transition-colors hover:text-text-color-accent"
+          : "cursor-not-allowed text-text-secondary opacity-40"
+      }`}
+    >
+      <Icon name="eyedropper" />
+      Pick from screen
+    </button>
+  );
+
+  if (EYEDROPPER_SUPPORTED) return button;
+  return (
+    <Tooltip side="left" text="Not supported in this browser">
+      {button}
+    </Tooltip>
   );
 }
 
@@ -635,17 +965,36 @@ function ColorValueInput({ format, value, onChange }: {
 // popover; replaced per explicit direction - both to occupy the whole
 // working view, and because a real vertical hue bar isn't achievable with
 // react-colorful at all, see ColorPicker.tsx's own comment). The modal also
-// gets its own Hex/RGB/HSL format toggle + value input, above the picker -
-// separate from the row's own always-hex HexColorInput next to the swatch
-// (that one stays hex-only; the row's compact 64px max-width has no room for
-// an "rgb(255, 255, 255)"-length string anyway).
-function ColorSwatchPicker({ value, onChange, label }: {
+// gets an EyeDropperButton, a Hex/RGB/HSL format toggle above the picker, a
+// value field (label + copyable input) below it, and an Opacity field
+// (slider + percent input) below that - separate from the row's own
+// always-hex HexColorInput next to the swatch (that one stays hex-only; the
+// row's compact 64px max-width has no room for an "rgb(255, 255, 255)"-
+// length string anyway).
+function ColorSwatchPicker({ value, onChange, label, opacity, onOpacityChange }: {
   value: string;
   onChange: (value: string) => void;
   label: string;
+  opacity: number;
+  onOpacityChange: (value: number) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [format, setFormat] = useState<ColorFormat>("hex");
+  const setColorModalOpen = useGradientStore((state) => state.setColorModalOpen);
+
+  // Mirrors this instance's own `open` into the shared store - see
+  // colorModalOpen's own comment in gradientStore.ts for why EditorTab.tsx
+  // needs to know this at all (it unmounts GradientCanvas while true). Only
+  // one ColorSwatchPicker can ever actually be open at once in practice (the
+  // modal is `fixed` and covers the other rows too, so there's no way to
+  // open a second one from underneath), so a single shared boolean is
+  // correct here, not a per-instance concern. The cleanup call guards
+  // against this specific instance unmounting while open (e.g. the whole
+  // panel swaps away on a selection change) leaving the flag stuck true.
+  useEffect(() => {
+    setColorModalOpen(open);
+    return () => setColorModalOpen(false);
+  }, [open, setColorModalOpen]);
 
   return (
     <>
@@ -653,15 +1002,17 @@ function ColorSwatchPicker({ value, onChange, label }: {
         type="button"
         aria-label={label}
         onClick={() => setOpen(true)}
-        className="h-6 w-16 shrink-0 rounded-[4px]"
+        className="h-6 w-[132px] shrink-0 rounded-[4px]"
         style={{ background: value }}
       />
       {open && (
         <FullViewModal title="Color" onClose={() => setOpen(false)}>
           <div className="flex flex-col gap-3 p-5">
-            <SegmentedRow label="Format" options={FORMAT_OPTIONS} value={format} onChange={setFormat} />
-            <ColorValueInput format={format} value={value} onChange={onChange} />
+            <SegmentedRow className="w-full" options={FORMAT_OPTIONS} value={format} onChange={setFormat} />
             <ColorPicker value={value} onChange={onChange} />
+            <ColorValueField format={format} value={value} onChange={onChange} />
+            <OpacityField color={value} opacity={opacity} onOpacityChange={onOpacityChange} />
+            <EyeDropperButton onPick={onChange} />
           </div>
         </FullViewModal>
       )}
@@ -669,66 +1020,31 @@ function ColorSwatchPicker({ value, onChange, label }: {
   );
 }
 
-// One color's row (Colors tab): a 64x24 swatch, then a percent input (locked
-// - see its Tooltip below) + hex input, then a remove icon on the row's own
-// right edge. Only color3 is ever actually removable - ShaderGradient's
-// shader has exactly 3 hardcoded color uniforms (see colorCount's own
-// comment in gradient-core/schema.ts), so "removing" color1 or color2 isn't
-// something the schema can express at all, not just a UI restriction. Their
-// rows show the same remove icon permanently disabled, with a tooltip
-// explaining why, rather than hiding it and leaving the row looking
-// unfinished.
+// One color's row (Colors tab): the "Color 1"/"Color 2"/"Color 3" label on
+// the left (untouched), then the 64x24 swatch + hex input grouped together
+// on the right inside the same ROW_CONTROLS_MAX_WIDTH (203px) cap every
+// other row in this panel already uses for its own right-hand group.
 function ColorRow({ field, config, setConfig }: {
   field: { label: string; key: "color1" | "color2" | "color3" };
   config: GradientConfig;
   setConfig: (patch: Partial<GradientConfig>) => void;
 }) {
   const { key } = field;
-  const percentKey = `${key}Percent` as `${typeof key}Percent`;
-  const removable = key === "color3";
+  const opacityKey = `${key}Opacity` as `${typeof key}Opacity`;
 
   return (
     <div className="flex items-center justify-between gap-[14px] border-b border-border-border pb-2">
-      <ColorSwatchPicker
-        value={config[key]}
-        onChange={(value) => setConfig({ [key]: value })}
-        label={field.label}
-      />
+      <span className="font-sans text-mobile-header-h2 text-text-black">{field.label}</span>
 
-      <div className="flex flex-1 items-center justify-between gap-[8px]">
-        <div className="flex items-center gap-[8px]">
-          <Tooltip
-            side="right"
-            text="Lock: doesn't affect the live gradient yet - @shadergradient/react has no color-weight prop, needs a custom shader (planned, not built)."
-          >
-            <EditableNumberValue
-              min={0}
-              max={100}
-              step={1}
-              value={config[percentKey]}
-              onCommit={(value) => setConfig({ [percentKey]: value })}
-              className={PERCENT_INPUT_CLASSNAME}
-            />
-          </Tooltip>
-
-          <HexColorInput value={config[key]} onCommit={(value) => setConfig({ [key]: value })} />
-        </div>
-
-        {removable ? (
-          <button
-            type="button"
-            onClick={() => setConfig({ colorCount: "2" })}
-            className="text-text-secondary transition-colors hover:text-text-color-accent"
-          >
-            <Icon name="remove" />
-          </button>
-        ) : (
-          <Tooltip side="left" text="Only one can be removed">
-            <button type="button" disabled className="cursor-not-allowed text-text-secondary opacity-40">
-              <Icon name="remove" />
-            </button>
-          </Tooltip>
-        )}
+      <div className={`flex w-full items-center gap-[8px] ${ROW_CONTROLS_MAX_WIDTH}`}>
+        <ColorSwatchPicker
+          value={config[key]}
+          onChange={(value) => setConfig({ [key]: value })}
+          label={field.label}
+          opacity={config[opacityKey]}
+          onOpacityChange={(value) => setConfig({ [opacityKey]: value })}
+        />
+        <HexColorInput value={config[key]} onCommit={(value) => setConfig({ [key]: value })} />
       </div>
     </div>
   );
@@ -747,10 +1063,10 @@ function ColorRow({ field, config, setConfig }: {
 // `type` now lives at the top of Shape instead:
 // - Shape: `type` (Plane/Sphere/Liquid) first, then the noise-pattern fields
 //   (Strength/Density/Pixel density/Frequency).
-// - Colors: a single "Colors" label, a GradientColorsBar preview strip, then
-//   one ColorRow per color (color3's row hidden when colorCount is "2" - see
-//   ColorRow's own comment for why only color3 is ever actually removable),
-//   followed by Grain, Brightness, and the Environment toggle (`lightType`) -
+// - Colors: an optional "Add color" button (only when colorCount is "2"),
+//   then one ColorRow (swatch + "Color N" label + hex input) per color -
+//   color3's row hidden when colorCount is "2" - followed by Grain,
+//   Brightness, and the Environment toggle (`lightType`) -
 //   when Environment is on (`lightType === "env"`), Env preset + Reflection
 //   replace Brightness, matching @shadergradient/react's own reference
 //   controls' hidden-field logic exactly (brightness hidden when
@@ -807,9 +1123,8 @@ export function ControlPanel() {
           (not a blanket overflow-hidden on the outer panel, which would risk
           clipping this div's own legitimate vertical overflow - see the
           "h-full vs h-screen" caution already documented for this panel) is
-          a narrow safety net against any stray horizontal overflow, on top
-          of fixing GradientColorsBar's actual marker-overhang bug at its
-          source (see that component's own comment). */}
+          a narrow safety net against any stray horizontal overflow (e.g. a
+          wide Tooltip bubble near either edge). */}
       <div className="flex flex-1 min-h-0 flex-col gap-3 overflow-y-auto overflow-x-hidden px-5 py-3">
         {activeTab === "shape" && (
           <>
@@ -819,15 +1134,20 @@ export function ControlPanel() {
               value={config.type}
               onChange={(value) => setConfig({ type: value })}
             />
+            <SegmentedRow
+              label="Shader"
+              options={SHADER_OPTIONS}
+              value={config.shader}
+              onChange={(value) => setConfig({ shader: value })}
+            />
             <NumberFieldList fields={SHAPE_NUMBER_FIELDS} config={config} setConfig={setConfig} />
           </>
         )}
 
         {activeTab === "colors" && (
           <>
-            <div className="flex w-full items-center justify-between">
-              <p className="font-sans text-mobile-header-h2 text-text-black">Colors</p>
-              {config.colorCount === "2" && (
+            {config.colorCount === "2" && (
+              <div className="flex w-full items-center justify-end">
                 <button
                   type="button"
                   onClick={() => setConfig({ colorCount: "3" })}
@@ -836,10 +1156,8 @@ export function ControlPanel() {
                   <Icon name="add" />
                   <span className="font-sans text-mobile-text-md-regular text-text-black">Add color</span>
                 </button>
-              )}
-            </div>
-
-            <GradientColorsBar config={config} />
+              </div>
+            )}
 
             <div className="flex flex-col gap-[16px]">
               {COLOR_FIELDS.filter(({ key }) => key !== "color3" || config.colorCount === "3").map((field) => (

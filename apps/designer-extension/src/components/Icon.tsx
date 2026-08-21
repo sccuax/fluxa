@@ -10,7 +10,10 @@ export type IconName =
   | "account"
   | "remove"
   | "add"
-  | "close";
+  | "close"
+  | "copy"
+  | "eyedropper"
+  | "cube";
 
 // SVG markup lives inline here (not imported from an assets folder) so
 // adding a new icon is a one-file edit - see the paste.txt example this
@@ -121,6 +124,52 @@ const icons: Record<IconName, (props: SVGProps<SVGSVGElement>) => ReactElement> 
   close: (props) => (
     <svg width="11" height="11" viewBox="0 0 11 11" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
       <path d="M1 1L10 10M1 10L10 1L1 10Z" stroke="#2D2C29" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  ),
+  copy: (props) => (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+      <path
+        d="M5.33329 10.6667H3.99996C3.64634 10.6667 3.3072 10.5263 3.05715 10.2762C2.8071 10.0262 2.66663 9.68704 2.66663 9.33341V4.00008C2.66663 3.64646 2.8071 3.30732 3.05715 3.05727C3.3072 2.80722 3.64634 2.66675 3.99996 2.66675H9.33329C9.68691 2.66675 10.0261 2.80722 10.2761 3.05727C10.5262 3.30732 10.6666 3.64646 10.6666 4.00008V5.33341M6.66663 13.3334H12C12.3536 13.3334 12.6927 13.1929 12.9428 12.9429C13.1928 12.6928 13.3333 12.3537 13.3333 12.0001V6.66675C13.3333 6.31313 13.1928 5.97399 12.9428 5.72394C12.6927 5.47389 12.3536 5.33341 12 5.33341H6.66663C6.313 5.33341 5.97387 5.47389 5.72382 5.72394C5.47377 5.97399 5.33329 6.31313 5.33329 6.66675V12.0001C5.33329 12.3537 5.47377 12.6928 5.72382 12.9429C5.97387 13.1929 6.313 13.3334 6.66663 13.3334Z"
+        stroke="currentColor"
+        strokeWidth="1.33333"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  ),
+  // Real Figma Dev Mode asset (copy-paste/paste.txt), replacing the earlier
+  // hand-drawn placeholder. The pasted svg wrapped its path in a
+  // <clipPath>/<defs> pair clipping to the full 0-16 viewBox - every path
+  // coordinate already stays within that range on its own (checked, not
+  // assumed), so the clip was a no-op and is dropped here rather than kept
+  // (an unused clipPath id is also a real risk in this file specifically,
+  // since icons[name] render functions are invoked directly rather than
+  // mounted as their own component - a duplicate id would collide if this
+  // icon were ever rendered twice at once). stroke swapped from the pasted
+  // fixed #858179 to currentColor, matching every other interactive icon in
+  // this file, since EyeDropperButton drives its color via hover/disabled
+  // state.
+  eyedropper: (props) => (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+      <path
+        d="M8.00016 5.99997L2.39083 11.6093C2.14076 11.8593 2.00024 12.1984 2.00016 12.552V13.448C2.00009 13.8016 1.85956 14.1406 1.6095 14.3906M1.6095 14.3906C1.85949 14.1406 2.19857 14 2.55216 14H3.44816C3.80176 13.9999 4.14084 13.8594 4.39083 13.6093L10.0002 7.99997M1.6095 14.3906L1.3335 14.6666M12.0002 5.99997L12.2668 6.26664C12.3982 6.39796 12.5023 6.55386 12.5734 6.72544C12.6445 6.89702 12.681 7.08092 12.681 7.26664C12.681 7.45236 12.6445 7.63625 12.5734 7.80783C12.5023 7.97942 12.3982 8.13532 12.2668 8.26664C12.1355 8.39796 11.9796 8.50213 11.808 8.5732C11.6364 8.64427 11.4525 8.68085 11.2668 8.68085C11.0811 8.68085 10.8972 8.64427 10.7256 8.5732C10.5541 8.50213 10.3982 8.39796 10.2668 8.26664L7.7335 5.73331C7.46828 5.46809 7.31928 5.10838 7.31928 4.73331C7.31928 4.54759 7.35586 4.36369 7.42693 4.19211C7.498 4.02053 7.60217 3.86463 7.7335 3.73331C7.86482 3.60198 8.02072 3.49781 8.1923 3.42674C8.36388 3.35567 8.54778 3.31909 8.7335 3.31909C9.10857 3.31909 9.46828 3.46809 9.7335 3.73331L10.0002 3.99997L12.2668 1.73331C12.532 1.46809 12.8918 1.31909 13.2668 1.31909C13.6419 1.31909 14.0016 1.46809 14.2668 1.73331C14.532 1.99852 14.681 2.35823 14.681 2.73331C14.681 3.10838 14.532 3.46809 14.2668 3.73331L12.0002 5.99997Z"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  ),
+  // Real Figma Dev Mode asset (copy-paste/paste.txt) - an isometric cube
+  // outline, used by AppliedGradientsMenu.tsx's rows to mark each listed
+  // element.
+  cube: (props) => (
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+      <path
+        d="M6 10.5L2 8.5V3.5L6 1.5L10 3.5V8.5L6 10.5ZM10 3.5L6 5.5M2 3.5L6 5.5M6 5.5V10.5"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   ),
 };

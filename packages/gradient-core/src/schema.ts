@@ -5,7 +5,15 @@ import { z } from "zod";
 // Verify field names against the installed @shadergradient/react types
 // before relying on this for production - the upstream API can change.
 export const gradientTypeSchema = z.enum(["plane", "sphere", "waterPlane"]);
-export const shaderTypeSchema = z.enum(["defaults", "positionVaryingColor"]);
+// "positionVaryingColor" (this schema's previous value) doesn't exist in the
+// installed package at all - verified directly against its own compiled
+// export list (dist/shaders/index.mjs), which only ever exports these four
+// names. Passing the old, invalid value crashed the real render with
+// "Cannot read properties of undefined (reading 'waterPlane')" - the
+// library's internal shader-variant lookup returned undefined for an
+// unrecognized name, then a second lookup by `type` on that undefined blew
+// up. Confirmed a real bug this way, not guessed from memory.
+export const shaderTypeSchema = z.enum(["defaults", "cosmic", "glass", "positionMix"]);
 export const lightTypeSchema = z.enum(["env", "3d"]);
 export const environmentPresetSchema = z.enum(["city", "dawn", "lobby"]);
 export const toggleSchema = z.enum(["on", "off"]);
@@ -41,6 +49,17 @@ export const gradientConfigSchema = z.object({
   color1Percent: z.number().min(0).max(100).default(34),
   color2Percent: z.number().min(0).max(100).default(33),
   color3Percent: z.number().min(0).max(100).default(33),
+
+  // Same "purely UI/data, not wired to the live render" situation as
+  // colorNPercent above, for the same reason: color1-3 are plain opaque hex
+  // strings, and ShaderGradient's shader has no per-color alpha uniform to
+  // feed even if this app stored one - there's no way to make a color
+  // partially transparent in the real WebGL render without the same
+  // self-authored-shader effort deferred in CLAUDE.md. Kept here so the
+  // value round-trips through presets once that exists.
+  color1Opacity: z.number().min(0).max(100).default(100),
+  color2Opacity: z.number().min(0).max(100).default(100),
+  color3Opacity: z.number().min(0).max(100).default(100),
 
   wireframe: z.boolean().default(false),
   animate: toggleSchema.default("on"),

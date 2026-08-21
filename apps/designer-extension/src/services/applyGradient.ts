@@ -1,6 +1,7 @@
 import type { GradientConfig } from "@fluxa/gradient-core";
 import { getWebflowDesigner } from "./webflowDesigner";
 import { buildGradientEmbedCode } from "./gradientEmbedScript";
+import { resolveLabel } from "../hooks/useSelectedElement";
 
 // Elements the gradient can be applied to - anything with both Children (so we can
 // prepend the HtmlEmbed) and Styles (so we can give it/its target a positioning
@@ -125,4 +126,39 @@ export async function applyGradientToElement(
   await embed.setStyles([embedStyle]);
 
   await ensurePositioningContext(webflowApi, target);
+}
+
+export interface AppliedGradient {
+  element: GradientTarget;
+  label: string;
+}
+
+// Scans the current page (webflow.getAllElements() - the Designer API's own
+// doc comment confirms this is page/component-scoped, not site-wide) for
+// every element with a live Fluxa gradient embed applied - i.e. every
+// GradientTarget-eligible element whose *first* child is an HtmlEmbed
+// carrying MARKER_ATTRIBUTE (the same idempotent-re-apply marker
+// findExistingGradientEmbed above already checks, just from the other
+// direction). There's no parent/reverse-lookup in the Designer API for
+// regular elements (checked its own typings - only asset/page folders and
+// Style expose a getParent()), so this has to walk every eligible element on
+// the page and check its own first child, rather than walking down from a
+// single root once.
+export async function findAppliedGradients(): Promise<AppliedGradient[]> {
+  const webflowApi = getWebflowDesigner();
+  const allElements = await webflowApi.getAllElements();
+  const results: AppliedGradient[] = [];
+
+  for (const element of allElements) {
+    if (!canApplyGradient(element)) continue;
+    const children = await element.getChildren();
+    const first = children[0];
+    if (!first || first.type !== "HtmlEmbed") continue;
+    const marker = await first.getAttributeValue(MARKER_ATTRIBUTE);
+    if (marker !== MARKER_VALUE) continue;
+
+    results.push({ element, label: (await resolveLabel(element)) ?? "Unnamed element" });
+  }
+
+  return results;
 }

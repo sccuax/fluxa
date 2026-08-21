@@ -22,7 +22,10 @@ interface SelectedElementState {
   error: string | null;
 }
 
-async function resolveLabel(element: AnyElement): Promise<string | null> {
+// Exported for AppliedGradientsMenu.tsx (DashboardHeader's chevron dropdown),
+// which needs the exact same label-resolution logic for elements it finds by
+// scanning the page rather than by polling the current selection.
+export async function resolveLabel(element: AnyElement): Promise<string | null> {
   if (element.styles) {
     const styles = await element.getStyles();
     const named = styles?.find((style) => style?.name);

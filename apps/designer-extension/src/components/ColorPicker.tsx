@@ -153,21 +153,52 @@ export function parseHslString(raw: string): string | null {
 }
 
 const THUMB_SIZE = 12;
-const THUMB_RADIUS = THUMB_SIZE / 2;
 
-// Insets a 0-1 fraction so a THUMB_SIZE thumb, centered via
-// -translate-1/2, never crosses its track's own edge at the 0%/100%
-// extremes - the exact same bleed bug already found and fixed once on
-// GradientColorsBar's ring markers, generalized here as a CSS `calc()`
-// string. Uses "100%" rather than a hardcoded track size so it stays correct
-// regardless of the track's actual rendered pixel size (the saturation
-// square's width is whatever's left in its flex row, not a fixed number).
-function insetPercent(fraction: number): string {
-  return `calc(${THUMB_RADIUS}px + (100% - ${THUMB_SIZE}px) * ${fraction})`;
+// Insets a 0-1 fraction so a `size`px thumb, centered via -translate-1/2,
+// never crosses its track's own edge at the 0%/100% extremes - the exact
+// same bleed bug already found and fixed once on GradientColorsBar's ring
+// markers, generalized here as a CSS `calc()` string. Uses "100%" rather
+// than a hardcoded track size so it stays correct regardless of the track's
+// actual rendered pixel size (the saturation square's width is whatever's
+// left in its flex row, not a fixed number). `size` defaults to the
+// saturation thumb's own THUMB_SIZE; the hue thumb below passes its own
+// (different) height instead.
+function insetPercent(fraction: number, size: number = THUMB_SIZE): string {
+  return `calc(${size / 2}px + (100% - ${size}px) * ${fraction})`;
 }
 
 const THUMB_CLASSNAME =
-  "pointer-events-none absolute h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border border-border-border bg-background-white";
+  "pointer-events-none absolute h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-[3px] border-background-white bg-transparent";
+
+// The hue bar's own thumb - a real Figma Dev Mode SVG (copy-paste'd, see
+// paste.txt), not the saturation square's circular THUMB_CLASSNAME. It's a
+// horizontal grip line with a small circle at each end, deliberately 31px
+// wide even though the hue bar itself is only 23px (HUE_TRACK_WIDTH) - the
+// two circles' centers sit exactly 23px apart (4px in from each edge of the
+// svg), matching the bar's width exactly, so centering this wider svg over
+// the bar via left-1/2 + -translate-x-1/2 lands each circle precisely on
+// the bar's own left/right edge by design, not by coincidence - the circles
+// are meant to overhang the track's sides as grab handles.
+const HUE_THUMB_WIDTH = 31;
+const HUE_THUMB_HEIGHT = 8;
+
+function HueThumb({ top }: { top: string }) {
+  return (
+    <svg
+      width={HUE_THUMB_WIDTH}
+      height={HUE_THUMB_HEIGHT}
+      viewBox="0 0 31 8"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      style={{ top }}
+      className="pointer-events-none absolute left-1/2 -translate-x-1/2 -translate-y-1/2"
+    >
+      <path d="M4 4H26.5" stroke="#D9D3C6" />
+      <circle cx="4" cy="4" r="3.5" fill="#FBFBFA" stroke="#D9D3C6" />
+      <circle cx="27" cy="4" r="3.5" fill="#FBFBFA" stroke="#D9D3C6" />
+    </svg>
+  );
+}
 
 // Saturation square (left, fills remaining row width) + a real vertical hue
 // bar (right, 23px) - a row with an 8px gap, both capped at 216px tall, per
@@ -177,6 +208,48 @@ export function ColorPicker({ value, onChange }: { value: string; onChange: (hex
   const saturationRef = useRef<HTMLDivElement>(null);
   const hueRef = useRef<HTMLDivElement>(null);
   const draggingRef = useRef<"saturation" | "hue" | null>(null);
+  // `onChange` is a fresh inline function every render at the call site
+  // (ColorRow's `(value) => setConfig({ [key]: value })`) - a real,
+  // measured perf bug found by testing: the window-listener effect below
+  // used to depend on [onChange] directly, so every pointermove -> onChange
+  // -> store update -> re-render cycle tore down and re-added both window
+  // listeners on the very next frame, for the entire duration of a drag.
+  // Mirroring it into a ref instead lets that effect mount its listeners
+  // once and never re-subscribe, while still always calling the latest
+  // onChange via the ref inside the handler.
+  const onChangeRef = useRef(onChange);
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
+
+  const rafRef = useRef<number | null>(null);
+  const pendingHexRef = useRef<string | null>(null);
+
+  // Coalesces onChange calls to at most once per animation frame. Each
+  // pointermove computes a fresh hex value and would otherwise call
+  // onChange synchronously on every single event - which cascades into the
+  // Zustand store, a re-render of the whole ControlPanel tree, AND a full
+  // GradientCanvas 3D re-render (even while it's hidden behind this modal -
+  // it stays mounted, see EditorTab.tsx). Native pointermove can fire far
+  // more often than the browser can actually paint, so that downstream work
+  // was competing with this component's own thumb-position update for the
+  // same paint - the real cause of a felt "lag" on the thumb itself, even
+  // though the thumb's own hsv state update below was always synchronous
+  // and cheap on its own. Only the *last* value computed within a frame is
+  // ever sent onward - earlier ones in that same frame would've been
+  // superseded before anyone could see them anyway.
+  function scheduleOnChange(hex: string) {
+    pendingHexRef.current = hex;
+    if (rafRef.current === null) {
+      rafRef.current = requestAnimationFrame(() => {
+        rafRef.current = null;
+        if (pendingHexRef.current !== null) {
+          onChangeRef.current(pendingHexRef.current);
+          pendingHexRef.current = null;
+        }
+      });
+    }
+  }
 
   // Re-derive from `value` only when it changed for a reason other than our
   // own onChange below (e.g. the row's hex text input was edited directly) -
@@ -190,6 +263,8 @@ export function ColorPicker({ value, onChange }: { value: string; onChange: (hex
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value]);
 
+  // Mounts its window listeners once ([] deps, not [onChange] - see
+  // onChangeRef's own comment above for why) rather than on every render.
   useEffect(() => {
     function handleMove(event: PointerEvent) {
       if (draggingRef.current === "saturation" && saturationRef.current) {
@@ -198,7 +273,7 @@ export function ColorPicker({ value, onChange }: { value: string; onChange: (hex
         const v = clamp(1 - (event.clientY - rect.top) / rect.height, 0, 1);
         setHsv((current) => {
           const next = { ...current, s, v };
-          onChange(hsvToHex(next));
+          scheduleOnChange(hsvToHex(next));
           return next;
         });
       } else if (draggingRef.current === "hue" && hueRef.current) {
@@ -206,7 +281,7 @@ export function ColorPicker({ value, onChange }: { value: string; onChange: (hex
         const h = clamp((event.clientY - rect.top) / rect.height, 0, 1) * 360;
         setHsv((current) => {
           const next = { ...current, h };
-          onChange(hsvToHex(next));
+          scheduleOnChange(hsvToHex(next));
           return next;
         });
       }
@@ -219,8 +294,9 @@ export function ColorPicker({ value, onChange }: { value: string; onChange: (hex
     return () => {
       window.removeEventListener("pointermove", handleMove);
       window.removeEventListener("pointerup", handleUp);
+      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
     };
-  }, [onChange]);
+  }, []);
 
   const hueColor = hsvToHex({ h: hsv.h, s: 1, v: 1 });
 
@@ -229,6 +305,14 @@ export function ColorPicker({ value, onChange }: { value: string; onChange: (hex
       <div
         ref={saturationRef}
         onPointerDown={(event) => {
+          // Without this, the browser treats the drag as a native
+          // text/image-selection drag - harmless while the pointer stays
+          // over this element, but the moment a fast drag crosses outside
+          // it (or over the hue bar/thumb svg), the OS shows a "not-
+          // allowed" (no-drop) cursor for the rest of the drag. preventDefault
+          // here suppresses that native drag-select gesture from ever
+          // starting, leaving only our own pointermove-driven dragging.
+          event.preventDefault();
           draggingRef.current = "saturation";
           const rect = event.currentTarget.getBoundingClientRect();
           const s = clamp((event.clientX - rect.left) / rect.width, 0, 1);
@@ -237,7 +321,7 @@ export function ColorPicker({ value, onChange }: { value: string; onChange: (hex
           setHsv(next);
           onChange(hsvToHex(next));
         }}
-        className="relative h-[216px] max-h-[216px] w-full shrink-0 touch-none rounded-[4px] cursor-crosshair"
+        className="relative h-[216px] max-w-[249px] max-h-[216px] w-full shrink-0 touch-none rounded-[4px] cursor-crosshair"
         style={{
           backgroundImage: "linear-gradient(to top, #000, transparent), linear-gradient(to right, #fff, transparent)",
           backgroundColor: hueColor,
@@ -252,6 +336,9 @@ export function ColorPicker({ value, onChange }: { value: string; onChange: (hex
       <div
         ref={hueRef}
         onPointerDown={(event) => {
+          // Same native-drag-select suppression as the saturation square
+          // above.
+          event.preventDefault();
           draggingRef.current = "hue";
           const rect = event.currentTarget.getBoundingClientRect();
           const h = clamp((event.clientY - rect.top) / rect.height, 0, 1) * 360;
@@ -262,7 +349,7 @@ export function ColorPicker({ value, onChange }: { value: string; onChange: (hex
         className="relative h-[216px] max-h-[216px] w-[23px] shrink-0 touch-none rounded-[4px] cursor-pointer"
         style={{ background: "linear-gradient(180deg, red, #ff0, #0f0, #0ff, #00f, #f0f, red)" }}
       >
-        <div className={THUMB_CLASSNAME} style={{ left: "50%", top: insetPercent(hsv.h / 360) }} />
+        <HueThumb top={insetPercent(hsv.h / 360, HUE_THUMB_HEIGHT)} />
       </div>
     </div>
   );
