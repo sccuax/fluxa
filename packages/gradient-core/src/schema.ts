@@ -7,13 +7,17 @@ import { z } from "zod";
 export const gradientTypeSchema = z.enum(["plane", "sphere", "waterPlane"]);
 // "positionVaryingColor" (this schema's previous value) doesn't exist in the
 // installed package at all - verified directly against its own compiled
-// export list (dist/shaders/index.mjs), which only ever exports these four
-// names. Passing the old, invalid value crashed the real render with
-// "Cannot read properties of undefined (reading 'waterPlane')" - the
-// library's internal shader-variant lookup returned undefined for an
-// unrecognized name, then a second lookup by `type` on that undefined blew
-// up. Confirmed a real bug this way, not guessed from memory.
-export const shaderTypeSchema = z.enum(["defaults", "cosmic", "glass", "positionMix"]);
+// export list (dist/shaders/index.mjs), which only ever exports four names:
+// defaults, cosmic, glass, positionMix. Passing the old, invalid value
+// crashed the real render with "Cannot read properties of undefined
+// (reading 'waterPlane')" - the library's internal shader-variant lookup
+// returned undefined for an unrecognized name, then a second lookup by
+// `type` on that undefined blew up. Confirmed a real bug this way, not
+// guessed from memory. "glass" is a real, valid variant in the library but
+// is deliberately excluded from this app's own schema - dropped per explicit
+// product direction after being tried in the UI (only Default/Cosmic/
+// Position mix are offered).
+export const shaderTypeSchema = z.enum(["defaults", "cosmic", "positionMix"]);
 export const lightTypeSchema = z.enum(["env", "3d"]);
 export const environmentPresetSchema = z.enum(["city", "dawn", "lobby"]);
 export const toggleSchema = z.enum(["on", "off"]);
@@ -90,8 +94,8 @@ export const gradientConfigSchema = z.object({
   cDistance: z.number().min(1).default(4),
   cameraZoom: z.number().min(0.1).default(1),
 
-  lightType: lightTypeSchema.default("env"),
-  brightness: z.number().min(0).max(3).default(1),
+  lightType: lightTypeSchema.default("3d"),
+  brightness: z.number().min(0).max(3).default(1.5),
   envPreset: environmentPresetSchema.default("city"),
   reflection: z.number().min(0).max(1).default(0.1),
 

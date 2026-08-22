@@ -79,7 +79,7 @@ export function EditorTab() {
 
       <div className="w-full items-center flex min-h-0 flex-1">{hasSelection ? <ControlPanel /> : <SupportedElementsGuide />}</div>
 
-      <div className="w-full shrink-0 px-[20px] py-[12px]">
+      <div className="w-full shrink-0 px-[20px] py-[12px] border-t border-border-border">
         <ButtonPrimary disabled={!hasSelection || applying} onClick={handleApplyGradient}>
           {applying ? "Applying…" : "Apply gradient"}
         </ButtonPrimary>

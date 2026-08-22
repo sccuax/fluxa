@@ -13,7 +13,10 @@ export type IconName =
   | "close"
   | "copy"
   | "eyedropper"
-  | "cube";
+  | "cube"
+  | "about"
+  | "preferences"
+  | "cookies";
 
 // SVG markup lives inline here (not imported from an assets folder) so
 // adding a new icon is a one-file edit - see the paste.txt example this
@@ -166,6 +169,61 @@ const icons: Record<IconName, (props: SVGProps<SVGSVGElement>) => ReactElement> 
     <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
       <path
         d="M6 10.5L2 8.5V3.5L6 1.5L10 3.5V8.5L6 10.5ZM10 3.5L6 5.5M2 3.5L6 5.5M6 5.5V10.5"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  ),
+  // Real Figma Dev Mode assets (copy-paste/paste.txt) - HeaderAppMenu.tsx's
+  // "..." menu rows. Stroke swapped from the pasted fixed colors (About's
+  // export was pink/#E23F8C, Preferences/Cookies were gray/#858179) to
+  // currentColor - a real bug found by testing: with the fixed pink kept,
+  // About rendered visibly "highlighted" (accent-colored) the instant the
+  // menu opened, even though nothing had been clicked yet. HeaderAppMenu
+  // drives each row's actual color via its own click state (text-secondary
+  // at rest, text-color-accent once clicked - see that component's
+  // activeLabel), the same way AppliedGradientsMenu's "cube" icon already
+  // does for its own rows - these three need to follow that same pattern to
+  // stay in sync with their row's real state instead of a hardcoded color.
+  about: (props) => (
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+      <path
+        d="M4.114 4.5C4.3885 3.9175 5.129 3.5 6 3.5C7.105 3.5 8 4.1715 8 5C8 5.7 7.361 6.2875 6.497 6.4535C6.226 6.5055 6 6.7235 6 7M6 8.5H6.005M10.5 6C10.5 6.59095 10.3836 7.17611 10.1575 7.72208C9.93131 8.26804 9.59984 8.76412 9.18198 9.18198C8.76412 9.59984 8.26804 9.93131 7.72208 10.1575C7.17611 10.3836 6.59095 10.5 6 10.5C5.40905 10.5 4.82389 10.3836 4.27792 10.1575C3.73196 9.93131 3.23588 9.59984 2.81802 9.18198C2.40016 8.76412 2.06869 8.26804 1.84254 7.72208C1.6164 7.17611 1.5 6.59095 1.5 6C1.5 4.80653 1.97411 3.66193 2.81802 2.81802C3.66193 1.97411 4.80653 1.5 6 1.5C7.19347 1.5 8.33807 1.97411 9.18198 2.81802C10.0259 3.66193 10.5 4.80653 10.5 6Z"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  ),
+  preferences: (props) => (
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+      <path
+        d="M6.8375 2.1585C6.6245 1.2805 5.3755 1.2805 5.1625 2.1585C5.0245 2.726 4.3745 2.995 3.8765 2.691C3.1045 2.221 2.2215 3.1045 2.6915 3.876C2.76215 3.99188 2.80444 4.1228 2.81493 4.25811C2.82543 4.39342 2.80382 4.52929 2.75187 4.65467C2.69993 4.78006 2.61911 4.8914 2.516 4.97964C2.41289 5.06789 2.2904 5.13054 2.1585 5.1625C1.2805 5.3755 1.2805 6.6245 2.1585 6.8375C2.29028 6.86955 2.41264 6.93224 2.51564 7.02047C2.61863 7.10871 2.69935 7.22001 2.75124 7.34531C2.80312 7.47062 2.82471 7.6064 2.81424 7.74161C2.80378 7.87683 2.76155 8.00767 2.691 8.1235C2.221 8.8955 3.1045 9.7785 3.876 9.3085C3.99188 9.23785 4.1228 9.19556 4.25811 9.18507C4.39342 9.17457 4.52929 9.19618 4.65467 9.24813C4.78006 9.30007 4.8914 9.38089 4.97964 9.484C5.06789 9.58711 5.13054 9.7096 5.1625 9.8415C5.3755 10.7195 6.6245 10.7195 6.8375 9.8415C6.86955 9.70972 6.93224 9.58736 7.02047 9.48436C7.10871 9.38137 7.22001 9.30065 7.34531 9.24876C7.47062 9.19688 7.6064 9.17529 7.74161 9.18576C7.87683 9.19622 8.00767 9.23845 8.1235 9.309C8.8955 9.779 9.7785 8.8955 9.3085 8.124C9.23785 8.00812 9.19556 7.8772 9.18507 7.74189C9.17457 7.60658 9.19618 7.47071 9.24813 7.34533C9.30007 7.21994 9.38089 7.1086 9.484 7.02036C9.58711 6.93211 9.7096 6.86946 9.8415 6.8375C10.7195 6.6245 10.7195 5.3755 9.8415 5.1625C9.70972 5.13045 9.58736 5.06776 9.48436 4.97953C9.38137 4.89129 9.30065 4.77999 9.24876 4.65469C9.19688 4.52938 9.17529 4.3936 9.18576 4.25839C9.19622 4.12317 9.23845 3.99233 9.309 3.8765C9.779 3.1045 8.8955 2.2215 8.124 2.6915C8.00812 2.76215 7.8772 2.80444 7.74189 2.81493C7.60658 2.82543 7.47071 2.80382 7.34533 2.75187C7.21994 2.69993 7.1086 2.61911 7.02036 2.516C6.93211 2.41289 6.86946 2.2904 6.8375 2.1585Z"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M7.06066 7.06066C7.34196 6.77936 7.5 6.39782 7.5 6C7.5 5.60218 7.34196 5.22064 7.06066 4.93934C6.77936 4.65804 6.39782 4.5 6 4.5C5.60218 4.5 5.22064 4.65804 4.93934 4.93934C4.65804 5.22064 4.5 5.60218 4.5 6C4.5 6.39782 4.65804 6.77936 4.93934 7.06066C5.22064 7.34196 5.60218 7.5 6 7.5C6.39782 7.5 6.77936 7.34196 7.06066 7.06066Z"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  ),
+  // The pasted svg wrapped its path in a <clipPath>/<defs> pair clipping to
+  // the full 0-12 viewBox - every path coordinate already stays within that
+  // range on its own (checked, not assumed - same diagnosis as the
+  // eyedropper icon above), so the clip was a no-op and is dropped here
+  // rather than kept (an unused clipPath id is also a real risk in this
+  // file specifically, since icons[name] render functions are invoked
+  // directly rather than mounted as their own component - a duplicate id
+  // would collide if this icon were ever rendered twice at once).
+  cookies: (props) => (
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+      <path
+        d="M4.25 4.25V4.255M8 7.75V7.755M6 6V6.005M5.5 8.5V8.505M3.5 7V7.005M6 1C5.0111 1 4.0444 1.29324 3.22215 1.84265C2.39991 2.39206 1.75904 3.17295 1.3806 4.08658C1.00217 5.00021 0.90315 6.00555 1.09608 6.97545C1.289 7.94536 1.76521 8.83627 2.46447 9.53553C3.16373 10.2348 4.05465 10.711 5.02455 10.9039C5.99446 11.0969 6.99979 10.9978 7.91342 10.6194C8.82705 10.241 9.60794 9.6001 10.1573 8.77785C10.7068 7.95561 11 6.98891 11 6C10.6525 6.107 10.2824 6.11725 9.92953 6.02964C9.57665 5.94203 9.25433 5.75988 8.99723 5.50278C8.74013 5.24567 8.55798 4.92335 8.47037 4.57047C8.38276 4.21759 8.393 3.8475 8.5 3.5C8.15251 3.607 7.78242 3.61725 7.42953 3.52964C7.07665 3.44203 6.75433 3.25988 6.49723 3.00278C6.24013 2.74567 6.05798 2.42335 5.97037 2.07047C5.88276 1.71758 5.893 1.3475 6 1Z"
         stroke="currentColor"
         strokeLinecap="round"
         strokeLinejoin="round"

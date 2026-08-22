@@ -2,17 +2,17 @@ import { useRef, useState } from "react";
 import { FluxaLogoLockup } from "./FluxaLogoLockup";
 import { Icon } from "./Icon";
 import { AppliedGradientsMenu } from "./AppliedGradientsMenu";
+import { HeaderAppMenu } from "./HeaderAppMenu";
 import { useSelectedElement } from "../hooks/useSelectedElement";
-
-interface DashboardHeaderProps {
-  onOpenMenu: () => void;
-}
 
 // Persistent top bar for DashboardScreen - stays mounted across the
 // Editor/Presets/Account tabs (see DashboardNav), unlike the auth flow's
-// full-screen transitions. onOpenMenu is owned by the parent rather than
-// this component managing its own popover state, since the "About /
-// Preferences / Cookies / version number" menu content isn't built yet.
+// full-screen transitions. The "..." menu's open state is owned locally here
+// (appMenuOpen below), the same way the chevron's gradientsMenuOpen already
+// is - it used to be lifted to DashboardScreen via an onOpenMenu prop, back
+// when the "About/Preferences/Cookies/version number" menu content wasn't
+// built yet; now that HeaderAppMenu exists, that prop was dead weight (a
+// permanent no-op stub) and was removed.
 // Class names (the most common source of `label`, see useSelectedElement's
 // own priority order) can run arbitrarily long - truncated to 12 characters
 // + an ellipsis so a long one never pushes the chevron/menu button out of
@@ -29,10 +29,12 @@ export function truncateLabel(label: string): string {
   return label.length > LABEL_MAX_CHARS ? `${label.slice(0, LABEL_MAX_CHARS)}…` : label;
 }
 
-export function DashboardHeader({ onOpenMenu }: DashboardHeaderProps) {
+export function DashboardHeader() {
   const { label } = useSelectedElement();
   const [gradientsMenuOpen, setGradientsMenuOpen] = useState(false);
+  const [appMenuOpen, setAppMenuOpen] = useState(false);
   const chevronButtonRef = useRef<HTMLButtonElement>(null);
+  const appMenuButtonRef = useRef<HTMLButtonElement>(null);
 
   return (
     // `relative` lives here, not on the small label+chevron wrapper below -
@@ -66,8 +68,9 @@ export function DashboardHeader({ onOpenMenu }: DashboardHeaderProps) {
         </div>
 
         <button
+          ref={appMenuButtonRef}
           type="button"
-          onClick={onOpenMenu}
+          onClick={() => setAppMenuOpen((current) => !current)}
           aria-label="Open menu"
           className="text-text-white"
         >
@@ -75,15 +78,20 @@ export function DashboardHeader({ onOpenMenu }: DashboardHeaderProps) {
         </button>
       </div>
 
-      {/* Rendered unconditionally (not `{gradientsMenuOpen && ...}`) - the
-          menu now owns its own mount lifecycle so it can stay mounted
-          briefly after `open` goes false to actually play its exit
-          animation instead of vanishing instantly. See its own comment for
-          the full reasoning. */}
+      {/* Both rendered unconditionally (not `{someMenuOpen && ...}`) - each
+          dropdown now owns its own mount lifecycle (via the shared Dropdown
+          component) so it can stay mounted briefly after `open` goes false
+          to actually play its exit animation instead of vanishing
+          instantly. See Dropdown.tsx's own comment for the full reasoning. */}
       <AppliedGradientsMenu
         open={gradientsMenuOpen}
         onCloseRequest={() => setGradientsMenuOpen(false)}
         triggerRef={chevronButtonRef}
+      />
+      <HeaderAppMenu
+        open={appMenuOpen}
+        onCloseRequest={() => setAppMenuOpen(false)}
+        triggerRef={appMenuButtonRef}
       />
     </header>
   );

@@ -29,22 +29,21 @@ const TYPE_OPTIONS: Array<{ label: string; value: GradientConfig["type"] }> = [
   { label: "Liquid", value: "waterPlane" },
 ];
 
-// A real @shadergradient/react prop that had no UI control at all until now
-// (found while auditing the schema for fields with zero UI exposure) - type
-// + shader together select which of the library's compiled GLSL shader
-// variants actually runs (see ColorRow's own comment above on why color
-// blending can't be reached by schema fields alone). Trying it per explicit
-// user direction ("si no me gusta lo eliminamos") - not a confirmed keeper
-// yet. Options match gradient-core's shaderTypeSchema exactly - the four
-// real variant names verified against the installed package's own compiled
-// export list (dist/shaders/index.mjs), not the single invalid value this
-// schema field originally shipped with (see that schema's own comment for
-// the crash it caused).
+// A real @shadergradient/react prop that had no UI control at all until it
+// was added here (found while auditing the schema for fields with zero UI
+// exposure) - type + shader together select which of the library's compiled
+// GLSL shader variants actually runs (see ColorRow's own comment above on
+// why color blending can't be reached by schema fields alone). "Glass" was
+// tried too but dropped per explicit direction - only Default/Cosmic/
+// Position mix are kept. Options match gradient-core's shaderTypeSchema
+// exactly - the real variant names verified against the installed package's
+// own compiled export list (dist/shaders/index.mjs), not the single invalid
+// value this schema field originally shipped with (see that schema's own
+// comment for the crash it caused).
 const SHADER_OPTIONS: Array<{ label: string; value: GradientConfig["shader"] }> = [
   { label: "Default", value: "defaults" },
   { label: "Cosmic", value: "cosmic" },
-  { label: "Glass", value: "glass" },
-  { label: "Position mix", value: "positionMix" },
+  { label: "mix", value: "positionMix" },
 ];
 
 const GRAIN_OPTIONS: Array<{ label: string; value: GradientConfig["grain"] }> = [
@@ -387,30 +386,165 @@ const ORBIT_INPUT_CLASSNAME = (focused: boolean) =>
   }`;
 
 const AXIS_INPUT_CLASSNAME = (focused: boolean) =>
-  `flex max-w-[46.33px] size-fit items-center justify-center rounded-[4px] border border-border-border px-2 py-1 text-center font-sans text-mobile-text-md-regular appearance-none focus:outline-none ${
+  `flex max-w-[46.33px] size-fit items-center justify-center rounded-[4px] border border-border-border px-2 py-1 text-center font-sans text-mobile-text-md-regular appearance-none cursor-ew-resize focus:outline-none ${
     focused ? "text-text-color-accent" : "text-text-secondary"
   }`;
+
+// Sensitivity for ScrubHandle below: dragging this many horizontal pixels
+// slides across a field's entire [min,max] range - a simple default that at
+// least normalizes "how far you drag" across fields with very different
+// ranges (Azimuth's 360 vs Position's 10), not a value taken from any design
+// spec. DRAG_THRESHOLD_PX is how far the pointer has to move before a
+// pointerdown on an editable input (not an icon) is treated as a drag rather
+// than a click - see ScrubHandle's own comment for why that distinction
+// matters there.
+const DRAG_RANGE_PX = 300;
+const DRAG_THRESHOLD_PX = 3;
+
+// Makes its child "scrubbable" (Blender/Figma-style number scrubbing): hover
+// shows a horizontal resize cursor, click-and-drag left/right changes the
+// field's value proportionally to horizontal movement, as an alternative to
+// RangeSlider dragging or typing directly. Reused for two different targets
+// with different pointerdown behavior:
+// - `immediate` (OrbitIcon, in the Camera tab's Orbit row below) - the child
+//   is a plain icon, not a text input, so the drag starts the instant the
+//   pointer goes down, calling preventDefault right away - the same pattern
+//   OpacitySlider/ColorPicker's saturation+hue handles already use to dodge
+//   the documented "not-allowed cursor" bug from a native drag-select
+//   gesture starting instead.
+// - non-`immediate` (wraps EditableNumberValue for Position/Rotation's
+//   inputs) - that input is still a real click-to-edit text field, and
+//   calling preventDefault on pointerdown would block its native
+//   focus-on-click behavior entirely. So there, nothing happens on
+//   pointerdown itself; only once movement crosses DRAG_THRESHOLD_PX does
+//   this treat the gesture as a scrub - blurring whatever's focused (which
+//   cancels any text edit the initial click may have started) and taking
+//   over from there. A plain click/tap (no real movement) never crosses the
+//   threshold, so it still focuses the input for typing exactly as before.
+function ScrubHandle({ value, min, max, step, onChange, immediate = false, children }: {
+  value: number;
+  min: number;
+  max: number;
+  step: number;
+  onChange: (value: number) => void;
+  immediate?: boolean;
+  children: ReactNode;
+}) {
+  const stateRef = useRef<{ dragging: boolean; startX: number; startValue: number } | null>(null);
+
+  // Same "latest ref" + rAF-coalescing fix already applied to
+  // OpacitySlider/ColorPicker's own drag handlers - see OpacitySlider's
+  // onChangeRef/scheduleOnChange comments for the full diagnosis (listener
+  // churn from a fresh onChange closure every render, then uncoalesced
+  // onChange calls competing with the drag's own next paint).
+  const onChangeRef = useRef(onChange);
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
+
+  const rafRef = useRef<number | null>(null);
+  const pendingValueRef = useRef<number | null>(null);
+  function scheduleOnChange(next: number) {
+    pendingValueRef.current = next;
+    if (rafRef.current === null) {
+      rafRef.current = requestAnimationFrame(() => {
+        rafRef.current = null;
+        if (pendingValueRef.current !== null) {
+          onChangeRef.current(pendingValueRef.current);
+          pendingValueRef.current = null;
+        }
+      });
+    }
+  }
+
+  // Keeps the resize cursor visible for the rest of the drag even once the
+  // pointer moves off the small handle itself (a plain CSS :hover cursor
+  // would otherwise revert to the default arrow there) - reset back to ""
+  // on pointerup. Also cancels whatever's currently focused, so starting a
+  // scrub (from either target) always cuts off any in-progress text edit
+  // elsewhere in the panel.
+  function startDrag() {
+    document.body.style.cursor = "ew-resize";
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+  }
+
+  useEffect(() => {
+    function handleMove(event: PointerEvent) {
+      const state = stateRef.current;
+      if (!state) return;
+      const deltaX = event.clientX - state.startX;
+      if (!state.dragging) {
+        if (Math.abs(deltaX) < DRAG_THRESHOLD_PX) return;
+        state.dragging = true;
+        startDrag();
+      }
+      const rawValue = state.startValue + (deltaX / DRAG_RANGE_PX) * (max - min);
+      const stepped = Math.round(rawValue / step) * step;
+      scheduleOnChange(clamp(stepped, min, max));
+    }
+    function handleUp() {
+      if (stateRef.current?.dragging) {
+        document.body.style.cursor = "";
+      }
+      stateRef.current = null;
+    }
+    window.addEventListener("pointermove", handleMove);
+    window.addEventListener("pointerup", handleUp);
+    return () => {
+      window.removeEventListener("pointermove", handleMove);
+      window.removeEventListener("pointerup", handleUp);
+      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- max/step also
+    // read on every move, but only min/max/step ever actually change - see
+    // OpacitySlider's own identical [] mount-once effect for why re-adding
+    // window listeners per render is the thing being avoided here.
+  }, [min, max, step]);
+
+  return (
+    <span
+      onPointerDown={(event) => {
+        if (immediate) {
+          event.preventDefault();
+          stateRef.current = { dragging: true, startX: event.clientX, startValue: value };
+          startDrag();
+        } else {
+          stateRef.current = { dragging: false, startX: event.clientX, startValue: value };
+        }
+      }}
+      className="cursor-ew-resize select-none touch-none"
+    >
+      {children}
+    </span>
+  );
+}
 
 // Shared row shape for Orbit/Position/Rotation (Camera tab): a label, then
 // one gap-[8px] row holding a gap-[8px] marker+input group per field -
 // distinct from every other NumberFieldList row in this panel. `renderMarker`
 // is the only thing that differs between them (OrbitIcon vs an AxisLabel
 // letter), so it's a prop rather than three near-identical row components.
-function IconInputRow({ label, fields, config, setConfig, renderMarker, inputClassName }: {
+// `scrubInput` wraps each field's EditableNumberValue in a ScrubHandle too -
+// on for Position/Rotation (per explicit direction: hover *the input* there),
+// off for Orbit, whose own scrub trigger is its icon instead (wrapped
+// directly in the renderMarker call site, see the Camera tab's Orbit row).
+function IconInputRow({ label, fields, config, setConfig, renderMarker, inputClassName, scrubInput = false }: {
   label: string;
   fields: NumberField[];
   config: GradientConfig;
   setConfig: (patch: Partial<GradientConfig>) => void;
   renderMarker: (field: NumberField) => ReactNode;
   inputClassName: (focused: boolean) => string;
+  scrubInput?: boolean;
 }) {
   return (
     <div className="flex w-full items-center justify-end gap-[8px]">
       <p className="font-sans mr-auto text-mobile-header-h2 text-text-black">{label}</p>
       <div className={`flex w-full items-center gap-[8px] ${ROW_CONTROLS_MAX_WIDTH}`}>
-        {fields.map((field) => (
-          <div key={field.key} className="flex items-center gap-[8px]">
-            {renderMarker(field)}
+        {fields.map((field) => {
+          const input = (
             <EditableNumberValue
               min={field.min}
               max={field.max}
@@ -419,8 +553,26 @@ function IconInputRow({ label, fields, config, setConfig, renderMarker, inputCla
               onCommit={(value) => setConfig({ [field.key]: value })}
               className={inputClassName}
             />
-          </div>
-        ))}
+          );
+          return (
+            <div key={field.key} className="flex items-center gap-[8px]">
+              {renderMarker(field)}
+              {scrubInput ? (
+                <ScrubHandle
+                  value={config[field.key]}
+                  min={field.min}
+                  max={field.max}
+                  step={field.step}
+                  onChange={(value) => setConfig({ [field.key]: value })}
+                >
+                  {input}
+                </ScrubHandle>
+              ) : (
+                input
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -1225,7 +1377,18 @@ export function ControlPanel() {
               fields={CAMERA_ANGLE_FIELDS}
               config={config}
               setConfig={setConfig}
-              renderMarker={() => <OrbitIcon />}
+              renderMarker={(field) => (
+                <ScrubHandle
+                  value={config[field.key]}
+                  min={field.min}
+                  max={field.max}
+                  step={field.step}
+                  onChange={(value) => setConfig({ [field.key]: value })}
+                  immediate
+                >
+                  <OrbitIcon />
+                </ScrubHandle>
+              )}
               inputClassName={ORBIT_INPUT_CLASSNAME}
             />
             <NumberFieldList fields={CAMERA_NUMBER_FIELDS} config={config} setConfig={setConfig} />
@@ -1237,6 +1400,7 @@ export function ControlPanel() {
               setConfig={setConfig}
               renderMarker={(field) => <AxisLabel field={field} />}
               inputClassName={AXIS_INPUT_CLASSNAME}
+              scrubInput
             />
             <IconInputRow
               label="Rotation"
@@ -1245,6 +1409,7 @@ export function ControlPanel() {
               setConfig={setConfig}
               renderMarker={(field) => <AxisLabel field={field} />}
               inputClassName={AXIS_INPUT_CLASSNAME}
+              scrubInput
             />
           </>
         )}

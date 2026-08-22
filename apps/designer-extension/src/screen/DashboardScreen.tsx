@@ -24,7 +24,7 @@ export function DashboardScreen() {
 
   return (
     <div className="flex h-screen w-full flex-col bg-white">
-      <DashboardHeader onOpenMenu={() => {}} />
+      <DashboardHeader />
       {/* flex-1 (not h-full - see CLAUDE.md's SignIn/SignUp layout gotchas
           for the same class of bug) so this takes exactly the remaining
           space between header and nav. overflow-hidden (not overflow-y-auto
