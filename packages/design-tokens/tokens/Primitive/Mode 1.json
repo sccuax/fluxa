@@ -1272,6 +1272,20 @@
           "textCase": "{textCase.none}",
           "textDecoration": "{textDecoration.none}"
         }
+      },
+      "Medium": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{General Sans}",
+          "fontWeight": "{fontWeights.general-sans-3}",
+          "lineHeight": "{lineHeights.18}",
+          "fontSize": "{fontSize.10}",
+          "letterSpacing": "{letterSpacing.2}",
+          "paragraphSpacing": "{paragraphSpacing.0}",
+          "paragraphIndent": "{paragraphIndent.0}",
+          "textCase": "{textCase.none}",
+          "textDecoration": "{textDecoration.none}"
+        }
       }
     },
     "Text md": {

@@ -12,6 +12,7 @@
     "dev:extension:browser": "pnpm --filter @fluxa/designer-extension dev",
     "dev:api": "pnpm --filter @fluxa/data-client dev",
     "dev:sandbox": "pnpm --dir sandbox dev",
+    "bundle:extension": "node scripts/bundle-extension.mjs",
     "build": "pnpm -r build",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test"

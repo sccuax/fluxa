@@ -5,7 +5,7 @@
 export function AuthHeaderBanner() {
   return (
     <div className="absolute left-0 top-0 h-[86px] w-[320px] overflow-hidden">
-      <img src="/images/signin-header-bg.svg" alt="" className="h-full w-full" />
+      <img src="./images/signin-header-bg.svg" alt="" className="h-full w-full" />
     </div>
   );
 }

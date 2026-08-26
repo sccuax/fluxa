@@ -9,6 +9,7 @@ import { sessionMiddleware } from "./middleware";
 import { authRoutes } from "./routes/auth";
 import { assetRoutes } from "./routes/assets";
 import { presetRoutes } from "./routes/presets";
+import { profileRoutes } from "./routes/profile";
 import { oauthPopupRoutes } from "./routes/oauthPopup";
 
 const app = new Hono<AppEnv>();
@@ -19,7 +20,24 @@ const app = new Hono<AppEnv>();
 // sees popup.closed flip to true almost immediately, well before the OAuth
 // round trip finishes. "same-origin-allow-popups" keeps the same isolation
 // but preserves the opener link for windows this app itself opens.
-app.use(secureHeaders({ crossOriginOpenerPolicy: "same-origin-allow-popups" }));
+//
+// crossOriginResourcePolicy defaults to "same-origin", which silently
+// blocks routes/profile.ts's avatar images from rendering at all inside the
+// Designer Extension - a different origin (*.webflow-ext.com) - the browser
+// just shows its native broken-image icon, no console error naming CORP as
+// the cause. secureHeaders() applies this middleware's own header *after*
+// next() runs (see its source), so a route handler setting this header
+// itself gets silently overwritten - it has to be configured here instead.
+// "cross-origin" is safe worker-wide: every response here is either a
+// public JSON API already gated by this file's own CORS allowlist below, or
+// (this route) a public, non-sensitive avatar image meant to be embedded
+// cross-origin in the first place.
+app.use(
+  secureHeaders({
+    crossOriginOpenerPolicy: "same-origin-allow-popups",
+    crossOriginResourcePolicy: "cross-origin",
+  }),
+);
 
 app.use(
   "*",
@@ -72,6 +90,7 @@ app.on(["POST", "GET"], "/api/auth/*", (c) => {
 app.route("/auth", authRoutes);
 app.route("/api/assets", assetRoutes);
 app.route("/api/presets", presetRoutes);
+app.route("/api/profile", profileRoutes);
 app.route("/oauth-popup-callback", oauthPopupRoutes);
 
 export default app;

@@ -67,6 +67,6 @@ export default function App() {
       <ResetPasswordScreen email={resetEmail} otp={resetOtp} onBackToSignIn={() => setScreen("signin")} />
     );
   }
-  if (screen === "dashboard") return <DashboardScreen />;
+  if (screen === "dashboard") return <DashboardScreen onSignOut={() => setScreen("signin")} />;
   return <WelcomeScreen />;
 }

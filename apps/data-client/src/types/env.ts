@@ -17,4 +17,7 @@ export interface Bindings {
   // once upgraded to Workers Paid.
   CLOUDFLARE_API_TOKEN: string;
   CLOUDFLARE_ACCOUNT_ID: string;
+  // R2 bucket for user-uploaded avatars (routes/profile.ts) - the uploaded
+  // file itself lives here, only its served URL is written to user.image.
+  AVATARS: R2Bucket;
 }

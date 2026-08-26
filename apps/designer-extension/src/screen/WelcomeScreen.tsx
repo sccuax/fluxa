@@ -113,7 +113,7 @@ export function WelcomeScreen() {
     <div className="flex h-screen items-center justify-center bg-neutral-950">
       <div
         className="flex h-[460px] w-[320px] flex-col items-center justify-center gap-[3.313rem] bg-cover bg-center px-6 text-center text-neutral-100"
-        style={{ backgroundImage: "url(/images/welcome-bg.jpg)" }}
+        style={{ backgroundImage: "url(./images/welcome-bg.jpg)" }}
       >
         <div className="flex flex-col items-center justify-center gap-[0.25rem]">
           <div className="w-[68px]">

@@ -9,6 +9,7 @@ import { FluxaLogoLockup } from "../components/FluxaLogoLockup";
 import { AuthTextField } from "../components/AuthTextField";
 import { AuthPasswordField } from "../components/AuthPasswordField";
 import { GoogleAuthButton } from "../components/GoogleAuthButton";
+import { LegalFooterLinks } from "../components/LegalFooterLinks";
 import { openGoogleSignInPopup } from "../services/googleSignIn";
 import { DATA_CLIENT_URL } from "../services/apiClient";
 
@@ -274,15 +275,7 @@ export function SignUpScreen({ onBackToSignIn }: SignUpScreenProps) {
           </div>
         </div>
 
-        {/* Footer links */}
-        <div className="flex flex-row items-center gap-[12px] pb-8">
-          <a href="#" className="text-mobile-text-md-regular text-text-secondary hover:underline">
-            Privacy policy
-          </a>
-          <a href="#" className="text-mobile-text-md-regular text-text-secondary hover:underline">
-            Terms of use
-          </a>
-        </div>
+        <LegalFooterLinks className="pb-8" />
       </div>
 
       <Modal open={showAlreadyRegisteredModal} onClose={() => setShowAlreadyRegisteredModal(false)}>

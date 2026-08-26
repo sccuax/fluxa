@@ -1,5 +1,6 @@
 node_modules
 dist
+bundle.zip
 .wrangler
 .turbo
 .env

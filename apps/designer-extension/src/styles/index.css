@@ -6,7 +6,7 @@
 
 @font-face {
   font-family: "Bricolage Grotesque";
-  src: url("/fonts/bricolage-grotesque/BricolageGrotesque-ExtraLight.woff2") format("woff2");
+  src: url("../fonts/bricolage-grotesque/BricolageGrotesque-ExtraLight.woff2") format("woff2");
   font-weight: 200;
   font-style: normal;
   font-display: swap;
@@ -14,7 +14,7 @@
 
 @font-face {
   font-family: "Bricolage Grotesque";
-  src: url("/fonts/bricolage-grotesque/BricolageGrotesque-Light.woff2") format("woff2");
+  src: url("../fonts/bricolage-grotesque/BricolageGrotesque-Light.woff2") format("woff2");
   font-weight: 300;
   font-style: normal;
   font-display: swap;
@@ -22,7 +22,7 @@
 
 @font-face {
   font-family: "Bricolage Grotesque";
-  src: url("/fonts/bricolage-grotesque/BricolageGrotesque-Regular.woff2") format("woff2");
+  src: url("../fonts/bricolage-grotesque/BricolageGrotesque-Regular.woff2") format("woff2");
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -30,7 +30,7 @@
 
 @font-face {
   font-family: "Bricolage Grotesque";
-  src: url("/fonts/bricolage-grotesque/BricolageGrotesque-Medium.woff2") format("woff2");
+  src: url("../fonts/bricolage-grotesque/BricolageGrotesque-Medium.woff2") format("woff2");
   font-weight: 500;
   font-style: normal;
   font-display: swap;
@@ -38,7 +38,7 @@
 
 @font-face {
   font-family: "Bricolage Grotesque";
-  src: url("/fonts/bricolage-grotesque/BricolageGrotesque-SemiBold.woff2") format("woff2");
+  src: url("../fonts/bricolage-grotesque/BricolageGrotesque-SemiBold.woff2") format("woff2");
   font-weight: 600;
   font-style: normal;
   font-display: swap;
@@ -46,7 +46,7 @@
 
 @font-face {
   font-family: "Bricolage Grotesque";
-  src: url("/fonts/bricolage-grotesque/BricolageGrotesque-Bold.woff2") format("woff2");
+  src: url("../fonts/bricolage-grotesque/BricolageGrotesque-Bold.woff2") format("woff2");
   font-weight: 700;
   font-style: normal;
   font-display: swap;
@@ -54,7 +54,7 @@
 
 @font-face {
   font-family: "Bricolage Grotesque";
-  src: url("/fonts/bricolage-grotesque/BricolageGrotesque-ExtraBold.woff2") format("woff2");
+  src: url("../fonts/bricolage-grotesque/BricolageGrotesque-ExtraBold.woff2") format("woff2");
   font-weight: 800;
   font-style: normal;
   font-display: swap;
@@ -62,7 +62,7 @@
 
 @font-face {
   font-family: "Bricolage Grotesque Condensed";
-  src: url("/fonts/bricolage-grotesque/BricolageGrotesque96ptCondensed-ExtraBold.woff2") format("woff2");
+  src: url("../fonts/bricolage-grotesque/BricolageGrotesque96ptCondensed-ExtraBold.woff2") format("woff2");
   font-weight: 800;
   font-style: normal;
   font-display: swap;
@@ -70,7 +70,7 @@
 
 @font-face {
   font-family: "General Sans";
-  src: url("/fonts/general-sans/GeneralSans-Extralight.woff2") format("woff2");
+  src: url("../fonts/general-sans/GeneralSans-Extralight.woff2") format("woff2");
   font-weight: 200;
   font-style: normal;
   font-display: swap;
@@ -78,7 +78,7 @@
 
 @font-face {
   font-family: "General Sans";
-  src: url("/fonts/general-sans/GeneralSans-Light.woff2") format("woff2");
+  src: url("../fonts/general-sans/GeneralSans-Light.woff2") format("woff2");
   font-weight: 300;
   font-style: normal;
   font-display: swap;
@@ -86,7 +86,7 @@
 
 @font-face {
   font-family: "General Sans";
-  src: url("/fonts/general-sans/GeneralSans-Regular.woff2") format("woff2");
+  src: url("../fonts/general-sans/GeneralSans-Regular.woff2") format("woff2");
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -94,7 +94,7 @@
 
 @font-face {
   font-family: "General Sans";
-  src: url("/fonts/general-sans/GeneralSans-Medium.woff2") format("woff2");
+  src: url("../fonts/general-sans/GeneralSans-Medium.woff2") format("woff2");
   font-weight: 500;
   font-style: normal;
   font-display: swap;
@@ -102,7 +102,7 @@
 
 @font-face {
   font-family: "General Sans";
-  src: url("/fonts/general-sans/GeneralSans-Semibold.woff2") format("woff2");
+  src: url("../fonts/general-sans/GeneralSans-Semibold.woff2") format("woff2");
   font-weight: 600;
   font-style: normal;
   font-display: swap;
@@ -110,8 +110,78 @@
 
 @font-face {
   font-family: "General Sans";
-  src: url("/fonts/general-sans/GeneralSans-Bold.woff2") format("woff2");
+  src: url("../fonts/general-sans/GeneralSans-Bold.woff2") format("woff2");
   font-weight: 700;
   font-style: normal;
   font-display: swap;
+}
+
+/* Custom scrollbar, applied globally so every overflow-y-auto area in the
+   app (ManageProfileScreen, AccountTab, ControlPanel, ...) looks identical
+   regardless of host - the native scrollbar the browser draws otherwise
+   differs by OS/embedding context (confirmed: the sandbox's plain Chrome tab
+   rendered a visibly different scrollbar than the real Designer's own
+   embedded browser chrome). `::-webkit-scrollbar` is Chromium-only, but
+   that covers both real environments this app runs in; `scrollbar-width`/
+   `scrollbar-color` are the standard-track equivalent, kept alongside for
+   any other browser (e.g. Firefox, if this is ever tested there) rather
+   than left to fall back to its own default look.
+
+   TODO (per explicit direction, not yet supplied): the thumb is also meant
+   to have its own gradient + a specific border-radius, with an *internal*
+   border (inset, not adding to the thumb's own box size - `box-shadow:
+   inset` once we know the color/width) - copy-paste/paste.txt only ever
+   had the up/down arrow SVGs by the time this was written (a second paste
+   overwrote whatever gradient/radius reference existed before it), so
+   those are flat/placeholder values below (--border-border, 4px radius,
+   no inset border) until that spec gets re-pasted. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-border) var(--colors-neutral-400);
+}
+
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+/* neutral-400, per explicit direction - the thumb's own color was already
+   confirmed correct as-is (--border-border), just needed here as the
+   track's background instead of transparent. */
+*::-webkit-scrollbar-track {
+  background-color: var(--colors-neutral-400);
+  /* 2px top/bottom margin - real WebKit scrollbar tracks support this -
+     insets the track from the arrow buttons, so the thumb's own travel
+     range (bounded by the track) also naturally stops 2px short of
+     touching them, per explicit direction, without needing separate JS. */
+  margin: 2px 0;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: var(--border-border);
+  border-radius: 4px; /* placeholder - see TODO above */
+  /* 2px horizontal inset from the track's own edges - a transparent
+     border + padding-box background-clip is the standard way to inset a
+     WebKit scrollbar thumb without shrinking the scrollbar's own hit-width
+     (the arrows still align to the full 6px track). */
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+/* Real Figma Dev Mode assets (copy-paste/paste.txt) - purely CSS
+   background-images, no JS, so this carries no runtime/perf cost regardless
+   of whether it's kept. :start:decrement is the top/left button, :end:increment
+   is the bottom/right one - the only pair a normal scrollbar actually shows. */
+*::-webkit-scrollbar-button:vertical:start:decrement {
+  height: 8px;
+  background: var(--colors-neutral-400)
+    url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20width%3D'9'%20height%3D'8'%20viewBox%3D'0%200%209%208'%20fill%3D'none'%3E%3Cpath%20d%3D'M8.83075%207.51236C8.74456%207.66199%208.62011%207.78601%208.47018%207.8717C8.32026%207.95738%208.15023%208.00165%207.97756%207.99995H0.98162C0.808942%208.00165%200.638921%207.95738%200.488992%207.8717C0.339062%207.78601%200.214621%207.66199%200.128428%207.51236C0.044323%207.36841%200%207.20468%200%207.03796C0%206.87124%200.044323%206.70752%200.128428%206.56357L3.6256%200.488822C3.71301%200.339993%203.83779%200.216592%203.98759%200.130849C4.13739%200.0451067%204.30699%200%204.47959%200C4.65219%200%204.82179%200.0451067%204.97159%200.130849C5.12138%200.216592%205.24617%200.339993%205.33358%200.488822L8.83155%206.56357C8.91553%206.70759%208.95972%206.87135%208.95958%207.03807C8.95944%207.20479%208.91497%207.36848%208.83075%207.51236Z'%20fill%3D'url(%23ug)'%2F%3E%3Cdefs%3E%3ClinearGradient%20id%3D'ug'%20x1%3D'4.47979'%20y1%3D'1.64706'%20x2%3D'4.47978'%20y2%3D'7.23529'%20gradientUnits%3D'userSpaceOnUse'%3E%3Cstop%20stop-color%3D'%23FBFBFA'%2F%3E%3Cstop%20offset%3D'0.927083'%20stop-color%3D'%23ECE8E2'%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3C%2Fsvg%3E")
+    no-repeat center;
+}
+
+*::-webkit-scrollbar-button:vertical:end:increment {
+  height: 8px;
+  background: var(--colors-neutral-400)
+    url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20width%3D'9'%20height%3D'8'%20viewBox%3D'0%200%209%208'%20fill%3D'none'%3E%3Cpath%20d%3D'M8.83075%200.487643C8.74456%200.338006%208.62011%200.213986%208.47018%200.128302C8.32026%200.0426183%208.15023%20-0.001647%207.97756%204.673e-05H0.98162C0.808942%20-0.001647%200.638921%200.0426183%200.488992%200.128302C0.339062%200.213986%200.214621%200.338006%200.128428%200.487643C0.044323%200.631594%200%200.795318%200%200.962038C0%201.12876%200.044323%201.29248%200.128428%201.43643L3.6256%207.51118C3.71301%207.66001%203.83779%207.78341%203.98759%207.86915C4.13739%207.95489%204.30699%208%204.47959%208C4.65219%208%204.82179%207.95489%204.97159%207.86915C5.12138%207.78341%205.24617%207.66001%205.33358%207.51118L8.83155%201.43643C8.91553%201.29241%208.95972%201.12865%208.95958%200.96193C8.95944%200.795209%208.91497%200.631524%208.83075%200.487643Z'%20fill%3D'url(%23dg)'%2F%3E%3Cdefs%3E%3ClinearGradient%20id%3D'dg'%20x1%3D'4.47979'%20y1%3D'6.35294'%20x2%3D'4.47978'%20y2%3D'0.764706'%20gradientUnits%3D'userSpaceOnUse'%3E%3Cstop%20stop-color%3D'%23FBFBFA'%2F%3E%3Cstop%20offset%3D'0.927083'%20stop-color%3D'%23ECE8E2'%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3C%2Fsvg%3E")
+    no-repeat center;
 }

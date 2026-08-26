@@ -31,7 +31,10 @@ const MIN_FILL_PX = { active: 10, inactive: 5 };
 const ACTIVE_HEIGHT = 15;
 const INACTIVE_HEIGHT = 4;
 
-const ACTIVE_FILL_GRADIENT =
+// Exported for AccountTab.tsx's plan-usage progress bar, which reuses this
+// exact gradient per explicit design direction ("el mismo que tienen los
+// range del control panel").
+export const ACTIVE_FILL_GRADIENT =
   "linear-gradient(83deg, rgba(111, 245, 241, 0.80) -81.2%, rgba(59, 156, 214, 0.80) -37.05%, rgba(9, 85, 229, 0.80) 5.44%, rgba(142, 84, 197, 0.80) 48.76%, rgba(226, 63, 140, 0.80) 92.09%)";
 
 const ACTIVE_FILL_GLOW =

@@ -6,6 +6,7 @@ import { ButtonPrimary } from "../components/ButtonPrimary";
 import { AuthHeaderBanner } from "../components/AuthHeaderBanner";
 import { FluxaLogoLockup } from "../components/FluxaLogoLockup";
 import { AuthTextField } from "../components/AuthTextField";
+import { LegalFooterLinks } from "../components/LegalFooterLinks";
 import { DATA_CLIENT_URL } from "../services/apiClient";
 
 interface ForgotPasswordScreenProps {
@@ -151,15 +152,7 @@ export function ForgotPasswordScreen({ onBackToSignIn, onCodeRequested }: Forgot
           </div>
         </div>
 
-        {/* Footer links */}
-        <div className="flex flex-row items-center gap-[12px]">
-          <a href="#" className="text-mobile-text-md-regular text-text-secondary hover:underline">
-            Privacy policy
-          </a>
-          <a href="#" className="text-mobile-text-md-regular text-text-secondary hover:underline">
-            Terms of use
-          </a>
-        </div>
+        <LegalFooterLinks />
       </div>
     </div>
   );

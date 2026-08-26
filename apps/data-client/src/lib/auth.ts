@@ -20,6 +20,28 @@ export function createAuth(env: Bindings) {
     emailAndPassword: {
       enabled: true,
     },
+    // ManageProfileScreen's "Save" button (Designer Extension) hits this via
+    // POST /api/auth/change-email. updateEmailWithoutVerification is what
+    // makes it take effect immediately with no confirmation email - this app
+    // has no emailVerification.sendVerificationEmail configured at all (no
+    // template built, same gap the password-reset OTP flow would otherwise
+    // fill for *this* purpose), and better-auth's own endpoint would
+    // otherwise throw "Verification email isn't enabled" for any account
+    // whose email isn't already verified. In practice this only actually
+    // lets the change through for an account whose current email is
+    // unverified (better-auth's own condition, not something this config
+    // adds) - which is every email+password account in this app, since
+    // nothing here ever sets emailVerified true. A Google-linked account
+    // (emailVerified true, set by Google at sign-in) still fails closed with
+    // that same error - there's no unverified-email path for it to use, and
+    // this app has nothing to send a real confirmation through, so this
+    // deliberately does not silently let a verified email change unconfirmed.
+    user: {
+      changeEmail: {
+        enabled: true,
+        updateEmailWithoutVerification: true,
+      },
+    },
     socialProviders: {
       google: {
         clientId: env.GOOGLE_CLIENT_ID,

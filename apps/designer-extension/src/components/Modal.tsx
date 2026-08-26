@@ -34,7 +34,7 @@ export function Modal({ open, onClose, children }: ModalProps) {
         onClick={(e) => e.stopPropagation()}
       >
         <img
-          src="/images/modal-header-bg.svg"
+          src="./images/modal-header-bg.svg"
           alt=""
           className="pointer-events-none absolute left-0 top-0 z-[1] h-auto w-full"
         />

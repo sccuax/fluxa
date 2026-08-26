@@ -8,6 +8,7 @@ import { FluxaLogoLockup } from "../components/FluxaLogoLockup";
 import { AuthTextField } from "../components/AuthTextField";
 import { AuthPasswordField } from "../components/AuthPasswordField";
 import { GoogleAuthButton } from "../components/GoogleAuthButton";
+import { LegalFooterLinks } from "../components/LegalFooterLinks";
 import { openGoogleSignInPopup } from "../services/googleSignIn";
 import { DATA_CLIENT_URL } from "../services/apiClient";
 
@@ -163,15 +164,7 @@ export function SignInScreen({ onCreateAccount, onSignInSuccess, onForgotPasswor
           </div>
         </div>
 
-        {/* Footer links */}
-        <div className="flex flex-row items-center gap-[12px]">
-          <a href="#" className="text-mobile-text-md-regular text-text-secondary hover:underline">
-            Privacy policy
-          </a>
-          <a href="#" className="text-mobile-text-md-regular text-text-secondary hover:underline">
-            Terms of use
-          </a>
-        </div>
+        <LegalFooterLinks />
       </div>
 
       <Modal open={showCreateAccountModal} onClose={() => setShowCreateAccountModal(false)}>

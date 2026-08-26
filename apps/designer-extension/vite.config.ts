@@ -3,6 +3,13 @@ import react from "@vitejs/plugin-react";
 
 export default defineConfig({
   plugins: [react()],
+  // Relative asset paths, not absolute (`/assets/...`) - `webflow extension
+  // serve` happens to serve dist/ from the domain root locally, but Webflow's
+  // own hosting for a published bundle serves it from a non-root subpath, so
+  // absolute paths 404 there (confirmed via the real published app's own
+  // console: black screen, both the JS and CSS 404ing) while relative paths
+  // resolve correctly under either.
+  base: "./",
   build: {
     target: "es2022",
     outDir: "dist",

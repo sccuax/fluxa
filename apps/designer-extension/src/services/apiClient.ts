@@ -18,11 +18,16 @@ export async function apiFetch<T>(
   path: string,
   init?: RequestInit,
 ): Promise<T> {
+  // A FormData body (e.g. the avatar upload) needs the browser to set its
+  // own multipart/form-data Content-Type with the boundary parameter -
+  // forcing application/json here would silently break that upload.
+  const isFormData = init?.body instanceof FormData;
+
   const response = await fetch(`${DATA_CLIENT_URL}${path}`, {
     ...init,
     credentials: "include",
     headers: {
-      "Content-Type": "application/json",
+      ...(isFormData ? {} : { "Content-Type": "application/json" }),
       ...init?.headers,
     },
   });

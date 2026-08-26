@@ -4,6 +4,7 @@ import { useGradientStore } from "../store/gradientStore";
 import { formatSliderValue } from "../helpers/format";
 import { RangeSlider } from "./RangeSlider";
 import { Icon } from "./Icon";
+import { PanelHeader } from "./PanelHeader";
 import {
   ColorPicker,
   clamp,
@@ -757,12 +758,7 @@ function FullViewModal({ title, onClose, children }: { title: string; onClose: (
           closing ? "animate-modal-slide-down" : "animate-modal-slide-up"
         }`}
       >
-        <div className="flex h-[48px] bg-background-white-2 shrink-0 items-center justify-between border-b border-border-border px-[20px] py-[12px]">
-          <span className="font-display text-mobile-display-d1 text-text-black">{title}</span>
-          <button type="button" onClick={handleClose} aria-label="Close">
-            <Icon name="close" />
-          </button>
-        </div>
+        <PanelHeader title={title} onClose={handleClose} />
         <div className="flex-1 min-h-0 overflow-y-auto">{children}</div>
       </div>
     </div>

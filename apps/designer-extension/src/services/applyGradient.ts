@@ -38,6 +38,30 @@ async function getOrCreateStyle(
   return existing ?? webflowApi.createStyle(name);
 }
 
+// Webflow models "another class on this element" as a strict combo chain -
+// setStyles's own runtime error ("styleIds must form a single path from a
+// root style through its combo classes") fires the moment a plain standalone
+// global style is appended after an element's existing class(es) without
+// being registered as a real combo class of that chain. A target with no
+// existing classes just gets a plain global HOST_STYLE_NAME style (as
+// before); a target that already has one needs the host style
+// created/looked-up as an actual combo class parented to the deepest
+// existing style, via getStyleByName's own path form (an array of names from
+// root to leaf) so the same physical combo class is reused across repeated
+// "Apply gradient" clicks on the same target instead of creating a duplicate
+// every time.
+async function getOrCreateHostStyle(
+  webflowApi: WebflowApi,
+  existingStyles: Style[]
+): Promise<Style> {
+  const parent = existingStyles[existingStyles.length - 1];
+  if (!parent) return getOrCreateStyle(webflowApi, HOST_STYLE_NAME);
+
+  const path = [...existingStyles.map((style) => style.name), HOST_STYLE_NAME];
+  const existing = await webflowApi.getStyleByName(path);
+  return existing ?? webflowApi.createStyle(HOST_STYLE_NAME, {parent});
+}
+
 // The embed fills the target via `position: absolute; inset: 0`, which resolves
 // against the nearest *positioned* ancestor - not necessarily the target itself.
 // Force the target into a positioning context via a shared, dedicated utility
@@ -70,7 +94,7 @@ async function ensurePositioningContext(
   );
   if (alreadyPositioned) return;
 
-  const hostStyle = await getOrCreateStyle(webflowApi, HOST_STYLE_NAME);
+  const hostStyle = await getOrCreateHostStyle(webflowApi, existingStyles);
   // `z-index` (not just `position: relative`) is required to make the target
   // itself establish a stacking context - without it, the embed's
   // `z-index: -1` doesn't stay contained "behind this element's own content"

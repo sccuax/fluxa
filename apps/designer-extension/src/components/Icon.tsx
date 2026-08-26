@@ -16,7 +16,14 @@ export type IconName =
   | "cube"
   | "about"
   | "preferences"
-  | "cookies";
+  | "cookies"
+  | "sparkle"
+  | "gear"
+  | "billing"
+  | "support"
+  | "logout"
+  | "upload"
+  | "delete";
 
 // SVG markup lives inline here (not imported from an assets folder) so
 // adding a new icon is a one-file edit - see the paste.txt example this
@@ -225,6 +232,123 @@ const icons: Record<IconName, (props: SVGProps<SVGSVGElement>) => ReactElement> 
       <path
         d="M4.25 4.25V4.255M8 7.75V7.755M6 6V6.005M5.5 8.5V8.505M3.5 7V7.005M6 1C5.0111 1 4.0444 1.29324 3.22215 1.84265C2.39991 2.39206 1.75904 3.17295 1.3806 4.08658C1.00217 5.00021 0.90315 6.00555 1.09608 6.97545C1.289 7.94536 1.76521 8.83627 2.46447 9.53553C3.16373 10.2348 4.05465 10.711 5.02455 10.9039C5.99446 11.0969 6.99979 10.9978 7.91342 10.6194C8.82705 10.241 9.60794 9.6001 10.1573 8.77785C10.7068 7.95561 11 6.98891 11 6C10.6525 6.107 10.2824 6.11725 9.92953 6.02964C9.57665 5.94203 9.25433 5.75988 8.99723 5.50278C8.74013 5.24567 8.55798 4.92335 8.47037 4.57047C8.38276 4.21759 8.393 3.8475 8.5 3.5C8.15251 3.607 7.78242 3.61725 7.42953 3.52964C7.07665 3.44203 6.75433 3.25988 6.49723 3.00278C6.24013 2.74567 6.05798 2.42335 5.97037 2.07047C5.88276 1.71758 5.893 1.3475 6 1Z"
         stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  ),
+  // Real Figma Dev Mode asset (copy-paste/paste.txt) - AccountTab's "Upgrade
+  // to Pro" button icon. stroke swapped from the pasted fixed #ECE8E2 to
+  // currentColor, same reasoning as every other icon in this file that used
+  // to hardcode a color it should instead inherit from its context
+  // (ButtonPrimary already sets text-text-white on the button, which is the
+  // same color this was hardcoded to).
+  sparkle: (props) => (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+      <path
+        d="M3.33333 2V4.66667V2ZM2 3.33333H4.66667H2ZM4 11.3333V14V11.3333ZM2.66667 12.6667H5.33333H2.66667ZM8.66667 2L10.1907 6.57133L14 8L10.1907 9.42867L8.66667 14L7.14267 9.42867L3.33333 8L7.14267 6.57133L8.66667 2Z"
+        stroke="currentColor"
+        strokeWidth="1.33333"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  ),
+  // Real Figma Dev Mode assets (copy-paste/paste.txt) - AccountTab's
+  // LinksCard rows (Preferences/Plan & billing/Support). "gear" is a
+  // deliberately separate entry from the existing "preferences" icon
+  // (HeaderAppMenu's 12x12 gear) rather than a reuse - this one is a
+  // different 16x16 asset the user pasted specifically for this row, not the
+  // same SVG at a different size. Stroke swapped from the pasted fixed
+  // #0B0D12 to currentColor, same reasoning as every other icon in this file
+  // that used to hardcode a color it should instead inherit from its
+  // context (LinksCard sets text-text-secondary on each of these).
+  gear: (props) => (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+      <path
+        d="M9.11667 2.878C8.83267 1.70733 7.16733 1.70733 6.88333 2.878C6.69933 3.63467 5.83267 3.99333 5.16867 3.588C4.13933 2.96133 2.962 4.13933 3.58867 5.168C3.68287 5.3225 3.73926 5.49706 3.75325 5.67748C3.76723 5.85789 3.73843 6.03906 3.66916 6.20623C3.5999 6.37341 3.49215 6.52187 3.35467 6.63953C3.21719 6.75719 3.05387 6.84072 2.878 6.88333C1.70733 7.16733 1.70733 8.83267 2.878 9.11667C3.05371 9.1594 3.21686 9.24298 3.35418 9.36063C3.49151 9.47828 3.59913 9.62667 3.66831 9.79375C3.7375 9.96082 3.76628 10.1419 3.75232 10.3222C3.73837 10.5024 3.68207 10.6769 3.588 10.8313C2.96133 11.8607 4.13933 13.038 5.168 12.4113C5.3225 12.3171 5.49706 12.2607 5.67748 12.2468C5.85789 12.2328 6.03906 12.2616 6.20623 12.3308C6.37341 12.4001 6.52187 12.5079 6.63953 12.6453C6.75719 12.7828 6.84072 12.9461 6.88333 13.122C7.16733 14.2927 8.83267 14.2927 9.11667 13.122C9.1594 12.9463 9.24298 12.7831 9.36063 12.6458C9.47828 12.5085 9.62667 12.4009 9.79375 12.3317C9.96082 12.2625 10.1419 12.2337 10.3222 12.2477C10.5024 12.2616 10.6769 12.3179 10.8313 12.412C11.8607 13.0387 13.038 11.8607 12.4113 10.832C12.3171 10.6775 12.2607 10.5029 12.2468 10.3225C12.2328 10.1421 12.2616 9.96094 12.3308 9.79377C12.4001 9.62659 12.5079 9.47813 12.6453 9.36047C12.7828 9.24281 12.9461 9.15928 13.122 9.11667C14.2927 8.83267 14.2927 7.16733 13.122 6.88333C12.9463 6.8406 12.7831 6.75702 12.6458 6.63937C12.5085 6.52172 12.4009 6.37333 12.3317 6.20625C12.2625 6.03918 12.2337 5.85814 12.2477 5.67785C12.2616 5.49756 12.3179 5.3231 12.412 5.16867C13.0387 4.13933 11.8607 2.962 10.832 3.58867C10.6775 3.68287 10.5029 3.73926 10.3225 3.75325C10.1421 3.76723 9.96094 3.73843 9.79377 3.66916C9.62659 3.5999 9.47813 3.49215 9.36047 3.35467C9.24281 3.21719 9.15928 3.05387 9.11667 2.878Z"
+        stroke="currentColor"
+        strokeWidth="1.33333"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M9.41421 9.41421C9.78929 9.03914 10 8.53043 10 8C10 7.46957 9.78929 6.96086 9.41421 6.58579C9.03914 6.21071 8.53043 6 8 6C7.46957 6 6.96086 6.21071 6.58579 6.58579C6.21071 6.96086 6 7.46957 6 8C6 8.53043 6.21071 9.03914 6.58579 9.41421C6.96086 9.78929 7.46957 10 8 10C8.53043 10 9.03914 9.78929 9.41421 9.41421Z"
+        stroke="currentColor"
+        strokeWidth="1.33333"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  ),
+  billing: (props) => (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+      <path
+        d="M2 6.66634H14M4.66667 9.99967H5.33333M8 9.99967H8.66667M4 12.6663H12C12.5304 12.6663 13.0391 12.4556 13.4142 12.0806C13.7893 11.7055 14 11.1968 14 10.6663V5.33301C14 4.80257 13.7893 4.29387 13.4142 3.91879C13.0391 3.54372 12.5304 3.33301 12 3.33301H4C3.46957 3.33301 2.96086 3.54372 2.58579 3.91879C2.21071 4.29387 2 4.80257 2 5.33301V10.6663C2 11.1968 2.21071 11.7055 2.58579 12.0806C2.96086 12.4556 3.46957 12.6663 4 12.6663Z"
+        stroke="currentColor"
+        strokeWidth="1.33333"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  ),
+  support: (props) => (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+      <path
+        d="M12.2427 3.75733L9.88533 6.11467M12.2427 3.75733C11.1174 2.63212 9.5913 2 8 2C6.4087 2 4.88255 2.63212 3.75733 3.75733M12.2427 3.75733C13.3679 4.88255 14 6.4087 14 8C14 8.78793 13.8448 9.56815 13.5433 10.2961C13.2417 11.0241 12.7998 11.6855 12.2427 12.2427M9.88533 6.11467C9.38524 5.61457 8.70724 5.33333 8 5.33333C7.29276 5.33333 6.61476 5.61457 6.11467 6.11467M9.88533 6.11467C10.3854 6.61476 10.6667 7.29276 10.6667 8C10.6667 8.70724 10.3854 9.38524 9.88533 9.88533M9.88533 9.88533L12.2427 12.2427M9.88533 9.88533C9.38524 10.3854 8.70724 10.6667 8 10.6667C7.29276 10.6667 6.61476 10.3854 6.11467 9.88533M12.2427 12.2427C11.6855 12.7998 11.0241 13.2417 10.2961 13.5433C9.56815 13.8448 8.78793 14 8 14C7.21207 14 6.43185 13.8448 5.7039 13.5433C4.97595 13.2417 4.31449 12.7998 3.75733 12.2427M6.11467 6.11467L3.75733 3.75733M6.11467 6.11467C5.61457 6.61476 5.33333 7.29276 5.33333 8C5.33333 8.70724 5.61457 9.38524 6.11467 9.88533M3.75733 3.75733C2.63212 4.88255 2 6.4087 2 8C2 8.78793 2.15519 9.56815 2.45672 10.2961C2.75825 11.0241 3.20018 11.6855 3.75733 12.2427M6.11467 9.88533L3.75733 12.2427"
+        stroke="currentColor"
+        strokeWidth="1.33333"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  ),
+  // Real Figma Dev Mode asset (copy-paste/paste.txt) - ButtonSecondary's
+  // "Log out" call site. Stroke swapped from the pasted fixed #E23F8C to
+  // currentColor, same reasoning as every other icon in this file - it
+  // already happens to be that exact color here (ButtonSecondary sets
+  // text-text-color-accent), but inheriting it keeps this icon correct if
+  // ButtonSecondary is ever reused with a different label color.
+  logout: (props) => (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+      <path
+        d="M11.3333 5.33366L14 8.00033L11.3333 10.667M14 8.00033H4.66667M8.66667 10.667V11.3337C8.66667 11.8641 8.45595 12.3728 8.08088 12.7479C7.70581 13.1229 7.1971 13.3337 6.66667 13.3337H4C3.46957 13.3337 2.96086 13.1229 2.58579 12.7479C2.21071 12.3728 2 11.8641 2 11.3337V4.66699C2 4.13656 2.21071 3.62785 2.58579 3.25278C2.96086 2.87771 3.46957 2.66699 4 2.66699H6.66667C7.1971 2.66699 7.70581 2.87771 8.08088 3.25278C8.45595 3.62785 8.66667 4.13656 8.66667 4.66699V5.33366"
+        stroke="currentColor"
+        strokeWidth="1.33333"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  ),
+  // Real Figma Dev Mode asset (copy-paste/paste.txt) - ManageProfileScreen's
+  // "Change photo" ButtonSecondary. Stroke swapped from the pasted fixed
+  // #E23F8C to currentColor, same reasoning as every other icon in this file
+  // - it already happens to be that exact color here (ButtonSecondary sets
+  // text-text-color-accent), but inheriting it keeps this icon correct if
+  // ButtonSecondary is ever reused with a different label color.
+  upload: (props) => (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+      <path
+        d="M2.6665 10.667V11.3337C2.6665 11.8641 2.87722 12.3728 3.25229 12.7479C3.62736 13.1229 4.13607 13.3337 4.6665 13.3337H11.3332C11.8636 13.3337 12.3723 13.1229 12.7474 12.7479C13.1225 12.3728 13.3332 11.8641 13.3332 11.3337V10.667M5.33317 5.33366L7.99984 2.66699L10.6665 5.33366M7.99984 2.66699V10.667"
+        stroke="currentColor"
+        strokeWidth="1.33333"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  ),
+  // Real Figma Dev Mode asset (copy-paste/paste.txt) - ManageProfileScreen's
+  // "Delete account" ButtonSecondary. Stroke swapped from the pasted fixed
+  // #E23F8C to currentColor, same reasoning as every other icon in this
+  // file - already that exact color here (ButtonSecondary sets
+  // text-text-color-accent), but inheriting it keeps this icon correct if
+  // ButtonSecondary is ever reused with a different label color.
+  delete: (props) => (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+      <path
+        d="M6.6665 7.33333V11.3333M9.33317 7.33333V11.3333M2.6665 4.66667H13.3332M12.6665 4.66667L12.0885 12.7613C12.0646 13.0977 11.914 13.4125 11.6672 13.6424C11.4205 13.8722 11.0957 14 10.7585 14H5.24117C4.90393 14 4.57922 13.8722 4.33243 13.6424C4.08564 13.4125 3.93511 13.0977 3.91117 12.7613L3.33317 4.66667H12.6665ZM9.99984 4.66667V2.66667C9.99984 2.48986 9.9296 2.32029 9.80458 2.19526C9.67955 2.07024 9.50998 2 9.33317 2H6.6665C6.48969 2 6.32012 2.07024 6.1951 2.19526C6.07008 2.32029 5.99984 2.48986 5.99984 2.66667V4.66667H9.99984Z"
+        stroke="currentColor"
+        strokeWidth="1.33333"
         strokeLinecap="round"
         strokeLinejoin="round"
       />

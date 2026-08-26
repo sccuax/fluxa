@@ -27,6 +27,17 @@ CLOUDFLARE_ACCOUNT_ID = "2137e37d161abba0e634109cfde544f1"
 #                                                Routing Addresses > Edit only
 #                                                - see emailRoutingGuard.ts)
 
+# R2 bucket for user-uploaded avatars (routes/profile.ts). Requires R2 to be
+# enabled on this Cloudflare account first (Dashboard > R2 - a one-time
+# account-level activation, confirmed by `wrangler r2 bucket create
+# fluxa-avatars` failing with "Please enable R2 through the Cloudflare
+# Dashboard" [code: 10042] under this account's current wrangler OAuth grant)
+# and the bucket itself created (`wrangler r2 bucket create fluxa-avatars`)
+# before this binding will resolve - `wrangler dev`/`deploy` fail otherwise.
+[[r2_buckets]]
+binding = "AVATARS"
+bucket_name = "fluxa-avatars"
+
 # Cloudflare Email Service binding - used by lib/auth.ts's emailOTP plugin to
 # send the password-reset code. fluxa.agency must be onboarded first via
 # `wrangler email sending enable fluxa.agency` (requires the domain's

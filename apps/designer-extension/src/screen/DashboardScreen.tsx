@@ -3,6 +3,7 @@ import { useExtensionSize } from "../hooks/useExtensionSize";
 import { DashboardHeader } from "../components/DashboardHeader";
 import { DashboardNav, type DashboardTab } from "../components/DashboardNav";
 import { EditorTab } from "../components/EditorTab";
+import { AccountTab } from "./AccountTab";
 
 // Height is a functional estimate (no full Figma spec yet, same approach as
 // ForgotPasswordScreen/ResetCodeScreen) - width is the fixed 320px every
@@ -13,9 +14,11 @@ const DASHBOARD_SIZE = { width: 320, height: 540 };
 
 // DashboardHeader and DashboardNav are being built element-by-element
 // against Figma - EditorTab covers the Editor tab (no-selection state,
-// supported-elements guide, Apply button); the Presets/Account tabs' content
-// is next. Real dashboard content otherwise still TODO.
-export function DashboardScreen() {
+// supported-elements guide, Apply button); AccountTab now covers the first
+// two rows of the Account tab (profile card, plan/usage card - more rows to
+// come, see that file's own comment). The Presets tab's content is still
+// TODO.
+export function DashboardScreen({ onSignOut }: { onSignOut: () => void }) {
   useExtensionSize(DASHBOARD_SIZE);
 
   // Owned here (not by DashboardNav) since header and center content will
@@ -36,6 +39,7 @@ export function DashboardScreen() {
           otherwise let it overflow the fixed-height panel). */}
       <div className="flex-1 min-h-0 overflow-hidden bg-background-white">
         {activeTab === "editor" && <EditorTab />}
+        {activeTab === "account" && <AccountTab onSignOut={onSignOut} />}
       </div>
       <DashboardNav activeTab={activeTab} onTabChange={setActiveTab} />
     </div>

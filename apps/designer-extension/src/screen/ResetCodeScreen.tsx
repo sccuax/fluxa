@@ -6,6 +6,7 @@ import { ButtonPrimary } from "../components/ButtonPrimary";
 import { AuthHeaderBanner } from "../components/AuthHeaderBanner";
 import { FluxaLogoLockup } from "../components/FluxaLogoLockup";
 import { OtpCodeInput } from "../components/OtpCodeInput";
+import { LegalFooterLinks } from "../components/LegalFooterLinks";
 import { DATA_CLIENT_URL } from "../services/apiClient";
 
 // UI-side pacing so the resend link can't be mashed - independent of (and
@@ -230,15 +231,7 @@ export function ResetCodeScreen({ email, onCodeVerified, onBackToSignIn }: Reset
           </div>
         </div>
 
-        {/* Footer links */}
-        <div className="flex flex-row items-center gap-[12px]">
-          <a href="#" className="text-mobile-text-md-regular text-text-secondary hover:underline">
-            Privacy policy
-          </a>
-          <a href="#" className="text-mobile-text-md-regular text-text-secondary hover:underline">
-            Terms of use
-          </a>
-        </div>
+        <LegalFooterLinks />
       </div>
     </div>
   );
