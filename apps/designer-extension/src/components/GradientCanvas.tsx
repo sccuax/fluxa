@@ -25,6 +25,22 @@ export function GradientCanvas() {
       lazyLoad={false}
       pixelDensity={config.pixelDensity}
       fov={config.fov}
+      // Threaded straight through to three.js's WebGLRenderer as its own
+      // `powerPreference` gl option (confirmed by reading the installed
+      // package's own compiled source, chunk-CPUZJ7YV.mjs - not guessed).
+      // Left unset before, this context fell back to three.js/the browser's
+      // own "default" choice of which GPU to use - on a hybrid-graphics
+      // laptop (integrated + discrete), that can land this WebGL context on
+      // the integrated GPU while it's simultaneously competing with the
+      // real Webflow Designer's own canvas for compositor time in the same
+      // tab, which is exactly the ~28-30fps (near-exactly half of 60fps -
+      // a throttling/contention signature, not raw overload) measured with
+      // Chrome's own FPS meter only when this panel floats over the real
+      // Designer - the same GradientCanvas measured a clean ~60fps mounted
+      // alone in the sandbox, with no other canvas competing for GPU time.
+      // "high-performance" explicitly requests the faster/discrete GPU for
+      // this context instead of leaving that choice ambiguous.
+      powerPreference="high-performance"
     >
       {/* colorCount is app-level only (see gradient-core's schema.ts) - the
           override spread must come after {...config} so a "2 colors"

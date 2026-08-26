@@ -31,7 +31,7 @@ export function ConfirmDeleteAccountModal({
       <p className="font-sans text-mobile-text-md-regular text-text-secondary">
         This can't be undone. Your profile, presets, and account data will be permanently deleted.
       </p>
-      <div className="flex w-full gap-2">
+      <div className="flex w-full flex-col gap-2">
         <ButtonSecondary onClick={onCancel} disabled={isDeleting}>
           Cancel
         </ButtonSecondary>

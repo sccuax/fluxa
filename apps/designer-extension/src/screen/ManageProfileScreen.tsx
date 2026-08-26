@@ -210,7 +210,7 @@ export function ManageProfileScreen({
           <div className="flex flex-col items-start gap-3">
             <span className="font-display text-sm-medium text-text-black">Profile picture</span>
             <div className="flex flex-col items-start gap-2">
-              <ButtonSecondary className=" flex items-center text-mobile-text-md-medium px-4" icon={<Icon name="upload" />} onClick={openFilePicker}>
+              <ButtonSecondary className=" flex w-fit items-center text-mobile-text-md-medium px-4" icon={<Icon name="upload" />} onClick={openFilePicker}>
                 Change photo
               </ButtonSecondary>
               <span className="font-sans text-mobile-text-sm-regular text-text-secondary">
@@ -228,6 +228,7 @@ export function ManageProfileScreen({
           onChange={(e) => setNameDraft(e.target.value)}
           placeholder={user?.name ?? ""}
           autoComplete="off"
+          minHeightClassName="min-h-0"
         />
         <AuthTextField
           id="manage-profile-email"
@@ -243,12 +244,14 @@ export function ManageProfileScreen({
           placeholder={user?.email ?? ""}
           autoComplete="off"
           error={emailError}
+          minHeightClassName="min-h-0"
         />
         <AuthTextField
           id="manage-profile-password"
           name="password"
           type="password"
           label="Password"
+          minHeightClassName="min-h-0"
           labelClassName={FIELD_LABEL_CLASSNAME}
           value={passwordDraft}
           onChange={(e) => {

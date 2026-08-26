@@ -22,6 +22,13 @@ interface AuthTextFieldProps {
   // reserves room via inputClassName's own padding-right so typed text
   // never runs underneath it. Absent for every existing call site.
   trailing?: ReactNode;
+  className?: string;
+  // Overrides the two wrapper divs' own min-h-[66px] floor (e.g.
+  // ManageProfileScreen's Name/Email/Password fields want to size to their
+  // own content instead) - a separate prop from `className`, since that one
+  // only reaches the <input> itself and can't touch the wrapper's height.
+  // Defaults to the original floor so Sign In/Sign Up render unchanged.
+  minHeightClassName?: string;
 }
 
 // Plain single-line field (email, full name, ...) - label + input + an
@@ -46,10 +53,12 @@ export function AuthTextField({
   onKeyDown,
   labelClassName = "text-mobile-text-md-medium font-sans",
   trailing,
+  className = "", // Default value for className
+  minHeightClassName = "min-h-[66px]",
 }: AuthTextFieldProps) {
   return (
-    <div className="flex min-h-[66px] w-full items-start gap-3">
-      <div className="flex min-h-[66px] w-full flex-1 flex-col items-start gap-2">
+    <div className={`flex ${minHeightClassName} w-full items-start gap-3`}>
+      <div className={`flex ${minHeightClassName} w-full flex-1 flex-col items-start gap-2`}>
         <label className={labelClassName} htmlFor={id}>
           {label}
         </label>
@@ -68,7 +77,7 @@ export function AuthTextField({
             // own rendered width (ManageProfileScreen's only trailing call
             // site so far) - reserved so typed dots never run underneath it;
             // revisit once seen rendered for real.
-            className={`w-full flex-1 bg-transparent text-text-sm-regular focus:outline-none ${trailing ? "pr-[136px]" : ""}`}
+            className={`w-full flex-1 bg-transparent text-text-sm-regular focus:outline-none ${trailing ? "pr-[136px]" : ""} ${className}`}
           />
           {trailing && <div className="absolute right-1 top-1/2 -translate-y-1/2">{trailing}</div>}
         </div>

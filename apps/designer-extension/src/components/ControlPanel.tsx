@@ -1272,8 +1272,41 @@ export function ControlPanel() {
           clipping this div's own legitimate vertical overflow - see the
           "h-full vs h-screen" caution already documented for this panel) is
           a narrow safety net against any stray horizontal overflow (e.g. a
-          wide Tooltip bubble near either edge). */}
-      <div className="flex flex-1 min-h-0 flex-col gap-3 overflow-y-auto overflow-x-hidden px-5 py-3">
+          wide Tooltip bubble near either edge).
+
+          The global custom scrollbar's own 6px width eats directly into
+          this div's content box whenever it shows - scrollbar-gutter:stable
+          (kept below) only makes that loss *consistent* across tabs/states
+          (always reserved, not just while actively showing), it doesn't
+          give the 6px back, so every fixed-pixel row shape here
+          (ROW_CONTROLS_MAX_WIDTH, RangeSlider's own TRACK_MAX_WIDTH) would
+          still render a uniform 6px under its real Figma spec. A first
+          attempt tried to reclaim that 6px by widening this div itself
+          (`w-[calc(100%+6px)]` + a matching negative right margin) - wrong,
+          because unlike a normal scrolling page this div's ultimate ancestor
+          is the extension's own fixed 320px viewport, not a wider document
+          with slack to expand into: the extra 6px had nowhere real to go,
+          so the browser clipped most of the scrollbar itself off past the
+          panel's true right edge (down to a sliver, confirmed visually -
+          "yo diria que mide 2px"). Fixed instead by *reallocating* existing
+          space rather than conjuring new space: pl-5/pr-[14px] replaces the
+          old symmetric px-5, handing the scrollbar's 6px straight out of
+          the right padding's own slack (20px -> 14px) instead of out of
+          the content - total right-side space consumed (padding + gutter)
+          stays exactly 20px either way, so the content area is back to
+          being pixel-identical to how it measured before the scrollbar
+          existed at all, and the scrollbar itself renders fully within the
+          panel's true bounds (nothing pushed past the edge to clip).
+          scrollbar-gutter:stable stays alongside this - it's what keeps
+          that reallocated 14px right-padding gutter reserved consistently
+          (not silently reclaimed as content width) on a tab whose current
+          field list is short enough not to need scrolling (e.g. Camera, or
+          Colors with colorCount==="2") - confirmed unrelated to the WebGL
+          preview's own frame-rate stutter investigated separately (see
+          GradientCanvas.tsx's own powerPreference comment) - removed as one
+          of two isolation tests while chasing that, with the stutter
+          persisting either way, before being restored here. */}
+      <div className="flex flex-1 min-h-0 flex-col gap-3 overflow-y-auto overflow-x-hidden pl-5 pr-[14px] py-3 [scrollbar-gutter:stable]">
         {activeTab === "shape" && (
           <>
             <SegmentedRow

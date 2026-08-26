@@ -55,7 +55,7 @@ if (mount) {
   createRoot(mount).render(
     React.createElement(
       ShaderGradientCanvas,
-      { style: { width: "100%", height: "100%" }, pointerEvents: "none", lazyLoad: false, pixelDensity: config.pixelDensity, fov: config.fov },
+      { style: { width: "100%", height: "100%" }, pointerEvents: "none", lazyLoad: false, pixelDensity: config.pixelDensity, fov: config.fov, powerPreference: "high-performance" },
       React.createElement(ShaderGradient, config)
     )
   );
