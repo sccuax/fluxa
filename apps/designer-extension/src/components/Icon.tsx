@@ -23,7 +23,8 @@ export type IconName =
   | "support"
   | "logout"
   | "upload"
-  | "delete";
+  | "delete"
+  | "lock";
 
 // SVG markup lives inline here (not imported from an assets folder) so
 // adding a new icon is a one-file edit - see the paste.txt example this
@@ -347,6 +348,32 @@ const icons: Record<IconName, (props: SVGProps<SVGSVGElement>) => ReactElement> 
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
       <path
         d="M6.6665 7.33333V11.3333M9.33317 7.33333V11.3333M2.6665 4.66667H13.3332M12.6665 4.66667L12.0885 12.7613C12.0646 13.0977 11.914 13.4125 11.6672 13.6424C11.4205 13.8722 11.0957 14 10.7585 14H5.24117C4.90393 14 4.57922 13.8722 4.33243 13.6424C4.08564 13.4125 3.93511 13.0977 3.91117 12.7613L3.33317 4.66667H12.6665ZM9.99984 4.66667V2.66667C9.99984 2.48986 9.9296 2.32029 9.80458 2.19526C9.67955 2.07024 9.50998 2 9.33317 2H6.6665C6.48969 2 6.32012 2.07024 6.1951 2.19526C6.07008 2.32029 5.99984 2.48986 5.99984 2.66667V4.66667H9.99984Z"
+        stroke="currentColor"
+        strokeWidth="1.33333"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  ),
+
+  // Hand-drawn (no Figma asset provided for this one) - a plain padlock,
+  // same 16x16/stroke-currentColor/1.33333 convention as every other icon
+  // here. PresetsTab's own coming-soon state.
+  lock: (props) => (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+      <rect
+        x="3.3335"
+        y="7.33333"
+        width="9.33333"
+        height="6.66667"
+        rx="1.33333"
+        stroke="currentColor"
+        strokeWidth="1.33333"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M5.3335 7.33333V4.66667C5.3335 3.95942 5.61445 3.28115 6.11454 2.78105C6.61464 2.28095 7.29292 2 8.00016 2C8.7074 2 9.38568 2.28095 9.88578 2.78105C10.3859 3.28115 10.6668 3.95942 10.6668 4.66667V7.33333"
         stroke="currentColor"
         strokeWidth="1.33333"
         strokeLinecap="round"

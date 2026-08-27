@@ -19,7 +19,7 @@ const DROPDOWN_ANIMATION_MS = 200;
 // - the box's own position/animation classes
 // Content is entirely up to the caller via `children` - this component has
 // no opinion on what a dropdown's rows look like.
-export function Dropdown({ open, onCloseRequest, triggerRef, offsetPx, children }: {
+export function Dropdown({ open, onCloseRequest, triggerRef, offsetPx, scrollable = true, children }: {
   open: boolean;
   onCloseRequest: () => void;
   // The button that opens this dropdown - excluded from the outside-click
@@ -43,6 +43,22 @@ export function Dropdown({ open, onCloseRequest, triggerRef, offsetPx, children 
   // ControlPanel.tsx's FullViewModal already uses for its own dynamic
   // top/bottom insets.
   offsetPx: number;
+  // AppliedGradientsMenu (potentially many gradient-applied elements on a
+  // page) keeps the default overflow-y-auto/max-h-[240px] scroll. false is
+  // for a caller whose content can never realistically overflow that height
+  // (HeaderAppMenu - a fixed 4 rows) - overflow-y-auto's own presence is
+  // what was forcing overflow-x to also compute as non-visible per the CSS
+  // overflow spec (not just a default; explicitly setting overflow-x:
+  // visible while the other axis is non-visible still gets overridden the
+  // same way), silently clipping any Tooltip.tsx hint that opened sideways
+  // or - confirmed for real, not assumed - even the "top"/"bottom" variants
+  // added specifically to dodge that, since this dropdown's own rendered
+  // height is too tight for a 60px-tall bubble to fit above the first row or
+  // below the others without still hitting the same clip. Dropping the
+  // scroll entirely for a caller that will never need it removes the clip
+  // at its actual source instead of fighting it with more positioning
+  // variants.
+  scrollable?: boolean;
   children: ReactNode;
 }) {
   // Stays true through the exit animation even after `open` goes false -
@@ -90,7 +106,9 @@ export function Dropdown({ open, onCloseRequest, triggerRef, offsetPx, children 
     <div
       ref={containerRef}
       style={{ right: offsetPx }}
-      className={`absolute top-full z-30 flex max-h-[240px] flex-col gap-2 overflow-y-auto rounded-b-4 bg-background-dark p-3 ${
+      className={`absolute top-full z-30 flex flex-col gap-2 rounded-b-4 bg-background-dark p-3 ${
+        scrollable ? "max-h-[240px] overflow-y-auto" : ""
+      } ${
         open ? "animate-dropdown-fade-in" : "animate-dropdown-fade-out"
       }`}
     >

@@ -5,6 +5,7 @@ import { formatSliderValue } from "../helpers/format";
 import { RangeSlider } from "./RangeSlider";
 import { Icon } from "./Icon";
 import { PanelHeader } from "./PanelHeader";
+import { Tooltip } from "./Tooltip";
 import {
   ColorPicker,
   clamp,
@@ -649,27 +650,6 @@ function SegmentedRow<T extends string>({ label, options, value, onChange, class
 // scrolling container's own clientWidth - 180px still overflowed that by a
 // measured 6px, invisibly clipping the bubble on hover once overflow-x-hidden
 // (ControlPanel's own scrolling region) was added as a separate safety net.
-function Tooltip({ text, side, children }: { text: string; side: "left" | "right"; children: ReactNode }) {
-  const isLeft = side === "left";
-  return (
-    <div className="group relative inline-flex">
-      {children}
-      <div
-        className={`pointer-events-none invisible absolute top-1/2 z-20 flex max-w-[140px] -translate-y-1/2 items-center rounded-[4px] bg-background-dark/80 py-[6px] px-[10px] font-sans text-mobile-text-sm-regular text-text-white group-hover:visible ${
-          isLeft ? "right-full mr-2" : "left-full ml-2"
-        }`}
-      >
-        {text}
-        <span
-          className={`absolute top-1/2 h-2 w-2 -translate-y-1/2 rounded-full bg-background-dark/80 ${
-            isLeft ? "-right-1" : "-left-1"
-          }`}
-        />
-      </div>
-    </div>
-  );
-}
-
 // px-1 (not px-2 like every other pill input in this file) - a real bug
 // found by testing in the sandbox: a 7-char "#rrggbb" value needs ~65px of
 // text width on its own, so px-2's 16px of combined padding left this input

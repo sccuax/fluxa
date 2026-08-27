@@ -3,6 +3,7 @@ import { useExtensionSize } from "../hooks/useExtensionSize";
 import { DashboardHeader } from "../components/DashboardHeader";
 import { DashboardNav, type DashboardTab } from "../components/DashboardNav";
 import { EditorTab } from "../components/EditorTab";
+import { PresetsTab } from "../components/PresetsTab";
 import { AccountTab } from "./AccountTab";
 
 // Height is a functional estimate (no full Figma spec yet, same approach as
@@ -16,8 +17,8 @@ const DASHBOARD_SIZE = { width: 320, height: 540 };
 // against Figma - EditorTab covers the Editor tab (no-selection state,
 // supported-elements guide, Apply button); AccountTab now covers the first
 // two rows of the Account tab (profile card, plan/usage card - more rows to
-// come, see that file's own comment). The Presets tab's content is still
-// TODO.
+// come, see that file's own comment). The Presets tab is just a "Locked"
+// coming-soon placeholder (PresetsTab.tsx) - not real content yet.
 export function DashboardScreen({ onSignOut }: { onSignOut: () => void }) {
   useExtensionSize(DASHBOARD_SIZE);
 
@@ -39,6 +40,7 @@ export function DashboardScreen({ onSignOut }: { onSignOut: () => void }) {
           otherwise let it overflow the fixed-height panel). */}
       <div className="flex-1 min-h-0 overflow-hidden bg-background-white">
         {activeTab === "editor" && <EditorTab />}
+        {activeTab === "presets" && <PresetsTab />}
         {activeTab === "account" && <AccountTab onSignOut={onSignOut} />}
       </div>
       <DashboardNav activeTab={activeTab} onTabChange={setActiveTab} />

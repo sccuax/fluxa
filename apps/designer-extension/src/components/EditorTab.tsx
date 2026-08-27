@@ -8,6 +8,7 @@ import { SupportedElementsGuide } from "./SupportedElementsGuide";
 import { ControlPanel } from "./ControlPanel";
 import { GradientCanvas } from "./GradientCanvas";
 import { ButtonPrimary } from "./ButtonPrimary";
+import { BetaFeedbackModal } from "./BetaFeedbackModal";
 
 // Editor tab content: DashboardScreen renders this inside its flex-1
 // min-h-0 overflow-hidden center area. Two independent regions, each its own
@@ -40,6 +41,10 @@ export function EditorTab() {
   const colorModalOpen = useGradientStore((state) => state.colorModalOpen);
   const hasSelection = element !== null;
   const [applying, setApplying] = useState(false);
+  // Beta feedback-collection popup - shown every time Apply gradient
+  // actually succeeds (not on a no-op/error), per explicit direction that
+  // this is the beta's main channel for gathering user feedback.
+  const [showBetaFeedback, setShowBetaFeedback] = useState(false);
 
   async function handleApplyGradient() {
     if (!canApplyGradient(element)) {
@@ -53,6 +58,7 @@ export function EditorTab() {
     try {
       await applyGradientToElement(element, config);
       getWebflowDesigner().notify({type: "Success", message: "Gradient applied!"});
+      setShowBetaFeedback(true);
     } catch (error) {
       getWebflowDesigner().notify({
         type: "Error",
@@ -84,6 +90,8 @@ export function EditorTab() {
           {applying ? "Applying…" : "Apply gradient"}
         </ButtonPrimary>
       </div>
+
+      <BetaFeedbackModal open={showBetaFeedback} onClose={() => setShowBetaFeedback(false)} />
     </div>
   );
 }
