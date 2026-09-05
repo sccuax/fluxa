@@ -15,7 +15,7 @@ import { useGradientStore } from "../store/gradientStore";
 // assumption that doesn't hold here). This component is already only
 // mounted when it should be visible (EditorTab's selection-state swap), so
 // the internal lazy-loading is redundant here anyway.
-export function GradientCanvas() {
+export function GradientCanvas({ preserveDrawingBuffer }: { preserveDrawingBuffer?: boolean } = {}) {
   const config = useGradientStore((state) => state.config);
 
   return (
@@ -25,6 +25,20 @@ export function GradientCanvas() {
       lazyLoad={false}
       pixelDensity={config.pixelDensity}
       fov={config.fov}
+      // Left unset here (undefined) for the real Designer Extension - the
+      // customer-facing live preview never needs its buffer read back, and
+      // preserveDrawingBuffer:true has a real (if small) compositing cost
+      // not worth paying for nothing. apps/preset-admin passes true: its
+      // "Capture thumbnail" button reads this canvas's actual pixels via
+      // drawImage on an arbitrary, async-triggered click - with the
+      // WebGL default (preserveDrawingBuffer: false), the browser is free
+      // to clear the buffer the instant after compositing each frame, so a
+      // read that doesn't land in the same tick as a render can catch it
+      // empty (confirmed real, not theoretical - captureThumbnail.ts's own
+      // comment). true keeps the last rendered frame's pixels around so a
+      // capture triggered at any moment reads real content instead of a
+      // coin-flip blank frame.
+      preserveDrawingBuffer={preserveDrawingBuffer}
       // Threaded straight through to three.js's WebGLRenderer as its own
       // `powerPreference` gl option (confirmed by reading the installed
       // package's own compiled source, chunk-CPUZJ7YV.mjs - not guessed).

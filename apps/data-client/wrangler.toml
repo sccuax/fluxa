@@ -38,6 +38,25 @@ CLOUDFLARE_ACCOUNT_ID = "2137e37d161abba0e634109cfde544f1"
 binding = "AVATARS"
 bucket_name = "fluxa-avatars"
 
+# R2 bucket for admin-captured preset gallery thumbnails
+# (routes/galleryPresets.ts, apps/preset-admin) - a separate bucket from
+# AVATARS above since it's a different content category (admin-created
+# gallery assets, not user-personal photos), created the same way
+# (`wrangler r2 bucket create fluxa-preset-thumbnails`).
+[[r2_buckets]]
+binding = "PRESET_THUMBNAILS"
+bucket_name = "fluxa-preset-thumbnails"
+
+# R2 bucket for self-hosted, versioned runtime bundles served to published
+# Webflow sites (routes/runtimeAssets.ts) - e.g. glass-liquid-runtime.v1.js
+# (apps/glass-liquid-runtime). A separate bucket from AVATARS/PRESET_THUMBNAILS
+# above since it's yet another content category (compiled JS assets every
+# customer's published site loads, not admin/user-uploaded images), same
+# creation step (`wrangler r2 bucket create fluxa-runtime-assets`).
+[[r2_buckets]]
+binding = "RUNTIME_ASSETS"
+bucket_name = "fluxa-runtime-assets"
+
 # Cloudflare Email Service binding - used by lib/auth.ts's emailOTP plugin to
 # send the password-reset code. fluxa.agency must be onboarded first via
 # `wrangler email sending enable fluxa.agency` (requires the domain's

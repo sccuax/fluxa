@@ -51,7 +51,7 @@ export function PlanCard() {
   const percent = Math.min(100, (usedPresets / FREE_PLAN_PRESET_LIMIT) * 100);
 
   return (
-    <div className="flex flex-col gap-3 p-3 opacity-50" aria-disabled="true" style={{ pointerEvents: "none" }}>
+    <div className="flex border-border-border border rounded-8 flex-col gap-3 p-3 opacity-50" aria-disabled="true" style={{ pointerEvents: "none" }}>
       <span className="font-sans text-sm-medium text-text-black">Free plan</span>
       <span className="font-sans text-mobile-text-md-regular text-text-secondary">
         {usedPresets} of {FREE_PLAN_PRESET_LIMIT} presets used

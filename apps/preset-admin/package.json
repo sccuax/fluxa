@@ -1,14 +1,12 @@
 {
-  "name": "@fluxa/designer-extension",
+  "name": "@fluxa/preset-admin",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && node scripts/copy-public.mjs && vite build",
-    "build:watch": "node scripts/copy-public.mjs && vite build --watch",
-    "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "build": "tsc --noEmit && vite build",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@fluxa/glass-liquid-renderer": "workspace:*",
@@ -23,18 +21,15 @@
   },
   "devDependencies": {
     "@fluxa/design-tokens": "workspace:*",
-    "@testing-library/react": "^16.0.0",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
     "@types/three": "^0.166.0",
     "@vitejs/plugin-react": "^4.3.1",
     "@webflow/designer-extension-typings": "^2.2.2",
     "autoprefixer": "^10.4.19",
-    "jsdom": "^24.1.1",
     "postcss": "^8.4.40",
     "tailwindcss": "^3.4.7",
     "typescript": "^5.5.4",
-    "vite": "^5.3.5",
-    "vitest": "^2.0.5"
+    "vite": "^5.3.5"
   }
 }

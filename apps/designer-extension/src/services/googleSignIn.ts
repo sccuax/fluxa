@@ -17,11 +17,15 @@ function isGoogleAuthMessage(data: unknown): data is GoogleAuthMessage {
   return typeof data === "object" && data !== null && (data as { source?: unknown }).source === "fluxa-google-auth";
 }
 
-async function hasActiveSession(): Promise<boolean> {
+// Returns the active session's id, or null if there's no session. Used
+// instead of a plain boolean so the caller can tell "a session happens to
+// already exist" apart from "this flow just created a brand-new one" - see
+// the baseline comment below for why that distinction matters.
+async function getActiveSessionId(): Promise<string | null> {
   const res = await fetch(`${DATA_CLIENT_URL}/api/me`, { credentials: "include" });
-  if (!res.ok) return false;
-  const data = (await res.json()) as { user: unknown };
-  return data.user != null;
+  if (!res.ok) return null;
+  const data = (await res.json()) as { user: unknown; sessionId: string | null };
+  return data.user != null ? data.sessionId : null;
 }
 
 // Opens a popup that runs the whole Google OAuth round trip against the
@@ -60,6 +64,37 @@ export function openGoogleSignInPopup(options?: { requestSignUp?: boolean }): Pr
 
     let settled = false;
     let closeCheckInFlight = false;
+    // Snapshot which session (if any) is already active the instant this
+    // flow starts, by id rather than a plain boolean. A boolean alone can't
+    // prove *this* Google flow is what produced a later "active" reading -
+    // a session left over from before (e.g. LogoutButton's sign-out request
+    // failing silently, which it's deliberately built to tolerate) would
+    // already read as active the moment the first poll tick fires, well
+    // before the popup has even navigated to Google, and get misreported as
+    // a fresh, successful Google sign-in for whatever account that stale
+    // session actually belonged to - a real bug reported against this exact
+    // flow (signing out, then clicking "Sign in with Google" again, silently
+    // resumed the previous account with no account-picker ever shown).
+    // Comparing session ids (not just "is something active") also correctly
+    // handles a second real case a boolean can't: signing in with Google
+    // immediately after signing up with Google. Sign-up already leaves a
+    // valid session active (see SignUpScreen.tsx's handleGoogleSignUp
+    // comment) - a boolean baseline would permanently read "already active"
+    // for that session and never report the *next* sign-in as successful,
+    // even though completing sign-in always issues a brand-new session id
+    // (better-auth mints a fresh session on every completed sign-in, even
+    // for an already-signed-in account) - so comparing ids still recognizes
+    // that as success, while a leftover, never-replaced id still correctly
+    // does not.
+    let baselineSessionId: string | null = null;
+    const sessionBaseline = getActiveSessionId().then((id) => {
+      baselineSessionId = id;
+    });
+    // A poll only counts as success once it sees a session id that (a)
+    // exists and (b) differs from whatever was active at baseline - either
+    // there was none before and now there is one, or there was one before
+    // and a completed sign-in replaced it with a freshly minted one.
+    const isFreshSession = (id: string | null) => id !== null && id !== baselineSessionId;
 
     const cleanup = () => {
       window.removeEventListener("message", onMessage);
@@ -89,9 +124,11 @@ export function openGoogleSignInPopup(options?: { requestSignUp?: boolean }): Pr
     window.addEventListener("message", onMessage);
 
     const pollSession = window.setInterval(() => {
-      hasActiveSession().then((active) => {
-        if (active) settle({ error: null });
-      });
+      sessionBaseline
+        .then(() => getActiveSessionId())
+        .then((id) => {
+          if (isFreshSession(id)) settle({ error: null });
+        });
     }, SESSION_POLL_INTERVAL_MS);
 
     const pollClosed = window.setInterval(() => {
@@ -99,8 +136,11 @@ export function openGoogleSignInPopup(options?: { requestSignUp?: boolean }): Pr
         closeCheckInFlight = true;
         // One last session check before giving up - the popup closing and
         // the session cookie landing can race right at the end of a
-        // successful flow.
-        hasActiveSession().then((active) => settle(active ? { error: null } : null));
+        // successful flow. Still gated on isFreshSession, same reason as
+        // pollSession above.
+        sessionBaseline
+          .then(() => getActiveSessionId())
+          .then((id) => settle(isFreshSession(id) ? { error: null } : null));
       }
     }, 300);
 

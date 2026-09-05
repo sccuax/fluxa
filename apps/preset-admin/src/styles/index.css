@@ -1,0 +1,18 @@
+/* Pulls in @fluxa/design-tokens' variables.css, the @tailwind directives,
+   and every @font-face rule in one line, instead of duplicating them - see
+   apps/designer-extension/src/styles/index.css for the real source (this
+   app's own tailwind.config.js has its own `content` globs, which is what
+   actually determines which classes get generated here regardless of which
+   physical file the @tailwind directives live in).
+
+   Known limitation, already documented and accepted for the equivalent case
+   elsewhere in this repo (`pnpm dev:extension:browser`): under a live Vite
+   dev server (which is what `pnpm dev` here always is - there's no
+   build-then-serve step like the Designer Extension's own dev:extension),
+   the relative `../fonts/...` url()s inside those @font-face rules can't
+   resolve to a real file, so fonts silently fall back to the browser
+   default. Not worth fixing for an internal-only admin tool where exact
+   type rendering doesn't matter - see CLAUDE.md's "Publishing the Designer
+   Extension bundle" section for the full explanation of why that path only
+   resolves correctly against a real built dist/ output. */
+@import "../../../designer-extension/src/styles/index.css";

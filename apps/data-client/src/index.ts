@@ -9,6 +9,8 @@ import { sessionMiddleware } from "./middleware";
 import { authRoutes } from "./routes/auth";
 import { assetRoutes } from "./routes/assets";
 import { presetRoutes } from "./routes/presets";
+import { galleryPresetRoutes, publicGalleryPresetRoutes } from "./routes/galleryPresets";
+import { publicRuntimeAssetRoutes } from "./routes/runtimeAssets";
 import { profileRoutes } from "./routes/profile";
 import { oauthPopupRoutes } from "./routes/oauthPopup";
 
@@ -46,6 +48,17 @@ app.use(
       const allowed = [
         c.env.DESIGNER_EXTENSION_ORIGIN,
         "http://localhost:1337",
+        // sandbox/ - local component/screen test harness (pnpm dev:sandbox).
+        // Needed for real fetches (e.g. PresetsTab.tsx's gallery-presets
+        // call) to work when a screen/component is rendered there instead
+        // of the real Designer Extension - missing this is exactly what
+        // silently broke PresetsTab.tsx in the sandbox the first time this
+        // was tested (browser-blocked CORS failure, not a data problem -
+        // the preset itself was created and published correctly).
+        "http://localhost:5174",
+        // apps/preset-admin - local-only internal tool, see routes/
+        // galleryPresets.ts and requireAdminToken.ts.
+        "http://localhost:5175",
         // TEMPORARY - Cloudflare quick tunnel for a live demo of the
         // extension running standalone (not through the Designer iframe).
         // Quick tunnel URLs are random per run and expire when the tunnel is
@@ -76,7 +89,12 @@ app.use("*", sessionMiddleware);
 
 app.get("/health", (c) => c.json({ ok: true }));
 
-app.get("/api/me", (c) => c.json({ user: c.get("user") }));
+// sessionId lets the extension's Google sign-in popup flow (googleSignIn.ts)
+// tell "a genuinely new session was just issued" apart from "a session
+// happened to already exist" - a plain user-present boolean can't do that,
+// since a stale/leftover session and a freshly completed sign-in both read
+// as "active" (see googleSignIn.ts's hadSessionBeforeStart comment).
+app.get("/api/me", (c) => c.json({ user: c.get("user"), sessionId: c.get("session")?.id ?? null }));
 
 // better-auth's own routes: sign-up/sign-in (email+password), Google OAuth,
 // session management. See src/lib/auth.ts for provider config.
@@ -90,6 +108,14 @@ app.on(["POST", "GET"], "/api/auth/*", (c) => {
 app.route("/auth", authRoutes);
 app.route("/api/assets", assetRoutes);
 app.route("/api/presets", presetRoutes);
+app.route("/api/gallery-presets", galleryPresetRoutes);
+// A genuinely different prefix from "/api/gallery-presets" above, not just
+// a different sub-path under it - see routes/galleryPresets.ts's own
+// comment on publicGalleryPresetRoutes for why that distinction matters
+// (mounting two sub-apps at the same prefix does not isolate their
+// middleware from each other).
+app.route("/api/public/gallery-presets", publicGalleryPresetRoutes);
+app.route("/api/public/runtime", publicRuntimeAssetRoutes);
 app.route("/api/profile", profileRoutes);
 app.route("/oauth-popup-callback", oauthPopupRoutes);
 

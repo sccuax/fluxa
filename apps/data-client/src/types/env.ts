@@ -20,4 +20,18 @@ export interface Bindings {
   // R2 bucket for user-uploaded avatars (routes/profile.ts) - the uploaded
   // file itself lives here, only its served URL is written to user.image.
   AVATARS: R2Bucket;
+  // R2 bucket for admin-captured preset gallery thumbnails
+  // (routes/galleryPresets.ts) - see galleryPresets.thumbnailUrl.
+  PRESET_THUMBNAILS: R2Bucket;
+  // R2 bucket for self-hosted, versioned runtime bundles (routes/runtimeAssets.ts)
+  // - e.g. glass-liquid-runtime.v1.js, loaded by a plain <script src> tag on a
+  // published Webflow site instead of importing from esm.sh at request time.
+  RUNTIME_ASSETS: R2Bucket;
+  // Shared-secret gate for routes/galleryPresets.ts (middleware/
+  // requireAdminToken.ts) - apps/preset-admin (a local-only internal tool,
+  // not something exposed to customers) sends this back as `x-admin-token`.
+  // A single static secret rather than a real user/role system, since this
+  // is only ever meant to run on an admin's own machine for now - revisit if
+  // this ever needs multiple distinct admin identities or audit trails.
+  ADMIN_API_TOKEN: string;
 }

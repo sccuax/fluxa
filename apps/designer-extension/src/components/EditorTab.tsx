@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useSelectedElement } from "../hooks/useSelectedElement";
 import { useGradientStore } from "../store/gradientStore";
-import { applyGradientToElement, canApplyGradient } from "../services/applyGradient";
+import { applyGradientToElement, canApplyPreset } from "../services/applyGradient";
 import { getWebflowDesigner } from "../services/webflowDesigner";
 import { EditorEmptyState } from "./EditorEmptyState";
 import { SupportedElementsGuide } from "./SupportedElementsGuide";
@@ -47,7 +47,7 @@ export function EditorTab() {
   const [showBetaFeedback, setShowBetaFeedback] = useState(false);
 
   async function handleApplyGradient() {
-    if (!canApplyGradient(element)) {
+    if (!canApplyPreset(element)) {
       getWebflowDesigner().notify({
         type: "Error",
         message: "This element type doesn't support a background gradient.",

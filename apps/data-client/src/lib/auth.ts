@@ -53,9 +53,34 @@ export function createAuth(env: Bindings) {
         // in this case, which the callback route turns into a redirect to
         // `?error=signup_disabled` on the popup callback page below.
         disableImplicitSignUp: true,
+        // Forwarded verbatim as `?prompt=select_account` on Google's own
+        // authorize URL (confirmed in the installed @better-auth/core
+        // source: google.mjs reads `options.prompt` and
+        // create-authorization-url.mjs sets it on the query string
+        // unconditionally when present). Without this, Google silently
+        // reuses whichever Google account already has an active browser
+        // session and skips its own account-chooser screen entirely - a
+        // real, reported bug: signing out of Fluxa and clicking "Sign in
+        // with Google" again never showed a picker at all.
+        prompt: "select_account",
       },
     },
     account: {
+      // A brand-new Google identity is never silently linked into an
+      // *existing* Fluxa user just because the emails happen to match -
+      // linking only ever happens for an `account` row that was already
+      // created by a prior successful Google sign-in/sign-up. Without this,
+      // better-auth's default implicit-linking behavior (oauth2/link-
+      // account.mjs) would sign a visitor straight into someone else's
+      // pre-existing email+password account the first time a Google
+      // identity with the same email completes the OAuth round trip - the
+      // exact "this Google account isn't registered but it logged me in
+      // anyway" bug reported against this flow. disableImplicitSignUp above
+      // only blocks creating a *new* user; this closes the separate
+      // link-to-an-existing-user path disableImplicitSignUp doesn't cover.
+      accountLinking: {
+        disableImplicitLinking: true,
+      },
       // The Google sign-in flow spans two separate top-level browsing
       // contexts: the extension iframe's fetch() to /api/auth/sign-in/social
       // (which sets better-auth's extra CSRF "state" cookie) and the

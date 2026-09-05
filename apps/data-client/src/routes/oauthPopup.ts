@@ -33,11 +33,13 @@ oauthPopupRoutes.get("/", (c) => {
   const feedback =
     error === "signup_disabled"
       ? "This Google account isn't linked to a Fluxa account yet. Close this window, then create an account first."
-      : error === "already_registered"
-        ? "You already have a Fluxa account with this Google account. Close this window and sign in instead."
-        : error
-          ? "Something went wrong signing in with Google. Close this window and try again."
-          : null;
+      : error === "account_not_linked"
+        ? "This Google account isn't linked to a Fluxa account yet. Close this window and sign in with your email and password instead."
+        : error === "already_registered"
+          ? "You already have a Fluxa account with this Google account. Close this window and sign in instead."
+          : error
+            ? "Something went wrong signing in with Google. Close this window and try again."
+            : null;
 
   return c.html(`<!doctype html>
 <html>

@@ -51,6 +51,54 @@ export const presets = pgTable(
   (table) => [index("presets_siteId_idx").on(table.siteId)],
 );
 
+// --- Curated preset gallery --------------------------------------------------
+// Deliberately a *separate* table from `presets` above, not a variant of it -
+// `presets` is "a Fluxa user's own saved config for one of their sites"
+// (owned by siteId, no license/publish concept at all). This is Fluxa's own
+// curated template gallery (built by an admin via apps/preset-admin, browsed
+// by every customer via the Designer Extension's Presets tab - currently
+// still rendering mock data, see designer-extension's PresetsTab.tsx/
+// types/presetGallery.ts). No siteId/userId ownership column, since every row
+// here belongs to Fluxa itself, not to one customer. `isPublished` lets an
+// admin save a draft without it showing up anywhere customer-facing yet -
+// every real read path should filter on it except the admin tool's own list,
+// which needs to see drafts too.
+export const galleryPresetLicenseEnum = pgEnum("gallery_preset_license", ["free", "pro"]);
+
+// Which shader tech a row's `config` renders with - "shaderGradient" (the
+// only kind that ever existed before this column was added, hence the
+// default backfilling every pre-existing row) or "glassLiquid" (the
+// cursor-interactive fluted-glass shader, apps/designer-extension's
+// GlassLiquidCanvas.tsx). See packages/gradient-core's galleryPresetSchema
+// (a discriminated union on this same field) for why `config`'s jsonb shape
+// varies by kind rather than every row being one fixed shape.
+export const galleryPresetKindEnum = pgEnum("gallery_preset_kind", ["shaderGradient", "glassLiquid"]);
+
+export const galleryPresets = pgTable("gallery_presets", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  name: text("name").notNull(),
+  license: galleryPresetLicenseEnum("license").notNull().default("free"),
+  kind: galleryPresetKindEnum("kind").notNull().default("shaderGradient"),
+  // Either a gradientConfigSchema (kind: "shaderGradient") or a
+  // glassLiquidConfigSchema (kind: "glassLiquid") - see packages/gradient-core's
+  // galleryPresetSchema discriminated union. jsonb needs no migration to
+  // hold either shape; `kind` above is what tells every reader which one
+  // it's looking at.
+  config: jsonb("config").notNull(),
+  isPublished: boolean("is_published").notNull().default(false),
+  // Nullable - a preset can exist (and even be published) with no captured
+  // thumbnail yet, falling back to a CSS-gradient approximation client-side
+  // (see designer-extension's PresetCard.tsx). Set via the dedicated
+  // POST /api/gallery-presets/:id/thumbnail route (apps/preset-admin's
+  // "Capture thumbnail" button), not the general PATCH - same
+  // separate-route-per-upload pattern routes/profile.ts's avatar already
+  // uses, not a field on createGalleryPresetSchema.
+  thumbnailUrl: text("thumbnail_url"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 // --- Profile & preferences -------------------------------------------------
 // 1:1 extensions of better-auth's `user` table (name/email/image already live
 // there) - do not duplicate auth-owned fields here, see CLAUDE.md.

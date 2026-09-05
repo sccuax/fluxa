@@ -53,7 +53,7 @@ export function ButtonSecondary({
     <button
       type={type}
       disabled={disabled}
-      className={`h-auto shrink-0 rounded-4 border border-border-border font-sans text-text-color-accent disabled:pointer-events-none disabled:cursor-not-allowed disabled:text-text-secondary ${fullWidth ? "w-full" : "w-auto"} ${paddingClassName} ${textClassName} ${className}`}
+      className={`h-auto flex items-center justify-center shrink-0 rounded-4 border border-border-border font-sans text-text-color-accent disabled:pointer-events-none disabled:cursor-not-allowed disabled:text-text-secondary ${fullWidth ? "w-full" : "w-auto"} ${paddingClassName} ${textClassName} ${className}`}
       {...rest}
     >
       <span className="inline-flex items-center justify-center gap-2">

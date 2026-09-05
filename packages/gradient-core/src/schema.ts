@@ -134,6 +134,65 @@ export function getEffectiveGradientColors(
   };
 }
 
+// A structurally different preset "kind" from everything above - a
+// cursor-interactive fluted-glass shader with a persistent liquid trail
+// (raw hand-authored Three.js ShaderMaterial, NOT @shadergradient/react).
+// Ported from sandbox/src/experiments/ShaderGlassExperiment.tsx (built and
+// tuned there first) as the second half of the `kind` discriminator on
+// galleryPresetSchema below - see that schema's own comment for why a
+// discriminated union, not a second flat schema, was chosen. Field
+// min/max/defaults copied verbatim from that sandbox file's own
+// DEFAULT_*/useState bounds; step values aren't part of the schema (Zod has
+// no `.step()` - only `.multipleOf()`, and these steps only ever matter for
+// the client-side <SliderField>, not for validating a stored config), so
+// they're carried forward as literals in GlassLiquidControlPanel.tsx's own
+// JSX instead.
+export const glassLiquidConfigSchema = z.object({
+  // --- Trail ---
+  cursorRadius: z.number().min(0.02).max(0.4).default(0.18),
+  glowStrength: z.number().min(0).max(1).default(1),
+  ceiling: z.number().min(1).max(4).default(4.0),
+  floorPerSecond: z.number().min(0).max(0.24).default(0),
+  fadeDuration: z.number().min(0.3).max(4).default(1.5),
+  velocityDecay: z.number().min(0.0005).max(0.5).default(0.086),
+
+  // --- Glass ---
+  refraction: z.number().min(0).max(0.4).default(0.14),
+  flutesAngle: z.number().min(-90).max(90).default(-35),
+  flutesFrequency: z.number().min(2).max(20).default(5.5),
+  scrollSpeed: z.number().min(0).max(0.5).default(0.12),
+  wobbleAmount: z.number().min(0).max(0.2).default(0.05),
+  fluteVariation: z.number().min(0).max(1).default(0),
+  highlightStrength: z.number().min(0).max(1).default(0.55),
+  grainStrength: z.number().min(0).max(0.3).default(0.05),
+
+  // --- Edge line ---
+  edgeStrength: z.number().min(0).max(2).default(0.9),
+  edgeWidth: z.number().min(0.2).max(4).default(1.0),
+  edgeTrailMod: z.number().min(0).max(1).default(0),
+
+  // --- Toggles ---
+  confine: z.boolean().default(true),
+  seamScroll: z.boolean().default(false),
+  seamWobble: z.boolean().default(false),
+  edgeAA: z.boolean().default(true),
+  grainOnEdge: z.boolean().default(false),
+  isolateLines: z.boolean().default(false),
+
+  // --- Colors ---
+  glowColor1: z.string().default("#4073f2"),
+  glowColor2: z.string().default("#8c26d9"),
+  highlightColor: z.string().default("#cce6ff"),
+  glowColor: z.string().default("#ff1a80"),
+  edgeColor: z.string().default("#767676"),
+  baseColor: z.string().default("#050508"),
+});
+
+export type GlassLiquidConfig = z.infer<typeof glassLiquidConfigSchema>;
+
+export const DEFAULT_GLASS_LIQUID_CONFIG: GlassLiquidConfig =
+  glassLiquidConfigSchema.parse({});
+
 export const gradientPresetSchema = z.object({
   id: z.string(),
   siteId: z.string(),
@@ -143,3 +202,86 @@ export const gradientPresetSchema = z.object({
 });
 
 export type GradientPreset = z.infer<typeof gradientPresetSchema>;
+
+// A *different* preset concept from GradientPreset above - that one is "a
+// Fluxa user's own saved config for one of their sites" (owned by siteId).
+// This is Fluxa's own curated template gallery: no site ownership, but a
+// license tier and a publish flag an admin controls (see
+// apps/data-client's galleryPresets table and apps/preset-admin, the small
+// internal tool admins use to build these visually by reusing the same
+// ControlPanel/GradientCanvas components the Designer Extension itself
+// uses). Shared here (not just in apps/data-client) so apps/preset-admin
+// can validate/type against the identical shape without either app
+// guessing the other's field names.
+export const galleryPresetLicenseSchema = z.enum(["free", "pro"]);
+
+// Which shader tech a gallery preset's `config` actually renders with -
+// "shaderGradient" (the only kind that ever existed before this field was
+// added, hence the default below) or "glassLiquid" (the fluted-glass/
+// liquid-trail shader, see glassLiquidConfigSchema above). A real
+// discriminated union, not a second flat schema with a loose `config: any`,
+// so every consumer (apps/preset-admin, the Designer Extension) gets a
+// single `GalleryPreset` type that narrows `config`'s shape from `kind`
+// alone, the same way a plain array of "all gallery presets" is typed and
+// consumed today.
+export const galleryPresetKindSchema = z.enum(["shaderGradient", "glassLiquid"]);
+export type GalleryPresetKind = z.infer<typeof galleryPresetKindSchema>;
+
+const galleryPresetCommonFields = {
+  id: z.string(),
+  name: z.string().min(1).max(80),
+  license: galleryPresetLicenseSchema,
+  isPublished: z.boolean(),
+  // Set via POST /api/gallery-presets/:id/thumbnail, not the general create/
+  // update body below - null until an admin captures one (see that route's
+  // own comment). designer-extension's PresetCard.tsx falls back to a
+  // CSS-gradient approximation of `config`'s colors when this is null.
+  thumbnailUrl: z.string().nullable(),
+  createdAt: z.string(),
+};
+
+export const galleryPresetSchema = z.discriminatedUnion("kind", [
+  z.object({ ...galleryPresetCommonFields, kind: z.literal("shaderGradient"), config: gradientConfigSchema }),
+  z.object({ ...galleryPresetCommonFields, kind: z.literal("glassLiquid"), config: glassLiquidConfigSchema }),
+]);
+
+export type GalleryPreset = z.infer<typeof galleryPresetSchema>;
+
+// Request-body shape for POST /api/gallery-presets (apps/data-client) - no
+// id/createdAt/thumbnailUrl (server-assigned), isPublished optional
+// (defaults to a draft so a half-finished gradient in apps/preset-admin is
+// never accidentally live before an admin explicitly toggles it on).
+const createGalleryPresetCommonFields = {
+  name: z.string().min(1).max(80),
+  license: galleryPresetLicenseSchema,
+  isPublished: z.boolean().default(false),
+};
+
+const createShaderGradientGalleryPresetSchema = z.object({
+  ...createGalleryPresetCommonFields,
+  kind: z.literal("shaderGradient"),
+  config: gradientConfigSchema,
+});
+const createGlassLiquidGalleryPresetSchema = z.object({
+  ...createGalleryPresetCommonFields,
+  kind: z.literal("glassLiquid"),
+  config: glassLiquidConfigSchema,
+});
+
+export const createGalleryPresetSchema = z.discriminatedUnion("kind", [
+  createShaderGradientGalleryPresetSchema,
+  createGlassLiquidGalleryPresetSchema,
+]);
+
+// Request-body shape for PATCH /api/gallery-presets/:id - every field
+// optional (a caller may only be toggling `isPublished`, say) EXCEPT `kind`,
+// which stays required even here: z.discriminatedUnion has no `.partial()`
+// of its own (only a plain z.object does), so each branch is partial()'d
+// individually first, then `kind` is re-fixed back to its own literal via
+// .extend(), then the two partial branches are unioned - `kind` being
+// present on every request is exactly what lets this union know which
+// branch's (now-optional) `config` shape to check a request against.
+export const updateGalleryPresetSchema = z.discriminatedUnion("kind", [
+  createShaderGradientGalleryPresetSchema.partial().extend({ kind: z.literal("shaderGradient") }),
+  createGlassLiquidGalleryPresetSchema.partial().extend({ kind: z.literal("glassLiquid") }),
+]);

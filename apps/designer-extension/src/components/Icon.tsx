@@ -24,7 +24,9 @@ export type IconName =
   | "logout"
   | "upload"
   | "delete"
-  | "lock";
+  | "lock"
+  | "search"
+  | "filter";
 
 // SVG markup lives inline here (not imported from an assets folder) so
 // adding a new icon is a one-file edit - see the paste.txt example this
@@ -379,6 +381,38 @@ const icons: Record<IconName, (props: SVGProps<SVGSVGElement>) => ReactElement> 
         strokeLinecap="round"
         strokeLinejoin="round"
       />
+    </svg>
+  ),
+
+  // Hand-drawn (no Figma asset provided for either of these two) - same
+  // 16x16/stroke-currentColor/1.33333 convention as every other icon here.
+  // PresetsTab's search bar and its filter-button trigger.
+  search: (props) => (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+      <path
+        d="M14 14L11.1 11.1M12.6667 7.33333C12.6667 10.2789 10.2789 12.6667 7.33333 12.6667C4.38781 12.6667 2 10.2789 2 7.33333C2 4.38781 4.38781 2 7.33333 2C10.2789 2 12.6667 4.38781 12.6667 7.33333Z"
+        stroke="currentColor"
+        strokeWidth="1.33333"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  ),
+  // A plain "sliders" glyph (three horizontal rails, each with one round
+  // handle) - a common, recognizable filter symbol, distinct enough from
+  // "search" and "gear" not to be confused with either.
+  filter: (props) => (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+      <path
+        d="M2 4H10.6667M13.3333 4H14M2 8H5.33333M8 8H14M2 12H8.66667M11.3333 12H14"
+        stroke="currentColor"
+        strokeWidth="1.33333"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <circle cx="12" cy="4" r="1.33333" stroke="currentColor" strokeWidth="1.33333" />
+      <circle cx="6.66667" cy="8" r="1.33333" stroke="currentColor" strokeWidth="1.33333" />
+      <circle cx="10" cy="12" r="1.33333" stroke="currentColor" strokeWidth="1.33333" />
     </svg>
   ),
 };

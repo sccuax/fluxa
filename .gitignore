@@ -12,6 +12,7 @@ bundle.zip
 *.log
 coverage
 CLAUDE.md
+docs/changelog.md
 .vscode/*
 !.vscode/extensions.json
 copy-paste
