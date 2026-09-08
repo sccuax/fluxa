@@ -4,9 +4,11 @@ import { GradientCanvas } from "../../designer-extension/src/components/Gradient
 import { ControlPanel } from "../../designer-extension/src/components/ControlPanel";
 import { GlassLiquidCanvas } from "../../designer-extension/src/components/GlassLiquidCanvas";
 import { GlassLiquidControlPanel } from "../../designer-extension/src/components/GlassLiquidControlPanel";
-import { SegmentedRow } from "../../designer-extension/src/components/SegmentedRow";
+import { RuidoEvolutivoCanvas } from "../../designer-extension/src/components/RuidoEvolutivoCanvas";
+import { RuidoEvolutivoControlPanel } from "../../designer-extension/src/components/RuidoEvolutivoControlPanel";
 import { useGradientStore } from "../../designer-extension/src/store/gradientStore";
 import { useGlassLiquidStore } from "../../designer-extension/src/store/glassLiquidStore";
+import { useRuidoEvolutivoStore } from "../../designer-extension/src/store/ruidoEvolutivoStore";
 import { apiFetch, ApiRequestError } from "./services/apiClient";
 import { captureThumbnail } from "./services/captureThumbnail";
 import { GalleryPresetList } from "./components/GalleryPresetList";
@@ -16,6 +18,7 @@ type License = "free" | "pro";
 const KIND_OPTIONS: Array<{ label: string; value: GalleryPresetKind }> = [
   { label: "Gradient", value: "shaderGradient" },
   { label: "Glass shader", value: "glassLiquid" },
+  { label: "Ruido Evolutivo", value: "ruidoEvolutivo" },
 ];
 
 // Admins build a preset visually by reusing the exact same ControlPanel +
@@ -27,14 +30,45 @@ const KIND_OPTIONS: Array<{ label: string; value: GalleryPresetKind }> = [
 // the cleaner long-term home for these components once *two* real apps
 // depend on them this way and the coupling starts to hurt - not done yet
 // since it's more upfront work than this tool currently needs.
+type Theme = "light" | "dark";
+
+const THEME_STORAGE_KEY = "fluxa-studio-theme";
+
+function readInitialTheme(): Theme {
+  try {
+    const saved = localStorage.getItem(THEME_STORAGE_KEY);
+    if (saved === "light" || saved === "dark") return saved;
+  } catch {
+    /* localStorage unavailable */
+  }
+  if (typeof window !== "undefined" && window.matchMedia?.("(prefers-color-scheme: dark)").matches) {
+    return "dark";
+  }
+  return "light";
+}
+
 export default function App() {
   const config = useGradientStore((state) => state.config);
   const reset = useGradientStore((state) => state.reset);
   const setConfig = useGradientStore((state) => state.setConfig);
 
+  const [theme, setTheme] = useState<Theme>(readInitialTheme);
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", theme);
+    try {
+      localStorage.setItem(THEME_STORAGE_KEY, theme);
+    } catch {
+      /* localStorage unavailable */
+    }
+  }, [theme]);
+
   const glassLiquidConfig = useGlassLiquidStore((state) => state.config);
   const resetGlassLiquid = useGlassLiquidStore((state) => state.reset);
   const setGlassLiquidConfig = useGlassLiquidStore((state) => state.setConfig);
+
+  const ruidoEvolutivoConfig = useRuidoEvolutivoStore((state) => state.config);
+  const resetRuidoEvolutivo = useRuidoEvolutivoStore((state) => state.reset);
+  const setRuidoEvolutivoConfig = useRuidoEvolutivoStore((state) => state.setConfig);
 
   // Which preset kind is currently being edited - only choosable for a
   // brand-new, unsaved preset (the picker below is hidden once editingId is
@@ -91,6 +125,7 @@ export default function App() {
     setKind("shaderGradient");
     reset();
     resetGlassLiquid();
+    resetRuidoEvolutivo();
   }
 
   function loadForEditing(preset: GalleryPreset) {
@@ -103,6 +138,8 @@ export default function App() {
     setKind(preset.kind);
     if (preset.kind === "glassLiquid") {
       setGlassLiquidConfig(preset.config);
+    } else if (preset.kind === "ruidoEvolutivo") {
+      setRuidoEvolutivoConfig(preset.config);
     } else {
       setConfig(preset.config);
     }
@@ -117,7 +154,12 @@ export default function App() {
     setSaving(true);
     setSaveError(null);
     try {
-      const activeConfig = kind === "glassLiquid" ? glassLiquidConfig : config;
+      const activeConfig =
+        kind === "glassLiquid"
+          ? glassLiquidConfig
+          : kind === "ruidoEvolutivo"
+            ? ruidoEvolutivoConfig
+            : config;
       const body = { kind, name: name.trim(), license, config: activeConfig, isPublished };
       if (editingId) {
         await apiFetch(`/api/gallery-presets/${editingId}`, { method: "PATCH", body: JSON.stringify(body) });
@@ -192,14 +234,51 @@ export default function App() {
 
   return (
     <div className="mx-auto flex max-w-[1000px] flex-col gap-6 px-6 py-8">
-      <h1 className="font-display text-mobile-display-d1 text-text-black">Fluxa Preset Studio</h1>
+      <div className="flex items-center justify-between gap-4">
+        <h1 className="font-display text-mobile-display-d1 text-text-black">Fluxa Preset Studio</h1>
+        <button
+          type="button"
+          onClick={() => setTheme((current) => (current === "dark" ? "light" : "dark"))}
+          className="shrink-0 rounded-[4px] border border-border-border px-3 py-1.5 font-sans text-mobile-text-sm-regular text-text-black"
+        >
+          {theme === "dark" ? "Light mode" : "Dark mode"}
+        </button>
+      </div>
 
-      {/* Only choosable for a brand-new, unsaved preset - hidden once
-          editingId is set, since a preset's kind is fixed forever once it
-          exists as a real row (mirrors the "Start a new preset instead"
-          link's own editingId-gating below). */}
-      {!editingId && (
-        <SegmentedRow label="Shader" options={KIND_OPTIONS} value={kind} onChange={setKind} className="max-w-[240px]" />
+      {/* Only *choosable* for a brand-new, unsaved preset - a preset's kind
+          is fixed forever once it exists as a real row. When editing an
+          existing row the picker is replaced by a read-only label so it's
+          still visible which shader this preset uses (mirrors the "Start a
+          new preset instead" link's own editingId-gating below). */}
+      {editingId ? (
+        <p className="font-sans text-mobile-text-md-regular text-text-secondary">
+          Shader:{" "}
+          <span className="text-text-black">
+            {KIND_OPTIONS.find((option) => option.value === kind)?.label ?? kind}
+          </span>{" "}
+          <span className="text-mobile-text-sm-regular">· fixed for an existing preset</span>
+        </p>
+      ) : (
+        <div className="flex items-center gap-3">
+          <span className="font-sans text-mobile-text-md-regular text-text-black">Shader</span>
+          <div className="inline-flex rounded-[6px] border border-border-border p-0.5">
+            {KIND_OPTIONS.map((option) => {
+              const active = option.value === kind;
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => setKind(option.value)}
+                  className={`whitespace-nowrap rounded-[4px] px-3 py-1.5 font-sans text-mobile-text-sm-regular transition-colors ${
+                    active ? "bg-accent-500 text-white" : "text-text-secondary hover:text-text-black"
+                  }`}
+                >
+                  {option.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
       )}
 
       <div className="flex gap-6">
@@ -208,10 +287,22 @@ export default function App() {
               drawImage read to reliably see real pixels instead of a blank
               frame - see GradientCanvas.tsx's own comment on this prop for
               why it's off by default and only turned on here. */}
-          {kind === "glassLiquid" ? <GlassLiquidCanvas preserveDrawingBuffer /> : <GradientCanvas preserveDrawingBuffer />}
+          {kind === "glassLiquid" ? (
+            <GlassLiquidCanvas preserveDrawingBuffer />
+          ) : kind === "ruidoEvolutivo" ? (
+            <RuidoEvolutivoCanvas preserveDrawingBuffer />
+          ) : (
+            <GradientCanvas preserveDrawingBuffer />
+          )}
         </div>
         <div className="h-[560px] w-[320px] shrink-0 overflow-hidden rounded-4 border border-border-border">
-          {kind === "glassLiquid" ? <GlassLiquidControlPanel /> : <ControlPanel />}
+          {kind === "glassLiquid" ? (
+            <GlassLiquidControlPanel />
+          ) : kind === "ruidoEvolutivo" ? (
+            <RuidoEvolutivoControlPanel />
+          ) : (
+            <ControlPanel />
+          )}
         </div>
       </div>
 

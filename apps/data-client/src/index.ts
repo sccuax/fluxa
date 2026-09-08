@@ -59,6 +59,14 @@ app.use(
         // apps/preset-admin - local-only internal tool, see routes/
         // galleryPresets.ts and requireAdminToken.ts.
         "http://localhost:5175",
+        // apps/preset-admin deployed to Cloudflare Pages (Fluxa Studio on
+        // the web). The whole site sits behind Cloudflare Access (email-PIN
+        // allowlist of two admins), so this is still effectively the same
+        // "internal tool" trust level as the localhost entry above - the
+        // shared x-admin-token in the client bundle is only reachable by
+        // those two authenticated admins. Production alias only; per-deploy
+        // preview URLs (<hash>.fluxa-studio-236.pages.dev) are not listed.
+        "https://fluxa-studio-236.pages.dev",
         // TEMPORARY - Cloudflare quick tunnel for a live demo of the
         // extension running standalone (not through the Designer iframe).
         // Quick tunnel URLs are random per run and expire when the tunnel is

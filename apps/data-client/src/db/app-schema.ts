@@ -72,7 +72,11 @@ export const galleryPresetLicenseEnum = pgEnum("gallery_preset_license", ["free"
 // GlassLiquidCanvas.tsx). See packages/gradient-core's galleryPresetSchema
 // (a discriminated union on this same field) for why `config`'s jsonb shape
 // varies by kind rather than every row being one fixed shape.
-export const galleryPresetKindEnum = pgEnum("gallery_preset_kind", ["shaderGradient", "glassLiquid"]);
+export const galleryPresetKindEnum = pgEnum("gallery_preset_kind", [
+  "shaderGradient",
+  "glassLiquid",
+  "ruidoEvolutivo",
+]);
 
 export const galleryPresets = pgTable("gallery_presets", {
   id: text("id")

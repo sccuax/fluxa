@@ -22,6 +22,28 @@ export default {
   theme: {
     extend: {
       ...tokens,
+      // Dark-mode support (preset-admin only - the real Designer Extension
+      // stays light). The design tokens inline hex values, so the semantic
+      // colour scales the reused components use (text/background/border,
+      // plus the accent-50 active-pill tint) are re-pointed here at CSS
+      // variables whose values swap under :root[data-theme="dark"] in
+      // src/styles/index.css. Every other scale (accent/neutral/primary/...)
+      // is left as the tokens' own hex.
+      colors: {
+        ...tokens.colors,
+        accent: { ...tokens.colors.accent, 50: "var(--fx-accent-soft)" },
+        background: {
+          ...tokens.colors.background,
+          white: "var(--fx-bg)",
+          "white-2": "var(--fx-surface)",
+        },
+        text: {
+          ...tokens.colors.text,
+          black: "var(--fx-text)",
+          secondary: "var(--fx-text-secondary)",
+        },
+        border: { border: "var(--fx-border)" },
+      },
       backgroundImage: flattenOneLevel(tokens.backgroundImage),
       fontFamily: {
         ...tokens.fontFamily,

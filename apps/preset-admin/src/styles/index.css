@@ -16,3 +16,58 @@
    Extension bundle" section for the full explanation of why that path only
    resolves correctly against a real built dist/ output. */
 @import "../../../designer-extension/src/styles/index.css";
+
+/* Dark-mode theme variables (preset-admin only). tailwind.config.js points
+   the semantic text/background/border scales + accent-50 at these; the
+   values here are the light defaults, overridden under
+   :root[data-theme="dark"]. index.html sets data-theme before first paint
+   (from localStorage or prefers-color-scheme); App.tsx's toggle flips it. */
+:root {
+  --fx-bg: #fbfbfa;
+  --fx-surface: #ece8e2;
+  --fx-text: #2d2c29;
+  --fx-text-secondary: #858179;
+  --fx-border: #d9d3c6;
+  --fx-accent-soft: #fcedf2;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --fx-bg: #121317;
+  --fx-surface: #1c1e24;
+  /* Near-white primary text - everything using `text-text-black` (button
+     labels, typed input text, number fields). */
+  --fx-text: #f7f5f1;
+  /* Clearly light secondary - inactive segmented pills, field captions,
+     list metadata, "Start a new preset" link. */
+  --fx-text-secondary: #cfc9bc;
+  --fx-border: #3a3833;
+  --fx-accent-soft: #3a1528;
+}
+
+body {
+  background-color: var(--fx-bg);
+  color: var(--fx-text);
+}
+
+/* Native form controls don't reliably inherit `color` in every browser
+   (especially <select> and its <option>s), so pin them explicitly in dark
+   mode. Every input/select in this app already carries `text-text-black`
+   (which resolves to this same --fx-text), so this only hardens the native
+   rendering, it doesn't change any intended colour. */
+:root[data-theme="dark"] input,
+:root[data-theme="dark"] select,
+:root[data-theme="dark"] textarea {
+  color: var(--fx-text);
+}
+
+:root[data-theme="dark"] option {
+  color: var(--fx-text);
+  background-color: var(--fx-surface);
+}
+
+/* Placeholders render at reduced opacity - too faint on the dark surface. */
+:root[data-theme="dark"] ::placeholder {
+  color: var(--fx-text-secondary);
+  opacity: 1;
+}

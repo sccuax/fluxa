@@ -193,6 +193,128 @@ export type GlassLiquidConfig = z.infer<typeof glassLiquidConfigSchema>;
 export const DEFAULT_GLASS_LIQUID_CONFIG: GlassLiquidConfig =
   glassLiquidConfigSchema.parse({});
 
+// A third structurally-distinct preset "kind" (see galleryPresetSchema's
+// `kind` discriminator below), alongside "shaderGradient" and "glassLiquid".
+// A real 3D liquid gradient surface (PerspectiveCamera + a vertex-displaced
+// subdivided plane) whose color is three independently-drifting "wave
+// fronts" that collide and mix, sampled through a domain-warped fBm field -
+// a raw hand-authored Three.js ShaderMaterial (packages/ruido-evolutivo-renderer),
+// NOT @shadergradient/react. Ported from sandbox/src/experiments/
+// RuidoEvolutivo.tsx, where the look was built and tuned first; every field
+// here was a hardcoded constant in that file (see @fluxa/ruido-evolutivo-renderer's
+// shaders.ts), so the DEFAULT_* values below reproduce that original look
+// exactly. Field min/max are enforced here; slider step values live in
+// RuidoEvolutivoControlPanel.tsx's JSX (Zod has no `.step()`).
+export const RUIDO_EVOLUTIVO_MAX_COLORS = 5;
+
+export const ruidoEvolutivoConfigSchema = z.object({
+  // --- Colors ---
+  // 2..5 hex stops, one per "wave front" (unlike shaderGradient's hard cap
+  // of 3 - this is a self-authored shader so the count is only bounded by
+  // per-pixel cost, see RUIDO_EVOLUTIVO_MAX_COLORS). The first three default
+  // to the sandbox file's original color1/2/3; fronts 4-5 reuse the
+  // sandbox's exact per-front direction/frequency/speed for indices 0-2 and
+  // hand-picked values beyond, so a 3-colour config renders identically to
+  // before this became an array.
+  colors: z
+    .array(z.string())
+    .min(2)
+    .max(RUIDO_EVOLUTIVO_MAX_COLORS)
+    .default(["#2EE550", "#6f93e0", "#CA0DCD"]),
+  // Post-blend saturation multiplier (1 = untouched). Blending many fronts'
+  // colours by weighted average pulls the result toward a desaturated
+  // centroid; nudge this up to keep 4-5 colour configs vivid. At 1 (the
+  // default) the render is bit-identical to no saturation step.
+  saturation: z.number().min(0.5).max(1.6).default(1),
+
+  // --- Surface (vertex displacement / fBm) ---
+  frequency: z.number().min(0.1).max(3).default(0.5),
+  relief: z.number().min(0).max(1).default(0.28),
+  // fBm octave count. The renderer's GLSL loop is bounded at a compile-time
+  // MAX of 6; this is the runtime-variable count via an `if (i >= n) break`.
+  detail: z.number().min(1).max(6).default(5),
+  roughness: z.number().min(0.3).max(0.7).default(0.5),
+  lacunarity: z.number().min(1.5).max(3).default(2),
+  wireframe: z.boolean().default(false),
+  // Subdivisions per side of the displaced plane. Doubles as the wireframe
+  // grid density (more subdivisions => tighter grid / smaller cells). The
+  // sandbox file's fixed MESH_SEGMENTS was 128. Also the surface's polygon
+  // resolution when wireframe is off, so very low values give a faceted
+  // liquid surface.
+  gridDensity: z.number().min(8).max(256).default(128),
+
+  // --- Motion ---
+  speed: z.number().min(0).max(3).default(1),
+  // How much faster fine detail evolves than the big shapes: 0 => all
+  // octaves evolve at the same rate, 1 => finest octave ~2x faster. The
+  // sandbox file's fixed `float(i) * 0.05` per-octave rate is reproduced at
+  // 0.5.
+  evolution: z.number().min(0).max(1).default(0.5),
+  animate: toggleSchema.default("on"),
+
+  // --- Color flow (fragment: domain warp + one wave front per colour) ---
+  warp: z.number().min(0).max(2).default(1),
+  warpScale: z.number().min(0.2).max(2).default(0.8),
+  waveScale: z.number().min(0.3).max(3).default(1),
+  // Turbulence bent into each wave front's crest so it isn't a straight
+  // sine line (the sandbox file's fixed `turb * 0.6`).
+  distortion: z.number().min(0).max(1.5).default(0.6),
+  // Sharpen exponent applied to each front before blending - higher = more
+  // crisp color bands, lower = washed toward a flat average (the sandbox
+  // file's fixed `pow(wave, 1.6)`).
+  contrast: z.number().min(1).max(4).default(1.6),
+  // Lerp between hard-picking the strongest front's color (0) and the
+  // smooth weighted average of all three (1). The sandbox file did a pure
+  // weighted average, so the default is 1.
+  colorMix: z.number().min(0).max(1).default(1),
+  // Rotates every wave-front direction (degrees).
+  flowAngle: z.number().min(0).max(360).default(0),
+  // How far the later fronts fan out from the first: 0 => all parallel, 1 =>
+  // the sandbox file's original spread (for the first three fronts).
+  flowSpread: z.number().min(0).max(1).default(1),
+
+  // --- Texture ---
+  // Independent high-frequency fBm brightness modulation (the sandbox
+  // file's fixed `fineDetail * 0.08`).
+  shimmer: z.number().min(0).max(0.3).default(0.08),
+  // Halftone "grain" - blend intensity toward a rotated CMY dot-screen
+  // reconstruction of the image, the same visual @shadergradient/react's
+  // own `grain` prop produces (there it's a THREE.HalftonePass post-process
+  // with per-channel rotations PI/12, 2*PI/12, 3*PI/12; here it's an
+  // in-shader single-pass approximation). Off by default.
+  grain: z.number().min(0).max(1).default(0),
+  // Halftone dot-cell size in device pixels - larger = coarser dots.
+  grainScale: z.number().min(2).max(12).default(4),
+
+  // --- Lighting (shading off the real displaced-surface normal) ---
+  lightAngle: z.number().min(0).max(360).default(130),
+  lightStrength: z.number().min(0).max(0.6).default(0.18),
+
+  // --- Camera ---
+  zoom: z.number().min(0.35).max(2.2).default(1),
+  // The gentle automatic camera drift (the sandbox file always had it on).
+  orbit: z.boolean().default(true),
+});
+
+export type RuidoEvolutivoConfig = z.infer<typeof ruidoEvolutivoConfigSchema>;
+
+export const DEFAULT_RUIDO_EVOLUTIVO_CONFIG: RuidoEvolutivoConfig =
+  ruidoEvolutivoConfigSchema.parse({});
+
+// Pads a 2..5-length `colors` array out to exactly RUIDO_EVOLUTIVO_MAX_COLORS
+// entries (repeating the last colour) so the renderer can always fill a
+// fixed-size `uniform vec3 uColors[MAX]` GLSL array - the shader's own
+// `uColorCount` uniform is what actually stops the blend loop early, so the
+// padding entries are never read. Used by RuidoEvolutivoCanvas.tsx (live
+// preview) and the self-hosted runtime.
+export function padRuidoColors(colors: string[]): string[] {
+  const last = colors[colors.length - 1] ?? "#000000";
+  return Array.from(
+    { length: RUIDO_EVOLUTIVO_MAX_COLORS },
+    (_, i) => colors[i] ?? last,
+  );
+}
+
 export const gradientPresetSchema = z.object({
   id: z.string(),
   siteId: z.string(),
@@ -224,7 +346,11 @@ export const galleryPresetLicenseSchema = z.enum(["free", "pro"]);
 // single `GalleryPreset` type that narrows `config`'s shape from `kind`
 // alone, the same way a plain array of "all gallery presets" is typed and
 // consumed today.
-export const galleryPresetKindSchema = z.enum(["shaderGradient", "glassLiquid"]);
+export const galleryPresetKindSchema = z.enum([
+  "shaderGradient",
+  "glassLiquid",
+  "ruidoEvolutivo",
+]);
 export type GalleryPresetKind = z.infer<typeof galleryPresetKindSchema>;
 
 const galleryPresetCommonFields = {
@@ -243,6 +369,7 @@ const galleryPresetCommonFields = {
 export const galleryPresetSchema = z.discriminatedUnion("kind", [
   z.object({ ...galleryPresetCommonFields, kind: z.literal("shaderGradient"), config: gradientConfigSchema }),
   z.object({ ...galleryPresetCommonFields, kind: z.literal("glassLiquid"), config: glassLiquidConfigSchema }),
+  z.object({ ...galleryPresetCommonFields, kind: z.literal("ruidoEvolutivo"), config: ruidoEvolutivoConfigSchema }),
 ]);
 
 export type GalleryPreset = z.infer<typeof galleryPresetSchema>;
@@ -267,10 +394,16 @@ const createGlassLiquidGalleryPresetSchema = z.object({
   kind: z.literal("glassLiquid"),
   config: glassLiquidConfigSchema,
 });
+const createRuidoEvolutivoGalleryPresetSchema = z.object({
+  ...createGalleryPresetCommonFields,
+  kind: z.literal("ruidoEvolutivo"),
+  config: ruidoEvolutivoConfigSchema,
+});
 
 export const createGalleryPresetSchema = z.discriminatedUnion("kind", [
   createShaderGradientGalleryPresetSchema,
   createGlassLiquidGalleryPresetSchema,
+  createRuidoEvolutivoGalleryPresetSchema,
 ]);
 
 // Request-body shape for PATCH /api/gallery-presets/:id - every field
@@ -284,4 +417,5 @@ export const createGalleryPresetSchema = z.discriminatedUnion("kind", [
 export const updateGalleryPresetSchema = z.discriminatedUnion("kind", [
   createShaderGradientGalleryPresetSchema.partial().extend({ kind: z.literal("shaderGradient") }),
   createGlassLiquidGalleryPresetSchema.partial().extend({ kind: z.literal("glassLiquid") }),
+  createRuidoEvolutivoGalleryPresetSchema.partial().extend({ kind: z.literal("ruidoEvolutivo") }),
 ]);

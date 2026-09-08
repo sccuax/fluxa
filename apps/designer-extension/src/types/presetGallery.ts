@@ -11,6 +11,7 @@ import {
   type GalleryPreset as BackendGalleryPreset,
   type GradientConfig,
   type GlassLiquidConfig,
+  type RuidoEvolutivoConfig,
 } from "@fluxa/gradient-core";
 import { apiFetch } from "../services/apiClient";
 
@@ -52,7 +53,8 @@ interface GalleryPresetDisplayBase {
 // see PresetsTab.tsx's handleApply.
 export type GalleryPresetDisplay =
   | (GalleryPresetDisplayBase & { kind: "shaderGradient"; config: GradientConfig })
-  | (GalleryPresetDisplayBase & { kind: "glassLiquid"; config: GlassLiquidConfig });
+  | (GalleryPresetDisplayBase & { kind: "glassLiquid"; config: GlassLiquidConfig })
+  | (GalleryPresetDisplayBase & { kind: "ruidoEvolutivo"; config: RuidoEvolutivoConfig });
 
 // The color filter's own swatch palette (PresetFilterModal) - also doubles
 // as the reference palette `nearestColorTag` matches a real preset's
@@ -107,6 +109,12 @@ function previewColorsFor(preset: BackendGalleryPreset): [string, string, string
   if (preset.kind === "glassLiquid") {
     return [preset.config.glowColor1, preset.config.glowColor2, preset.config.baseColor];
   }
+  if (preset.kind === "ruidoEvolutivo") {
+    // 2..5 stops - take the first three for the CSS-gradient swatch, padding
+    // with the last colour when there are only two.
+    const c = preset.config.colors;
+    return [c[0] ?? "#000000", c[1] ?? c[0] ?? "#000000", c[2] ?? c[c.length - 1] ?? "#000000"];
+  }
   const { color1, color2, color3 } = getEffectiveGradientColors(preset.config);
   return [color1, color2, color3];
 }
@@ -130,6 +138,9 @@ function toDisplay(preset: BackendGalleryPreset): GalleryPresetDisplay {
   // `GradientConfig | GlassLiquidConfig` for BOTH kind values, which isn't
   // assignable back to GalleryPresetDisplay's discriminated union.
   if (preset.kind === "glassLiquid") {
+    return { ...base, kind: preset.kind, config: preset.config };
+  }
+  if (preset.kind === "ruidoEvolutivo") {
     return { ...base, kind: preset.kind, config: preset.config };
   }
   return { ...base, kind: preset.kind, config: preset.config };

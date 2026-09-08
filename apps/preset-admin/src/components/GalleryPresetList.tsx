@@ -1,5 +1,11 @@
 import type { GalleryPreset } from "@fluxa/gradient-core";
 
+const KIND_LABEL: Record<GalleryPreset["kind"], string> = {
+  shaderGradient: "Gradient",
+  glassLiquid: "Glass",
+  ruidoEvolutivo: "Ruido Evolutivo",
+};
+
 // Plain list, not a grid with real preview swatches (unlike the Designer
 // Extension's own PresetCard, which this deliberately doesn't reuse - that
 // component lives under designer-extension's mock-data-only PresetsTab, a
@@ -42,11 +48,14 @@ export function GalleryPresetList({
               style={{
                 // glassLiquid has no color1/2/3 at all - glowColor1/glowColor2/
                 // baseColor is that shader's own closest 3-stop approximation
-                // (its two trail hues + the glass background).
+                // (its two trail hues + the glass background). ruidoEvolutivo
+                // stores a 2..5-entry `colors` array; show all of them.
                 backgroundImage:
                   preset.kind === "glassLiquid"
                     ? `linear-gradient(135deg, ${preset.config.glowColor1}, ${preset.config.glowColor2}, ${preset.config.baseColor})`
-                    : `linear-gradient(135deg, ${preset.config.color1}, ${preset.config.color2}, ${preset.config.color3})`,
+                    : preset.kind === "ruidoEvolutivo"
+                      ? `linear-gradient(135deg, ${preset.config.colors.join(", ")})`
+                      : `linear-gradient(135deg, ${preset.config.color1}, ${preset.config.color2}, ${preset.config.color3})`,
               }}
             />
           )}
@@ -54,7 +63,7 @@ export function GalleryPresetList({
             <span className="truncate font-sans text-mobile-text-md-medium text-text-black">{preset.name}</span>
             <span className="font-sans text-mobile-text-sm-regular text-text-secondary">
               {preset.license} · {preset.isPublished ? "Published" : "Draft"} ·{" "}
-              {preset.kind === "glassLiquid" ? "Glass" : "Gradient"}
+              {KIND_LABEL[preset.kind]}
             </span>
           </div>
           <button

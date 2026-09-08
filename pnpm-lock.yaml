@@ -69,6 +69,9 @@ importers:
       '@fluxa/gradient-core':
         specifier: workspace:*
         version: link:../../packages/gradient-core
+      '@fluxa/ruido-evolutivo-renderer':
+        specifier: workspace:*
+        version: link:../../packages/ruido-evolutivo-renderer
       '@react-three/fiber':
         specifier: ^8.18.0
         version: 8.18.0(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(three@0.166.1)
@@ -164,6 +167,9 @@ importers:
       '@fluxa/gradient-core':
         specifier: workspace:*
         version: link:../../packages/gradient-core
+      '@fluxa/ruido-evolutivo-renderer':
+        specifier: workspace:*
+        version: link:../../packages/ruido-evolutivo-renderer
       '@react-three/fiber':
         specifier: ^8.18.0
         version: 8.18.0(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(three@0.166.1)
@@ -251,6 +257,22 @@ importers:
         specifier: ^3.23.8
         version: 3.25.76
     devDependencies:
+      typescript:
+        specifier: ^5.5.4
+        version: 5.9.3
+
+  packages/ruido-evolutivo-renderer:
+    dependencies:
+      '@fluxa/gradient-core':
+        specifier: workspace:*
+        version: link:../gradient-core
+      three:
+        specifier: ^0.166.0
+        version: 0.166.1
+    devDependencies:
+      '@types/three':
+        specifier: ^0.166.0
+        version: 0.166.0
       typescript:
         specifier: ^5.5.4
         version: 5.9.3
