@@ -6,8 +6,9 @@ import { PresetCard } from "./PresetCard";
 import { PresetFilterModal, DEFAULT_PRESET_FILTERS, hasActivePresetFilters, type PresetFilters } from "./PresetFilterModal";
 import { fetchPublishedPresets, type GalleryPresetDisplay } from "../types/presetGallery";
 import { useSelectedElement } from "../hooks/useSelectedElement";
-import { canApplyPreset } from "../services/applyGradient";
+import { applyGradientToElement, canApplyPreset } from "../services/applyGradient";
 import { applyGlassLiquidToElement } from "../services/applyGlassLiquid";
+import { applyRuidoEvolutivoToElement } from "../services/applyRuidoEvolutivo";
 import { getWebflowDesigner } from "../services/webflowDesigner";
 
 // Presets tab - a searchable/filterable gallery of Fluxa's own curated
@@ -27,13 +28,12 @@ export function PresetsTab() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
 
-  // Only glassLiquid presets are actually clickable here (see PresetCard.tsx's
-  // own comment) - this hook is the same one EditorTab.tsx already polls
-  // for its own "Apply gradient" button's gating.
+  // Every preset kind is clickable here now (see PresetCard.tsx's own
+  // comment) - this hook is the same one EditorTab.tsx already polls for
+  // its own "Apply gradient" button's gating.
   const { element } = useSelectedElement();
 
   async function handleApply(preset: GalleryPresetDisplay) {
-    if (preset.kind !== "glassLiquid") return;
     if (!canApplyPreset(element)) {
       getWebflowDesigner().notify({
         type: "Error",
@@ -42,7 +42,13 @@ export function PresetsTab() {
       return;
     }
     try {
-      await applyGlassLiquidToElement(element, preset.config);
+      if (preset.kind === "glassLiquid") {
+        await applyGlassLiquidToElement(element, preset.config);
+      } else if (preset.kind === "ruidoEvolutivo") {
+        await applyRuidoEvolutivoToElement(element, preset.config);
+      } else {
+        await applyGradientToElement(element, preset.config);
+      }
       getWebflowDesigner().notify({ type: "Success", message: "Preset applied!" });
     } catch (error) {
       getWebflowDesigner().notify({

@@ -212,6 +212,7 @@ export const FRAGMENT_SHADER = `
   uniform float uFlutesAngle;
   uniform float uFlutesFrequency;
   uniform float uGrainStrength;
+  uniform float uGrainScale;
   uniform float uHighlightStrength;
   uniform float uResolutionY;
   uniform float uEdgeStrength;
@@ -224,7 +225,6 @@ export const FRAGMENT_SHADER = `
   uniform float uSeamWobble;
   uniform float uConfine;
   uniform float uAA;
-  uniform float uGrainOnEdge;
   uniform float uIsolate;
   uniform vec3 uBaseColor;
   uniform vec3 uHighlight;
@@ -233,8 +233,40 @@ export const FRAGMENT_SHADER = `
 
   ${NOISE_GLSL}
 
-  float hash(vec2 p) {
-    return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453123);
+  // Matches @shadergradient/react's own THREE.HalftonePass mechanics, not a
+  // CMY ink-subtraction approximation (an earlier version of this shader
+  // used that model, same as @fluxa/ruido-evolutivo-renderer's still does -
+  // confirmed by reading the real effect's compiled source
+  // (chunk-VJZMGGI7.mjs/chunk-SOFAB2VP.mjs) that it's structurally
+  // different: each of R/G/B gets its OWN independently-rotated grid of
+  // dots sized by THAT channel's own brightness (not "ink coverage"),
+  // composited additively (vR+vG+vB there) - a more "separated colored
+  // dots" look than a print-ink reconstruction. pow(channel, 1.125) is
+  // their SHAPE_DOT radius curve verbatim; the 4-corner grid-cell sampling
+  // and 8x supersampling their pass also does are deliberately not ported -
+  // those exist to reduce artifacts when re-sampling a discrete input
+  // texture at nearby grid points, meaningless here since col is already
+  // one continuous, analytically-computed value at this exact fragment.
+  float halftoneDot(vec2 fragPx, float angle, float cell, float channelValue) {
+    float s = sin(angle);
+    float c = cos(angle);
+    vec2 rot = vec2(fragPx.x * c - fragPx.y * s, fragPx.x * s + fragPx.y * c);
+    vec2 inCell = mod(rot, cell) - 0.5 * cell;
+    float dist = length(inCell);
+    float radius = pow(clamp(channelValue, 0.0, 1.0), 1.125) * (0.5 * cell);
+    return 1.0 - smoothstep(radius - 0.75, radius + 0.75, dist);
+  }
+
+  // Per-channel rotations are the SPECIFIC (non-obvious) assignment
+  // @shadergradient/react's own wrapper hardcodes - confirmed by reading
+  // chunk-SOFAB2VP.mjs directly: R gets 1x, G gets 3x, B gets 2x (not the
+  // R/G/B = 1x/2x/3x order the underlying HalftoneShader's own unused
+  // default uniforms would suggest).
+  vec3 halftone(vec2 fragPx, vec3 col, float cell) {
+    float r = halftoneDot(fragPx, 0.2617994, cell, col.r);
+    float g = halftoneDot(fragPx, 0.7853982, cell, col.g);
+    float b = halftoneDot(fragPx, 0.5235988, cell, col.b);
+    return vec3(r, 0.0, 0.0) + vec3(0.0, g, 0.0) + vec3(0.0, 0.0, b);
   }
 
   vec2 rotate(vec2 uv, float angle) {
@@ -344,8 +376,6 @@ export const FRAGMENT_SHADER = `
     // of the trail.
     float edgeMod = mix(1.0, 0.12 + trailBright * 0.9, uEdgeTrailMod);
 
-    float grain = hash(gl_FragCoord.xy + uTime * 60.0) - 0.5;
-
     // "Isolate lines" debug/creative mode - shows ONLY the seam lines over a
     // flat background, skipping the refracted trail/highlight/grain
     // entirely.
@@ -359,18 +389,31 @@ export const FRAGMENT_SHADER = `
     float ridgeHighlight = streak(barShade, 3.2) * 0.16;
     vec3 baseGlass = uBaseColor + uHighlight * ridgeHighlight * uHighlightStrength;
 
-    // Grain can land before or after the edge line ("Grain on edge") - off
-    // by default (grain shows everywhere EXCEPT baked into the edge line's
-    // own color), on layers it onto the edge line specifically instead of
-    // the general glass surface.
     vec3 color = baseGlass;
-    color += grain * uGrainStrength * (1.0 - uGrainOnEdge);
     color += refracted;
-    color += uEdgeColor * edgeLine * uEdgeStrength * edgeMod;
-    color += grain * uGrainStrength * uGrainOnEdge;
 
     float maxChannel = max(color.r, max(color.g, color.b));
     color = color / max(maxChannel, 1.0);
+
+    // Halftone "grain" - blend toward a rotated RGB dot-screen
+    // reconstruction of the glass surface + refracted trail ONLY, matching
+    // the look @shadergradient/react's own grain prop produces. Applied
+    // BEFORE the edge line is added below (explicit direction: grain should
+    // affect the shader surface, not the seam/ridge lines) - lines render
+    // crisp and untouched by the dot pattern regardless of grainStrength.
+    if (uGrainStrength > 0.0) {
+      vec3 ht = halftone(gl_FragCoord.xy, clamp(color, 0.0, 1.0), max(uGrainScale, 1.0));
+      color = mix(color, ht, uGrainStrength);
+    }
+
+    color += uEdgeColor * edgeLine * uEdgeStrength * edgeMod;
+
+    // Re-normalize (same hue-preserving compression as above) - adding the
+    // edge line on top of an already-normalized color can push a channel
+    // back over 1.0.
+    float maxChannelFinal = max(color.r, max(color.g, color.b));
+    color = color / max(maxChannelFinal, 1.0);
+
     gl_FragColor = vec4(color, 1.0);
   }
 `;

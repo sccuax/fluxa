@@ -164,7 +164,22 @@ export const glassLiquidConfigSchema = z.object({
   wobbleAmount: z.number().min(0).max(0.2).default(0.05),
   fluteVariation: z.number().min(0).max(1).default(0),
   highlightStrength: z.number().min(0).max(1).default(0.55),
-  grainStrength: z.number().min(0).max(0.3).default(0.05),
+  // Halftone "grain" - blend intensity toward a rotated CMY dot-screen
+  // reconstruction of the final composited image, the SAME technique
+  // ruidoEvolutivoConfigSchema's own `grain`/`grainScale` already use (see
+  // that field's own comment) - itself matching the look
+  // @shadergradient/react's `grain` prop produces via THREE.HalftonePass.
+  // REPLACED (not added alongside) a simple additive noise grain this field
+  // used to drive (range was 0..0.3, an additive noise amount) - real,
+  // deliberate behavior change: any already-published glassLiquid preset
+  // with a nonzero grainStrength now renders halftone dots instead of
+  // noise, per explicit direction to replace rather than add a second
+  // effect. grainOnEdge (a toggle specific to the old technique, deciding
+  // whether noise landed on the edge line or the general surface) had no
+  // sensible equivalent for a whole-image post-blend, so it's gone too -
+  // removed, not just unused.
+  grainStrength: z.number().min(0).max(1).default(0.05),
+  grainScale: z.number().min(2).max(12).default(4),
 
   // --- Edge line ---
   edgeStrength: z.number().min(0).max(2).default(0.9),
@@ -176,7 +191,6 @@ export const glassLiquidConfigSchema = z.object({
   seamScroll: z.boolean().default(false),
   seamWobble: z.boolean().default(false),
   edgeAA: z.boolean().default(true),
-  grainOnEdge: z.boolean().default(false),
   isolateLines: z.boolean().default(false),
 
   // --- Colors ---

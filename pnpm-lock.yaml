@@ -226,6 +226,28 @@ importers:
         specifier: ^5.3.5
         version: 5.4.21(@types/node@26.1.2)(terser@5.49.0)
 
+  apps/ruido-evolutivo-runtime:
+    dependencies:
+      '@fluxa/gradient-core':
+        specifier: workspace:*
+        version: link:../../packages/gradient-core
+      '@fluxa/ruido-evolutivo-renderer':
+        specifier: workspace:*
+        version: link:../../packages/ruido-evolutivo-renderer
+      three:
+        specifier: ^0.166.0
+        version: 0.166.1
+    devDependencies:
+      '@types/three':
+        specifier: ^0.166.0
+        version: 0.166.0
+      typescript:
+        specifier: ^5.5.4
+        version: 5.9.3
+      vite:
+        specifier: ^5.3.5
+        version: 5.4.21(@types/node@26.1.2)(terser@5.49.0)
+
   packages/design-tokens:
     devDependencies:
       '@tokens-studio/sd-transforms':

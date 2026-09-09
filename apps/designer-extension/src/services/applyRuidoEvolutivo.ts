@@ -1,19 +1,19 @@
-import type { GlassLiquidConfig } from "@fluxa/gradient-core";
+import type { RuidoEvolutivoConfig } from "@fluxa/gradient-core";
 import { getWebflowDesigner } from "./webflowDesigner";
-import { buildGlassLiquidEmbedCode } from "./glassLiquidEmbedScript";
+import { buildRuidoEvolutivoEmbedCode } from "./ruidoEvolutivoEmbedScript";
 import { removeOtherFluxaEmbeds, type PresetTarget } from "./applyGradient";
 
-// Mirrors applyGradient.ts's own applyGradientToElement/marker/positioning-
-// context logic exactly, for the glassLiquid preset kind - see that file
-// for the detailed rationale behind each step (positioning context,
-// combo-class styles, idempotent re-apply). Deliberately its OWN marker
-// attribute and style names, not applyGradient.ts's - a glass-liquid embed
-// must never be mistaken for a gradient one by either kind's own
-// idempotency check.
-const MARKER_ATTRIBUTE = "data-fluxa-glass-liquid";
+// Mirrors applyGlassLiquid.ts's own applyGlassLiquidToElement/marker/
+// positioning-context logic exactly (which itself mirrors applyGradient.ts -
+// see that file for the detailed rationale behind each step: positioning
+// context, combo-class styles, idempotent re-apply). Deliberately its OWN
+// marker attribute and style names, not glassLiquid's or shaderGradient's -
+// a ruidoEvolutivo embed must never be mistaken for either other kind's by
+// any of the three kinds' own idempotency checks.
+const MARKER_ATTRIBUTE = "data-fluxa-ruido-evolutivo";
 const MARKER_VALUE = "true";
-const HOST_STYLE_NAME = "fluxa-glass-liquid-host";
-const EMBED_STYLE_NAME = "fluxa-glass-liquid-embed";
+const HOST_STYLE_NAME = "fluxa-ruido-evolutivo-host";
+const EMBED_STYLE_NAME = "fluxa-ruido-evolutivo-embed";
 
 async function getOrCreateStyle(webflowApi: WebflowApi, name: string): Promise<Style> {
   const existing = await webflowApi.getStyleByName(name);
@@ -59,7 +59,7 @@ async function ensurePositioningContext(webflowApi: WebflowApi, target: PresetTa
   await target.setStyles([...existingStyles, hostStyle]);
 }
 
-async function findExistingGlassLiquidEmbed(target: PresetTarget): Promise<HtmlEmbedElement | null> {
+async function findExistingRuidoEvolutivoEmbed(target: PresetTarget): Promise<HtmlEmbedElement | null> {
   const children = await target.getChildren();
   for (const child of children) {
     if (child.type !== "HtmlEmbed") continue;
@@ -69,17 +69,17 @@ async function findExistingGlassLiquidEmbed(target: PresetTarget): Promise<HtmlE
   return null;
 }
 
-// Injects the live glassLiquid shader into `target` as a background
+// Injects the live ruidoEvolutivo shader into `target` as a background
 // HtmlEmbed. Re-running this on the same target updates the existing
 // embed's code in place rather than stacking a second one - same
-// idempotent-re-apply behavior as applyGradientToElement.
-export async function applyGlassLiquidToElement(target: PresetTarget, config: GlassLiquidConfig): Promise<void> {
+// idempotent-re-apply behavior as applyGradientToElement/applyGlassLiquidToElement.
+export async function applyRuidoEvolutivoToElement(target: PresetTarget, config: RuidoEvolutivoConfig): Promise<void> {
   const webflowApi = getWebflowDesigner();
-  const rootId = `fluxa-glass-liquid-${crypto.randomUUID().slice(0, 8)}`;
-  const code = buildGlassLiquidEmbedCode(config, rootId);
+  const rootId = `fluxa-ruido-evolutivo-${crypto.randomUUID().slice(0, 8)}`;
+  const code = buildRuidoEvolutivoEmbedCode(config, rootId);
 
   await removeOtherFluxaEmbeds(target, MARKER_ATTRIBUTE);
-  const existing = await findExistingGlassLiquidEmbed(target);
+  const existing = await findExistingRuidoEvolutivoEmbed(target);
   const embed = existing ?? (await target.prepend(webflowApi.elementPresets.HtmlEmbed));
 
   await embed.setSettings({ code });

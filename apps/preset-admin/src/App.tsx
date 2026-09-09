@@ -12,6 +12,7 @@ import { useRuidoEvolutivoStore } from "../../designer-extension/src/store/ruido
 import { apiFetch, ApiRequestError } from "./services/apiClient";
 import { captureThumbnail } from "./services/captureThumbnail";
 import { GalleryPresetList } from "./components/GalleryPresetList";
+import { FloatingPanel } from "./components/FloatingPanel";
 
 type License = "free" | "pro";
 
@@ -281,30 +282,33 @@ export default function App() {
         </div>
       )}
 
-      <div className="flex gap-6">
-        <div ref={previewContainerRef} className="h-[560px] flex-1 overflow-hidden rounded-4 border border-border-border">
-          {/* preserveDrawingBuffer: required for captureThumbnail.ts's
-              drawImage read to reliably see real pixels instead of a blank
-              frame - see GradientCanvas.tsx's own comment on this prop for
-              why it's off by default and only turned on here. */}
-          {kind === "glassLiquid" ? (
-            <GlassLiquidCanvas preserveDrawingBuffer />
-          ) : kind === "ruidoEvolutivo" ? (
-            <RuidoEvolutivoCanvas preserveDrawingBuffer />
-          ) : (
-            <GradientCanvas preserveDrawingBuffer />
-          )}
-        </div>
-        <div className="h-[560px] w-[320px] shrink-0 overflow-hidden rounded-4 border border-border-border">
-          {kind === "glassLiquid" ? (
-            <GlassLiquidControlPanel />
-          ) : kind === "ruidoEvolutivo" ? (
-            <RuidoEvolutivoControlPanel />
-          ) : (
-            <ControlPanel />
-          )}
-        </div>
+      <div ref={previewContainerRef} className="h-[560px] w-full overflow-hidden rounded-4 border border-border-border">
+        {/* preserveDrawingBuffer: required for captureThumbnail.ts's
+            drawImage read to reliably see real pixels instead of a blank
+            frame - see GradientCanvas.tsx's own comment on this prop for
+            why it's off by default and only turned on here. */}
+        {kind === "glassLiquid" ? (
+          <GlassLiquidCanvas preserveDrawingBuffer />
+        ) : kind === "ruidoEvolutivo" ? (
+          <RuidoEvolutivoCanvas preserveDrawingBuffer />
+        ) : (
+          <GradientCanvas preserveDrawingBuffer />
+        )}
       </div>
+
+      {/* Full-width canvas above needs the control panel out of normal flow
+          (see FloatingPanel.tsx's own comment) - dragging its handle moves
+          it anywhere in the viewport instead of it permanently taking a
+          320px bite out of the canvas's own width. */}
+      <FloatingPanel>
+        {kind === "glassLiquid" ? (
+          <GlassLiquidControlPanel />
+        ) : kind === "ruidoEvolutivo" ? (
+          <RuidoEvolutivoControlPanel />
+        ) : (
+          <ControlPanel />
+        )}
+      </FloatingPanel>
 
       <div className="flex flex-col gap-3 rounded-4 border border-border-border p-4">
         <div className="flex items-center justify-between">

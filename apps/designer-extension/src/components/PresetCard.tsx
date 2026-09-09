@@ -1,13 +1,14 @@
 import type { GalleryPresetDisplay } from "../types/presetGallery";
 
-// A grid item - clickable ONLY for a `glassLiquid` preset with a valid
-// current selection (`canApply`, passed down from PresetsTab.tsx, which
-// owns the actual selected-element polling). `shaderGradient` cards stay
-// exactly as inert as they always were - applying THAT kind from the
-// gallery is out of scope for now (it's only ever set from EditorTab's own
-// live-editing "Apply gradient" button); wiring both kinds through this
-// same card is a natural follow-up once that's wanted, not a limitation of
-// this component's own shape.
+// A grid item - clickable for any preset kind with a valid current
+// selection (`canApply`, passed down from PresetsTab.tsx, which owns the
+// actual selected-element polling). All three kinds (`shaderGradient`,
+// `glassLiquid`, `ruidoEvolutivo`) are applicable straight from the gallery
+// - `shaderGradient` was applicable only via EditorTab's own "Apply
+// gradient" button until this was explicitly widened. License (`free`/
+// `pro`) plays no role in clickability - there's no plan/payment gating
+// built yet (see the root CLAUDE.md), so every kind is equally applicable
+// regardless of license tier.
 // Prefers `thumbnailUrl` (a real admin-captured screenshot of the live
 // shader, see presetGallery.ts's own comment) when the preset has one;
 // falls back to a `previewColors`-derived linear-gradient approximation
@@ -22,7 +23,7 @@ export function PresetCard({
   onApply: (preset: GalleryPresetDisplay) => void;
 }) {
   const [color1, color2, color3] = preset.previewColors;
-  const clickable = preset.kind === "glassLiquid" && canApply;
+  const clickable = canApply;
 
   return (
     <div

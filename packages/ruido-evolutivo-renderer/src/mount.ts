@@ -8,6 +8,13 @@ import { VERTEX_SHADER, FRAGMENT_SHADER, hexToVec3, DEG2RAD } from "./shaders";
 
 export interface RuidoEvolutivoHandle {
   setConfig(config: RuidoEvolutivoConfig): void;
+  // Stops/restarts the requestAnimationFrame render loop without tearing
+  // down the WebGL context - for a published site with several shaders on
+  // one page, the embed script calls this via an IntersectionObserver so an
+  // off-screen instance costs no GPU/compositor time at all, not just
+  // reduced quality. Same contract as @fluxa/glass-liquid-renderer's mount.
+  pause(): void;
+  resume(): void;
   dispose(): void;
 }
 
@@ -135,7 +142,7 @@ export function mountRuidoEvolutivo(
 
   const clock = new THREE.Clock();
   let elapsed = 0;
-  let rafId = requestAnimationFrame(loop);
+  let rafId: number | null = requestAnimationFrame(loop);
 
   function loop() {
     const delta = clock.getDelta();
@@ -199,13 +206,28 @@ export function mountRuidoEvolutivo(
     u.uColorCount.value = config.colors.length;
   }
 
-  function dispose() {
+  function pause() {
+    if (rafId === null) return;
     cancelAnimationFrame(rafId);
+    rafId = null;
+  }
+
+  function resume() {
+    if (rafId !== null) return;
+    // Discards whatever real time passed while paused rather than feeding
+    // one huge `delta` into the next loop() call - see
+    // @fluxa/glass-liquid-renderer's own identical resume() for why.
+    clock.getDelta();
+    rafId = requestAnimationFrame(loop);
+  }
+
+  function dispose() {
+    pause();
     resizeObserver.disconnect();
     material.dispose();
     geometry.dispose();
     renderer.dispose();
   }
 
-  return { setConfig, dispose };
+  return { setConfig, pause, resume, dispose };
 }

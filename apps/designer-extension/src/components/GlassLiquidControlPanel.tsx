@@ -202,7 +202,8 @@ export function GlassLiquidControlPanel() {
       <SliderField label="Wobble amount" value={config.wobbleAmount} min={0} max={0.2} step={0.005} onChange={(v) => setConfig({ wobbleAmount: v })} />
       <SliderField label="Flute variation" value={config.fluteVariation} min={0} max={1} step={0.05} onChange={(v) => setConfig({ fluteVariation: v })} />
       <SliderField label="Highlight strength" value={config.highlightStrength} min={0} max={1} step={0.05} onChange={(v) => setConfig({ highlightStrength: v })} />
-      <SliderField label="Grain strength" value={config.grainStrength} min={0} max={0.3} step={0.01} onChange={(v) => setConfig({ grainStrength: v })} />
+      <SliderField label="Grain strength" value={config.grainStrength} min={0} max={1} step={0.01} onChange={(v) => setConfig({ grainStrength: v })} />
+      <SliderField label="Grain scale" value={config.grainScale} min={2} max={12} step={0.5} onChange={(v) => setConfig({ grainScale: v })} />
 
       <SectionHeader>Edge line</SectionHeader>
       <SliderField label="Edge strength" value={config.edgeStrength} min={0} max={2} step={0.05} onChange={(v) => setConfig({ edgeStrength: v })} />
@@ -214,7 +215,6 @@ export function GlassLiquidControlPanel() {
       <ToggleField label="Seam scroll" value={config.seamScroll} onChange={(v) => setConfig({ seamScroll: v })} />
       <ToggleField label="Seam wobble" value={config.seamWobble} onChange={(v) => setConfig({ seamWobble: v })} />
       <ToggleField label="Edge AA" value={config.edgeAA} onChange={(v) => setConfig({ edgeAA: v })} />
-      <ToggleField label="Grain on edge" value={config.grainOnEdge} onChange={(v) => setConfig({ grainOnEdge: v })} />
       <ToggleField label="Isolate lines" value={config.isolateLines} onChange={(v) => setConfig({ isolateLines: v })} />
 
       <SectionHeader>Colors</SectionHeader>

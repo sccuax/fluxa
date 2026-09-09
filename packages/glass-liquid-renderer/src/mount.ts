@@ -11,6 +11,13 @@ import {
 
 export interface GlassLiquidHandle {
   setConfig(config: GlassLiquidConfig): void;
+  // Stops/restarts the requestAnimationFrame render loop without tearing
+  // down the WebGL context or losing the trail buffer's current contents -
+  // for a published site with several shaders on one page, the embed script
+  // calls this via an IntersectionObserver so an off-screen instance costs
+  // no GPU/compositor time at all, not just reduced quality.
+  pause(): void;
+  resume(): void;
   dispose(): void;
 }
 
@@ -101,6 +108,11 @@ export function mountGlassLiquid(
       uFlutesAngle: { value: (initialConfig.flutesAngle * Math.PI) / 180 },
       uFlutesFrequency: { value: initialConfig.flutesFrequency },
       uGrainStrength: { value: initialConfig.grainStrength },
+      // `?? 4` guards a preset saved before grainScale existed (a raw
+      // stored config missing this key entirely, not run back through the
+      // zod schema's own default on read) - see gradient-core's
+      // glassLiquidConfigSchema comment on grainStrength/grainScale.
+      uGrainScale: { value: initialConfig.grainScale ?? 4 },
       uHighlightStrength: { value: initialConfig.highlightStrength },
       uResolutionY: { value: 1 },
       uEdgeStrength: { value: initialConfig.edgeStrength },
@@ -113,7 +125,6 @@ export function mountGlassLiquid(
       uSeamWobble: { value: initialConfig.seamWobble ? 1 : 0 },
       uConfine: { value: initialConfig.confine ? 1 : 0 },
       uAA: { value: initialConfig.edgeAA ? 1 : 0 },
-      uGrainOnEdge: { value: initialConfig.grainOnEdge ? 1 : 0 },
       uIsolate: { value: initialConfig.isolateLines ? 1 : 0 },
       uBaseColor: { value: hexToVec3(initialConfig.baseColor) },
       uHighlight: { value: hexToVec3(initialConfig.highlightColor) },
@@ -185,7 +196,7 @@ export function mountGlassLiquid(
 
   const clock = new THREE.Clock();
   let elapsed = 0;
-  let rafId = requestAnimationFrame(animate);
+  let rafId: number | null = requestAnimationFrame(animate);
 
   function animate() {
     // getDelta() is called exactly once per frame, here - THREE.Clock's
@@ -248,6 +259,7 @@ export function mountGlassLiquid(
     displayMaterial.uniforms.uFlutesAngle.value = (config.flutesAngle * Math.PI) / 180;
     displayMaterial.uniforms.uFlutesFrequency.value = config.flutesFrequency;
     displayMaterial.uniforms.uGrainStrength.value = config.grainStrength;
+    displayMaterial.uniforms.uGrainScale.value = config.grainScale ?? 4;
     displayMaterial.uniforms.uHighlightStrength.value = config.highlightStrength;
     displayMaterial.uniforms.uEdgeStrength.value = config.edgeStrength;
     displayMaterial.uniforms.uEdgeWidth.value = config.edgeWidth;
@@ -259,15 +271,32 @@ export function mountGlassLiquid(
     displayMaterial.uniforms.uSeamWobble.value = config.seamWobble ? 1 : 0;
     displayMaterial.uniforms.uConfine.value = config.confine ? 1 : 0;
     displayMaterial.uniforms.uAA.value = config.edgeAA ? 1 : 0;
-    displayMaterial.uniforms.uGrainOnEdge.value = config.grainOnEdge ? 1 : 0;
     displayMaterial.uniforms.uIsolate.value = config.isolateLines ? 1 : 0;
     displayMaterial.uniforms.uBaseColor.value.copy(hexToVec3(config.baseColor));
     displayMaterial.uniforms.uHighlight.value.copy(hexToVec3(config.highlightColor));
     displayMaterial.uniforms.uEdgeColor.value.copy(hexToVec3(config.edgeColor));
   }
 
-  function dispose() {
+  function pause() {
+    if (rafId === null) return;
     cancelAnimationFrame(rafId);
+    rafId = null;
+  }
+
+  function resume() {
+    if (rafId !== null) return;
+    // Discards whatever real time passed while paused rather than feeding
+    // one huge `delta` into the next animate() call - clock.getDelta()
+    // measures time since its OWN last call, not since the loop stopped, so
+    // without this the first post-resume frame would jump the whole visual
+    // (uTime-driven wobble, decay math) forward by the entire paused
+    // duration in one step.
+    clock.getDelta();
+    rafId = requestAnimationFrame(animate);
+  }
+
+  function dispose() {
+    pause();
     resizeObserver.disconnect();
     window.removeEventListener("mousemove", handleMouseMove);
     simMaterial.dispose();
@@ -278,5 +307,5 @@ export function mountGlassLiquid(
     renderer.dispose();
   }
 
-  return { setConfig, dispose };
+  return { setConfig, pause, resume, dispose };
 }

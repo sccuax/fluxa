@@ -34,6 +34,42 @@ const MARKER_VALUE = "true";
 const HOST_STYLE_NAME = "fluxa-gradient-host";
 const EMBED_STYLE_NAME = "fluxa-gradient-embed";
 
+// Every preset kind's own idempotent-re-apply marker attribute (see
+// applyGlassLiquid.ts/applyRuidoEvolutivo.ts for their own MARKER_ATTRIBUTE
+// constants) - kept in one shared place so removeOtherFluxaEmbeds below can
+// recognize an embed created by ANY kind, not just its own.
+export const FLUXA_EMBED_MARKER_ATTRIBUTES = [
+  MARKER_ATTRIBUTE,
+  "data-fluxa-glass-liquid",
+  "data-fluxa-ruido-evolutivo",
+] as const;
+
+// REAL BUG, FIXED: each kind's own applyXToElement only ever recognized ITS
+// OWN marker attribute when deciding whether to reuse or create an embed -
+// switching from one preset kind to another on the SAME target left the
+// previous kind's embed sitting there untouched while a second one was
+// created alongside it (never replaced), so the shader visibly "didn't
+// update" (the old one was often still what rendered, or the two competed).
+// Called by every applyXToElement before its own find-or-create step, so
+// only one Fluxa shader embed ever lives on a given target at a time.
+export async function removeOtherFluxaEmbeds(
+  target: PresetTarget,
+  ownMarkerAttribute: string
+): Promise<void> {
+  const children = await target.getChildren();
+  for (const child of children) {
+    if (child.type !== "HtmlEmbed") continue;
+    for (const attribute of FLUXA_EMBED_MARKER_ATTRIBUTES) {
+      if (attribute === ownMarkerAttribute) continue;
+      const marker = await child.getAttributeValue(attribute);
+      if (marker === MARKER_VALUE) {
+        await child.remove();
+        break;
+      }
+    }
+  }
+}
+
 async function getOrCreateStyle(
   webflowApi: WebflowApi,
   name: string
@@ -46,14 +82,36 @@ async function getOrCreateStyle(
 // setStyles's own runtime error ("styleIds must form a single path from a
 // root style through its combo classes") fires the moment a plain standalone
 // global style is appended after an element's existing class(es) without
-// being registered as a real combo class of that chain. A target with no
-// existing classes just gets a plain global HOST_STYLE_NAME style (as
-// before); a target that already has one needs the host style
-// created/looked-up as an actual combo class parented to the deepest
-// existing style, via getStyleByName's own path form (an array of names from
-// root to leaf) so the same physical combo class is reused across repeated
-// "Apply gradient" clicks on the same target instead of creating a duplicate
-// every time.
+// being registered as a real combo class of that chain, so a target that
+// already has a class needs the host style created as an actual combo class
+// (parented to its deepest existing style).
+//
+// REAL BUG (twice), FIXED: this originally looked up the existing host style
+// by a path-scoped `getStyleByName([...existingStyles, HOST_STYLE_NAME])`
+// before falling back to `createStyle`, reusing one FIXED global name
+// (HOST_STYLE_NAME) regardless of target. That path-scoped lookup often
+// missed a combo already created under a *different* section's own base
+// class and fell through to `createStyle(HOST_STYLE_NAME, ...)` again -
+// Webflow style names are globally unique, so this failed with "Cannot have
+// duplicate style names". The first fix tried was to look the SAME fixed
+// name up flat and reuse whatever Style object it found regardless of
+// parent - that traded one error for another: a combo class is a genuinely
+// FIXED (parent, child) pair in Webflow - `setStyles([...existingStyles,
+// hostStyle])` throws "styleIds must form a single path from a root style
+// through its combo classes" the moment hostStyle's own registered parent
+// isn't the array's immediately preceding style (i.e. reusing a combo
+// created for section A's base class doesn't chain onto section B's
+// different base class).
+//
+// Real fix: a combo class can't be shared as "the same child" across
+// different parents at all - it has to be a genuinely separate Style object
+// per distinct parent. Scoping the host style's NAME to its parent's own
+// name gives each distinct base class its own dedicated, globally-unique
+// combo object (no name collision), which is always trivially a valid
+// combo of the exact style it was created under (no chain-validation
+// error) - while still reusing the very same object across multiple
+// different elements that happen to share that same base class, and across
+// repeated re-applies to the same target.
 async function getOrCreateHostStyle(
   webflowApi: WebflowApi,
   existingStyles: Style[]
@@ -61,9 +119,9 @@ async function getOrCreateHostStyle(
   const parent = existingStyles[existingStyles.length - 1];
   if (!parent) return getOrCreateStyle(webflowApi, HOST_STYLE_NAME);
 
-  const path = [...existingStyles.map((style) => style.name), HOST_STYLE_NAME];
-  const existing = await webflowApi.getStyleByName(path);
-  return existing ?? webflowApi.createStyle(HOST_STYLE_NAME, {parent});
+  const scopedName = `${parent.name}-${HOST_STYLE_NAME}`;
+  const existing = await webflowApi.getStyleByName(scopedName);
+  return existing ?? webflowApi.createStyle(scopedName, {parent});
 }
 
 // The embed fills the target via `position: absolute; inset: 0`, which resolves
@@ -136,6 +194,7 @@ export async function applyGradientToElement(
   const rootId = `fluxa-gradient-${crypto.randomUUID().slice(0, 8)}`;
   const code = buildGradientEmbedCode(config, rootId);
 
+  await removeOtherFluxaEmbeds(target, MARKER_ATTRIBUTE);
   const existing = await findExistingGradientEmbed(target);
   const embed = existing ?? (await target.prepend(webflowApi.elementPresets.HtmlEmbed));
 
