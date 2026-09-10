@@ -146,6 +146,12 @@ export const FRAGMENT_SHADER = `
   #define MAX_COLORS ${RUIDO_EVOLUTIVO_MAX_COLORS}
   uniform vec3 uColors[MAX_COLORS];
   uniform float uColorCount;
+  // Per-front opacity 0..1 (from the picker's colorsOpacity, /100). Scales
+  // each front's blend WEIGHT below, so a low-opacity colour contributes
+  // less to both the weighted sum and its divisor - the result shifts toward
+  // the other colours rather than toward black - and can't win the hard-pick
+  // (uColorMix 0) either. All 1.0 = identical to before this existed.
+  uniform float uColorAlpha[MAX_COLORS];
 
   ${NOISE_GLSL}
   ${FBM_GLSL}
@@ -255,8 +261,9 @@ export const FRAGMENT_SHADER = `
       float turb = fbm(wp * 1.4 + frontTurbOffset(fi), t * frontTurbRate(fi));
       float wave = sin(dot(wp, dir) * frontFreq(fi) * uWaveScale + t * frontSpeed(fi) + turb * uDistortion) * 0.5 + 0.5;
       // Sharpen each front before blending - keeps crests reading as a real
-      // colour instead of everything washing to a flat average.
-      float w = pow(wave, uContrast);
+      // colour instead of everything washing to a flat average. Then scale
+      // by the front's own opacity (uColorAlpha).
+      float w = pow(wave, uContrast) * uColorAlpha[i];
 
       weightedSum += uColors[i] * w;
       wSum += w;

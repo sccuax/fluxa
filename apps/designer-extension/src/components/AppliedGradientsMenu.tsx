@@ -82,7 +82,7 @@ export function AppliedGradientsMenu({ open, onCloseRequest, triggerRef }: {
       )}
       {state.status === "ready" && state.gradients.length === 0 && (
         <p className="font-sans text-mobile-text-md-regular text-text-secondary">
-          No gradients applied on this page yet.
+          No shaders applied on this page yet.
         </p>
       )}
       {state.status === "ready" &&

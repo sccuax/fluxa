@@ -28,6 +28,25 @@ export interface MountGlassLiquidOptions {
   preserveDrawingBuffer?: boolean;
 }
 
+// flutesDepthMask enum -> the shader's numeric uFlutesMask (0 full / 1
+// zones / 2 random). Falls back to "full" for a preset saved before the
+// field existed.
+function flutesMaskToNum(mask: GlassLiquidConfig["flutesDepthMask"] | undefined): number {
+  return mask === "random" ? 2 : mask === "zones" ? 1 : 0;
+}
+
+// Per-colour opacity (0-100, from the picker) is applied by PREMULTIPLYING
+// the colour here in JS - `hexToVec3(hex) * (opacity/100)` - rather than
+// threading 8 alpha uniforms + multiply sites through the shader. This
+// shader is additive/blend everywhere the colour lands (`color += refracted`
+// / `+ edgeLine` / `baseGlass = base + highlight`, and `mix(a, b, t)` for
+// the trail/ambient stops), so a dimmed colour reads exactly as "this colour
+// contributes less" i.e. more transparent. `?? 100` guards a preset saved
+// before the *Opacity fields existed.
+function colorVec(hex: string, opacityPct: number | undefined): THREE.Vector3 {
+  return hexToVec3(hex).multiplyScalar((opacityPct ?? 100) / 100);
+}
+
 // Framework-agnostic mount for the "glassLiquid" shader - the SAME Three.js
 // scene/render-loop logic apps/designer-extension/src/components/GlassLiquidCanvas.tsx
 // (a React wrapper around this) and apps/glass-liquid-runtime (the
@@ -63,7 +82,7 @@ export function mountGlassLiquid(
   const prevMouse = new THREE.Vector2(-10, -10);
   let velocity = 0;
 
-  // These three are read fresh every frame inside animate() (a closure that
+  // These are read fresh every frame inside animate() (a closure that
   // outlives any single setConfig call), so they're tracked as plain
   // mutable locals updated by setConfig rather than captured by value.
   let fadeDuration = initialConfig.fadeDuration;
@@ -88,9 +107,9 @@ export function mountGlassLiquid(
       uCeil: { value: initialConfig.ceiling },
       uDepositRadius: { value: initialConfig.cursorRadius },
       uTexel: { value: new THREE.Vector2(1, 1) },
-      uGlowColor1: { value: hexToVec3(initialConfig.glowColor1) },
-      uGlowColor2: { value: hexToVec3(initialConfig.glowColor2) },
-      uGlow: { value: hexToVec3(initialConfig.glowColor) },
+      uGlowColor1: { value: colorVec(initialConfig.glowColor1, initialConfig.glowColor1Opacity) },
+      uGlowColor2: { value: colorVec(initialConfig.glowColor2, initialConfig.glowColor2Opacity) },
+      uGlow: { value: colorVec(initialConfig.glowColor, initialConfig.glowColorOpacity) },
       uGlowStrength: { value: initialConfig.glowStrength },
     },
   });
@@ -98,9 +117,34 @@ export function mountGlassLiquid(
   simScene.add(new THREE.Mesh(geometry, simMaterial));
 
   // --- Display pass: the fixed fluted glass, refracting the trail.
+  // The surface-texture mode ("noise" halftone / "grain" film / "off") is a
+  // compile-time #define, not a runtime uniform branch - the inactive
+  // mode's GLSL is dead-code-eliminated, so "off" adds nothing per frame and
+  // the two modes never both cost register pressure. Recompiled only when
+  // the preset's grainMode actually changes (see setConfig).
+  // Both grain modes are halftone dot-screens (see shaders.ts):
+  // "grain" = GRAIN_HALFTONE, the production v6 dots (half-step radius,
+  // device px). "noise" = GRAIN_HALFTONE_MERGE, the closer-to-shaderGradient
+  // variant (full-step radius so dots merge, scatter jitter, CSS-px grid).
+  // "off" = neither. Default "grain" so a preset with a grainStrength but no
+  // grainMode field (everything published so far) renders exactly as v6.
+  const grainDefines = (mode: GlassLiquidConfig["grainMode"]): Record<string, string> =>
+    mode === "grain" ? { GRAIN_HALFTONE: "1" } : mode === "noise" ? { GRAIN_HALFTONE_MERGE: "1" } : {};
+  // All compile-time #defines for the display shader in one place - the
+  // grain variant plus the optional AMBIENT_GRADIENT layer (a slow moving
+  // colour gradient refracted through the flutes, independent of the cursor
+  // trail). Recompiled from setConfig only when one of these actually
+  // changes.
+  const displayDefines = (c: GlassLiquidConfig): Record<string, string> => ({
+    ...grainDefines(c.grainMode ?? "grain"),
+    ...(c.ambientGradient ? { AMBIENT_GRADIENT: "1" } : {}),
+  });
+  let grainMode: GlassLiquidConfig["grainMode"] = initialConfig.grainMode ?? "grain";
+  let ambientGradient = initialConfig.ambientGradient ?? false;
   const displayMaterial = new THREE.ShaderMaterial({
     vertexShader: VERTEX_SHADER,
     fragmentShader: FRAGMENT_SHADER,
+    defines: displayDefines(initialConfig),
     uniforms: {
       uTime: { value: 0 },
       uAspect: { value: 1 },
@@ -113,6 +157,10 @@ export function mountGlassLiquid(
       // zod schema's own default on read) - see gradient-core's
       // glassLiquidConfigSchema comment on grainStrength/grainScale.
       uGrainScale: { value: initialConfig.grainScale ?? 4 },
+      // Only the "noise" (GRAIN_HALFTONE_MERGE) variant reads this - it puts
+      // its dot grid in CSS-px space (gl_FragCoord is device px). Kept in
+      // sync in resize().
+      uPixelRatio: { value: renderer.getPixelRatio() },
       uHighlightStrength: { value: initialConfig.highlightStrength },
       uResolutionY: { value: 1 },
       uEdgeStrength: { value: initialConfig.edgeStrength },
@@ -121,14 +169,20 @@ export function mountGlassLiquid(
       uWobbleAmount: { value: initialConfig.wobbleAmount },
       uScrollSpeed: { value: initialConfig.scrollSpeed },
       uFluteVariation: { value: initialConfig.fluteVariation },
+      uFlutesDepth: { value: initialConfig.flutesDepth ?? 0 },
+      uFlutesMask: { value: flutesMaskToNum(initialConfig.flutesDepthMask) },
       uSeamScroll: { value: initialConfig.seamScroll ? 1 : 0 },
       uSeamWobble: { value: initialConfig.seamWobble ? 1 : 0 },
       uConfine: { value: initialConfig.confine ? 1 : 0 },
       uAA: { value: initialConfig.edgeAA ? 1 : 0 },
       uIsolate: { value: initialConfig.isolateLines ? 1 : 0 },
-      uBaseColor: { value: hexToVec3(initialConfig.baseColor) },
-      uHighlight: { value: hexToVec3(initialConfig.highlightColor) },
-      uEdgeColor: { value: hexToVec3(initialConfig.edgeColor) },
+      uBaseColor: { value: colorVec(initialConfig.baseColor, initialConfig.baseColorOpacity) },
+      uHighlight: { value: colorVec(initialConfig.highlightColor, initialConfig.highlightColorOpacity) },
+      uEdgeColor: { value: colorVec(initialConfig.edgeColor, initialConfig.edgeColorOpacity) },
+      // Read only when AMBIENT_GRADIENT is defined (see displayDefines).
+      uAmbientColor1: { value: colorVec(initialConfig.ambientColor1 ?? "#4073f2", initialConfig.ambientColor1Opacity) },
+      uAmbientColor2: { value: colorVec(initialConfig.ambientColor2 ?? "#8c26d9", initialConfig.ambientColor2Opacity) },
+      uAmbientStrength: { value: initialConfig.ambientStrength ?? 0.35 },
       uTrailTex: { value: trailTargets[0].texture },
     },
   });
@@ -159,6 +213,7 @@ export function mountGlassLiquid(
     // CSS pixels, so it stays a consistent on-screen thickness regardless
     // of the display's own pixel density.
     displayMaterial.uniforms.uResolutionY.value = targetHeight;
+    displayMaterial.uniforms.uPixelRatio.value = pixelRatio;
     currentTrail = 0;
     renderer.setRenderTarget(trailTargets[0]);
     renderer.clear();
@@ -250,9 +305,9 @@ export function mountGlassLiquid(
 
     simMaterial.uniforms.uCeil.value = config.ceiling;
     simMaterial.uniforms.uDepositRadius.value = config.cursorRadius;
-    simMaterial.uniforms.uGlowColor1.value.copy(hexToVec3(config.glowColor1));
-    simMaterial.uniforms.uGlowColor2.value.copy(hexToVec3(config.glowColor2));
-    simMaterial.uniforms.uGlow.value.copy(hexToVec3(config.glowColor));
+    simMaterial.uniforms.uGlowColor1.value.copy(colorVec(config.glowColor1, config.glowColor1Opacity));
+    simMaterial.uniforms.uGlowColor2.value.copy(colorVec(config.glowColor2, config.glowColor2Opacity));
+    simMaterial.uniforms.uGlow.value.copy(colorVec(config.glowColor, config.glowColorOpacity));
     simMaterial.uniforms.uGlowStrength.value = config.glowStrength;
 
     displayMaterial.uniforms.uRefraction.value = config.refraction;
@@ -260,6 +315,16 @@ export function mountGlassLiquid(
     displayMaterial.uniforms.uFlutesFrequency.value = config.flutesFrequency;
     displayMaterial.uniforms.uGrainStrength.value = config.grainStrength;
     displayMaterial.uniforms.uGrainScale.value = config.grainScale ?? 4;
+    const nextGrainMode = config.grainMode ?? "grain";
+    const nextAmbient = config.ambientGradient ?? false;
+    if (nextGrainMode !== grainMode || nextAmbient !== ambientGradient) {
+      grainMode = nextGrainMode;
+      ambientGradient = nextAmbient;
+      displayMaterial.defines = displayDefines(config);
+      // Forces a one-time shader recompile - only ever on a real mode/toggle
+      // change in the live editor; the published embed's are fixed at mount.
+      displayMaterial.needsUpdate = true;
+    }
     displayMaterial.uniforms.uHighlightStrength.value = config.highlightStrength;
     displayMaterial.uniforms.uEdgeStrength.value = config.edgeStrength;
     displayMaterial.uniforms.uEdgeWidth.value = config.edgeWidth;
@@ -267,14 +332,19 @@ export function mountGlassLiquid(
     displayMaterial.uniforms.uWobbleAmount.value = config.wobbleAmount;
     displayMaterial.uniforms.uScrollSpeed.value = config.scrollSpeed;
     displayMaterial.uniforms.uFluteVariation.value = config.fluteVariation;
+    displayMaterial.uniforms.uFlutesDepth.value = config.flutesDepth ?? 0;
+    displayMaterial.uniforms.uFlutesMask.value = flutesMaskToNum(config.flutesDepthMask);
     displayMaterial.uniforms.uSeamScroll.value = config.seamScroll ? 1 : 0;
     displayMaterial.uniforms.uSeamWobble.value = config.seamWobble ? 1 : 0;
     displayMaterial.uniforms.uConfine.value = config.confine ? 1 : 0;
     displayMaterial.uniforms.uAA.value = config.edgeAA ? 1 : 0;
     displayMaterial.uniforms.uIsolate.value = config.isolateLines ? 1 : 0;
-    displayMaterial.uniforms.uBaseColor.value.copy(hexToVec3(config.baseColor));
-    displayMaterial.uniforms.uHighlight.value.copy(hexToVec3(config.highlightColor));
-    displayMaterial.uniforms.uEdgeColor.value.copy(hexToVec3(config.edgeColor));
+    displayMaterial.uniforms.uBaseColor.value.copy(colorVec(config.baseColor, config.baseColorOpacity));
+    displayMaterial.uniforms.uHighlight.value.copy(colorVec(config.highlightColor, config.highlightColorOpacity));
+    displayMaterial.uniforms.uEdgeColor.value.copy(colorVec(config.edgeColor, config.edgeColorOpacity));
+    displayMaterial.uniforms.uAmbientColor1.value.copy(colorVec(config.ambientColor1 ?? "#4073f2", config.ambientColor1Opacity));
+    displayMaterial.uniforms.uAmbientColor2.value.copy(colorVec(config.ambientColor2 ?? "#8c26d9", config.ambientColor2Opacity));
+    displayMaterial.uniforms.uAmbientStrength.value = config.ambientStrength ?? 0.35;
   }
 
   function pause() {

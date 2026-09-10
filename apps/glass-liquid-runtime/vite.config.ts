@@ -27,18 +27,29 @@ import { fileURLToPath } from "node:url";
 // v5 -> v6 for excluding the edge/seam lines from the grain entirely
 // (applied only to the glass surface + refracted trail, composited before
 // the edge line is added, per explicit direction that lines should render
-// crisp regardless of grainStrength). Each previous version had already
-// been served once with an immutable Cache-Control, so overwriting those
-// same bytes in place would violate that contract for whatever already
-// cached them (this Worker's edge cache, a visitor's browser); every real
-// behavior change ships as a new filename instead.
+// crisp regardless of grainStrength); v6 -> v7 for the grainMode enum -
+// "grain" (the v6 halftone, unchanged), "noise" (a SECOND halftone variant,
+// closer to shaderGradient's own look - merging dots, per-cell scatter, a
+// CSS-px grid; NOT additive film grain, which was tried and rejected twice),
+// "off" - compiled per-mode via ShaderMaterial defines so an unused mode
+// costs nothing. v7 also shipped "flutesDepth"/"flutesDepthMask", an
+// analytic relief on the ridges. v7 -> v8 for an "ambientGradient"
+// toggle (+ ambientColor1/2, ambientStrength) - a slow moving colour
+// gradient refracted through the flutes, independent of the cursor trail,
+// so the glass stays coloured/alive on an un-hovered page; v8 -> v9 for
+// per-colour opacity (config.*Opacity from the picker) premultiplying each
+// colour uniform, so opacity shows in the render. Each previous
+// version had already been served once with an immutable Cache-Control, so
+// overwriting those same bytes in place would violate that contract for
+// whatever already cached them (this Worker's edge cache, a visitor's
+// browser); every real behavior change ships as a new filename instead.
 export default defineConfig({
   build: {
     lib: {
       entry: fileURLToPath(new URL("./src/main.ts", import.meta.url)),
       name: "FluxaGlassLiquid",
       formats: ["iife"],
-      fileName: () => "glass-liquid-runtime.v6.js",
+      fileName: () => "glass-liquid-runtime.v9.js",
     },
     outDir: "dist",
     emptyOutDir: true,

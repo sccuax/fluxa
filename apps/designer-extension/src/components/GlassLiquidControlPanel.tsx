@@ -1,8 +1,7 @@
-import { useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import { useState } from "react";
 import { RangeSlider } from "./RangeSlider";
-import { ColorPicker } from "./ColorPicker";
 import { SegmentedRow } from "./SegmentedRow";
+import { ColorSwatchPicker } from "./ColorSwatchPicker";
 import { formatSliderValue } from "../helpers/format";
 import { useGlassLiquidStore } from "../store/glassLiquidStore";
 
@@ -14,69 +13,33 @@ import { useGlassLiquidStore } from "../store/glassLiquidStore";
 // groupings (Trail/Glass/Edge line/Toggles/Colors) - the field count doesn't
 // need a tab taxonomy.
 
-const SWATCH_POPUP_WIDTH = 280;
-const SWATCH_POPUP_GAP = 8;
-const SWATCH_POPUP_VIEWPORT_MARGIN = 8;
-
-// Swatch button + popover, opening ColorPicker.tsx's saturation/hue picker
-// directly - a lighter version of this same file's own ColorSwatchPicker
-// (which pulls in a FullViewModal + a different Zustand store + opacity/
-// format fields that don't apply to this shader's own colors, which have no
-// opacity concept). Rendered via a portal into document.body with
-// position: fixed (computed from the button's own getBoundingClientRect)
-// so it can never get clipped by a scrolling/overflow-hidden ancestor -
-// this panel is itself a scrollable box (apps/preset-admin renders it at a
-// fixed height), which a plain CSS-anchored `absolute` popup would clip.
-function ColorSwatchControl({ label, value, onChange }: { label: string; value: string; onChange: (hex: string) => void }) {
-  const [open, setOpen] = useState(false);
-  const [popupPosition, setPopupPosition] = useState<{ top: number; left: number } | null>(null);
-  const buttonRef = useRef<HTMLButtonElement>(null);
-  const popupRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open || !buttonRef.current) return;
-    const rect = buttonRef.current.getBoundingClientRect();
-    const left = Math.min(rect.left, window.innerWidth - SWATCH_POPUP_WIDTH - SWATCH_POPUP_VIEWPORT_MARGIN);
-    const estimatedHeight = 216 + 24; // ColorPicker's own fixed height + this popup's padding
-    const opensAbove = rect.top - estimatedHeight - SWATCH_POPUP_GAP > SWATCH_POPUP_VIEWPORT_MARGIN;
-    const top = opensAbove ? rect.top - estimatedHeight - SWATCH_POPUP_GAP : rect.bottom + SWATCH_POPUP_GAP;
-    setPopupPosition({ top, left: Math.max(left, SWATCH_POPUP_VIEWPORT_MARGIN) });
-  }, [open]);
-
-  useEffect(() => {
-    if (!open) return;
-    function handlePointerDown(event: PointerEvent) {
-      const target = event.target as Node;
-      if (buttonRef.current?.contains(target)) return;
-      if (popupRef.current?.contains(target)) return;
-      setOpen(false);
-    }
-    window.addEventListener("pointerdown", handlePointerDown);
-    return () => window.removeEventListener("pointerdown", handlePointerDown);
-  }, [open]);
-
+// Label above the shared ColorSwatchPicker modal (Hex/RGB/HSL + opacity +
+// eyedropper), used for every colour in this panel. Replaced this file's old
+// lightweight portal popover (`ColorSwatchControl`) once every colour
+// selector had to open the same modal shaderGradient uses - per explicit
+// direction. `opacity`/`onOpacityChange` bind to the matching `*Opacity`
+// field: purely UI/data (this shader has no per-colour alpha), same as
+// shaderGradient's colorNOpacity - see gradient-core's schema comment.
+// GlassLiquidCanvas owns a cancelable rAF loop, so unlike ControlPanel this
+// passes no `onOpenChange`.
+function ColorField({ label, value, onChange, opacity, onOpacityChange }: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  opacity: number;
+  onOpacityChange: (v: number) => void;
+}) {
   return (
     <div className="flex flex-col gap-1">
       <span className="font-sans text-mobile-text-sm-regular text-text-secondary">{label}</span>
-      <button
-        ref={buttonRef}
-        type="button"
-        aria-label={label}
-        onClick={() => setOpen((current) => !current)}
+      <ColorSwatchPicker
+        label={label}
+        value={value}
+        onChange={onChange}
+        opacity={opacity}
+        onOpacityChange={onOpacityChange}
         className="h-6 w-16 rounded-[4px] border border-border-border"
-        style={{ background: value }}
       />
-      {open && popupPosition &&
-        createPortal(
-          <div
-            ref={popupRef}
-            className="fixed z-50 rounded-md bg-neutral-900 p-3 shadow-xl"
-            style={{ top: popupPosition.top, left: popupPosition.left, width: SWATCH_POPUP_WIDTH }}
-          >
-            <ColorPicker value={value} onChange={onChange} />
-          </div>,
-          document.body,
-        )}
     </div>
   );
 }
@@ -201,9 +164,57 @@ export function GlassLiquidControlPanel() {
       <SliderField label="Scroll speed" value={config.scrollSpeed} min={0} max={0.5} step={0.01} onChange={(v) => setConfig({ scrollSpeed: v })} />
       <SliderField label="Wobble amount" value={config.wobbleAmount} min={0} max={0.2} step={0.005} onChange={(v) => setConfig({ wobbleAmount: v })} />
       <SliderField label="Flute variation" value={config.fluteVariation} min={0} max={1} step={0.05} onChange={(v) => setConfig({ fluteVariation: v })} />
+      <SliderField label="Flutes depth" value={config.flutesDepth} min={0} max={1} step={0.05} onChange={(v) => setConfig({ flutesDepth: v })} />
+      {config.flutesDepth > 0 && (
+        <div className="flex flex-col gap-1.5">
+          <span className="font-sans text-mobile-text-sm-regular text-text-secondary">Depth pattern</span>
+          <SegmentedRow<"full" | "zones" | "random">
+            options={[
+              { label: "Full", value: "full" },
+              { label: "Zones", value: "zones" },
+              { label: "Random", value: "random" },
+            ]}
+            value={config.flutesDepthMask}
+            onChange={(v) => setConfig({ flutesDepthMask: v })}
+            className="w-full"
+          />
+        </div>
+      )}
       <SliderField label="Highlight strength" value={config.highlightStrength} min={0} max={1} step={0.05} onChange={(v) => setConfig({ highlightStrength: v })} />
-      <SliderField label="Grain strength" value={config.grainStrength} min={0} max={1} step={0.01} onChange={(v) => setConfig({ grainStrength: v })} />
-      <SliderField label="Grain scale" value={config.grainScale} min={2} max={12} step={0.5} onChange={(v) => setConfig({ grainScale: v })} />
+
+      <div className="flex flex-col gap-1.5">
+        <span className="font-sans text-mobile-text-sm-regular text-text-secondary">Surface texture</span>
+        <SegmentedRow<"off" | "grain" | "noise">
+          options={[
+            { label: "Off", value: "off" },
+            { label: "Grain", value: "grain" },
+            { label: "Noise", value: "noise" },
+          ]}
+          value={config.grainMode}
+          onChange={(v) => setConfig({ grainMode: v })}
+          className="w-full"
+        />
+      </div>
+      {config.grainMode !== "off" && (
+        <>
+          <SliderField
+            label={config.grainMode === "grain" ? "Grain strength" : "Noise strength"}
+            value={config.grainStrength}
+            min={0}
+            max={1}
+            step={0.01}
+            onChange={(v) => setConfig({ grainStrength: v })}
+          />
+          <SliderField
+            label={config.grainMode === "grain" ? "Grain scale" : "Noise scale"}
+            value={config.grainScale}
+            min={2}
+            max={12}
+            step={0.5}
+            onChange={(v) => setConfig({ grainScale: v })}
+          />
+        </>
+      )}
 
       <SectionHeader>Edge line</SectionHeader>
       <SliderField label="Edge strength" value={config.edgeStrength} min={0} max={2} step={0.05} onChange={(v) => setConfig({ edgeStrength: v })} />
@@ -216,15 +227,25 @@ export function GlassLiquidControlPanel() {
       <ToggleField label="Seam wobble" value={config.seamWobble} onChange={(v) => setConfig({ seamWobble: v })} />
       <ToggleField label="Edge AA" value={config.edgeAA} onChange={(v) => setConfig({ edgeAA: v })} />
       <ToggleField label="Isolate lines" value={config.isolateLines} onChange={(v) => setConfig({ isolateLines: v })} />
+      <ToggleField label="Ambient gradient" value={config.ambientGradient} onChange={(v) => setConfig({ ambientGradient: v })} />
+      {config.ambientGradient && (
+        <>
+          <SliderField label="Ambient strength" value={config.ambientStrength} min={0} max={1} step={0.01} onChange={(v) => setConfig({ ambientStrength: v })} />
+          <div className="flex flex-wrap gap-4">
+            <ColorField label="Ambient color 1" value={config.ambientColor1} onChange={(v) => setConfig({ ambientColor1: v })} opacity={config.ambientColor1Opacity} onOpacityChange={(v) => setConfig({ ambientColor1Opacity: v })} />
+            <ColorField label="Ambient color 2" value={config.ambientColor2} onChange={(v) => setConfig({ ambientColor2: v })} opacity={config.ambientColor2Opacity} onOpacityChange={(v) => setConfig({ ambientColor2Opacity: v })} />
+          </div>
+        </>
+      )}
 
       <SectionHeader>Colors</SectionHeader>
       <div className="flex flex-wrap gap-4">
-        <ColorSwatchControl label="Trail color 1" value={config.glowColor1} onChange={(v) => setConfig({ glowColor1: v })} />
-        <ColorSwatchControl label="Trail color 2" value={config.glowColor2} onChange={(v) => setConfig({ glowColor2: v })} />
-        <ColorSwatchControl label="Highlight" value={config.highlightColor} onChange={(v) => setConfig({ highlightColor: v })} />
-        <ColorSwatchControl label="Glow" value={config.glowColor} onChange={(v) => setConfig({ glowColor: v })} />
-        <ColorSwatchControl label="Edge color" value={config.edgeColor} onChange={(v) => setConfig({ edgeColor: v })} />
-        <ColorSwatchControl label="Background" value={config.baseColor} onChange={(v) => setConfig({ baseColor: v })} />
+        <ColorField label="Trail color 1" value={config.glowColor1} onChange={(v) => setConfig({ glowColor1: v })} opacity={config.glowColor1Opacity} onOpacityChange={(v) => setConfig({ glowColor1Opacity: v })} />
+        <ColorField label="Trail color 2" value={config.glowColor2} onChange={(v) => setConfig({ glowColor2: v })} opacity={config.glowColor2Opacity} onOpacityChange={(v) => setConfig({ glowColor2Opacity: v })} />
+        <ColorField label="Highlight" value={config.highlightColor} onChange={(v) => setConfig({ highlightColor: v })} opacity={config.highlightColorOpacity} onOpacityChange={(v) => setConfig({ highlightColorOpacity: v })} />
+        <ColorField label="Glow" value={config.glowColor} onChange={(v) => setConfig({ glowColor: v })} opacity={config.glowColorOpacity} onOpacityChange={(v) => setConfig({ glowColorOpacity: v })} />
+        <ColorField label="Edge color" value={config.edgeColor} onChange={(v) => setConfig({ edgeColor: v })} opacity={config.edgeColorOpacity} onOpacityChange={(v) => setConfig({ edgeColorOpacity: v })} />
+        <ColorField label="Background" value={config.baseColor} onChange={(v) => setConfig({ baseColor: v })} opacity={config.baseColorOpacity} onOpacityChange={(v) => setConfig({ baseColorOpacity: v })} />
       </div>
     </div>
   );

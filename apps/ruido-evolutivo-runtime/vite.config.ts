@@ -6,17 +6,18 @@ import { fileURLToPath } from "node:url";
 // global with zero runtime external imports, version-pinned fileName rather
 // than a content hash so an already-published <script src> never breaks).
 // Bumped v1 -> v2 for mount()'s handle gaining pause()/resume()
-// (packages/ruido-evolutivo-renderer/src/mount.ts) - v1 had already been
-// uploaded to R2 with an immutable Cache-Control, so overwriting those same
-// bytes in place would violate that contract for anything that already
-// cached them.
+// (packages/ruido-evolutivo-renderer/src/mount.ts); v2 -> v3 for per-front
+// opacity (shader's uColorAlpha, from config.colorsOpacity) - each previous
+// version had already been uploaded to R2 with an immutable Cache-Control,
+// so overwriting those same bytes in place would violate that contract for
+// anything that already cached them.
 export default defineConfig({
   build: {
     lib: {
       entry: fileURLToPath(new URL("./src/main.ts", import.meta.url)),
       name: "FluxaRuidoEvolutivo",
       formats: ["iife"],
-      fileName: () => "ruido-evolutivo-runtime.v2.js",
+      fileName: () => "ruido-evolutivo-runtime.v3.js",
     },
     outDir: "dist",
     emptyOutDir: true,

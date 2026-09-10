@@ -213,6 +213,7 @@ export const FRAGMENT_SHADER = `
   uniform float uFlutesFrequency;
   uniform float uGrainStrength;
   uniform float uGrainScale;
+  uniform float uPixelRatio;
   uniform float uHighlightStrength;
   uniform float uResolutionY;
   uniform float uEdgeStrength;
@@ -221,6 +222,8 @@ export const FRAGMENT_SHADER = `
   uniform float uWobbleAmount;
   uniform float uScrollSpeed;
   uniform float uFluteVariation;
+  uniform float uFlutesDepth;
+  uniform float uFlutesMask;
   uniform float uSeamScroll;
   uniform float uSeamWobble;
   uniform float uConfine;
@@ -229,24 +232,36 @@ export const FRAGMENT_SHADER = `
   uniform vec3 uBaseColor;
   uniform vec3 uHighlight;
   uniform vec3 uEdgeColor;
+  uniform vec3 uAmbientColor1;
+  uniform vec3 uAmbientColor2;
+  uniform float uAmbientStrength;
   uniform sampler2D uTrailTex;
 
   ${NOISE_GLSL}
 
-  // Matches @shadergradient/react's own THREE.HalftonePass mechanics, not a
-  // CMY ink-subtraction approximation (an earlier version of this shader
-  // used that model, same as @fluxa/ruido-evolutivo-renderer's still does -
-  // confirmed by reading the real effect's compiled source
-  // (chunk-VJZMGGI7.mjs/chunk-SOFAB2VP.mjs) that it's structurally
-  // different: each of R/G/B gets its OWN independently-rotated grid of
-  // dots sized by THAT channel's own brightness (not "ink coverage"),
-  // composited additively (vR+vG+vB there) - a more "separated colored
-  // dots" look than a print-ink reconstruction. pow(channel, 1.125) is
-  // their SHAPE_DOT radius curve verbatim; the 4-corner grid-cell sampling
-  // and 8x supersampling their pass also does are deliberately not ported -
-  // those exist to reduce artifacts when re-sampling a discrete input
-  // texture at nearby grid points, meaningless here since col is already
-  // one continuous, analytically-computed value at this exact fragment.
+  // Both grain modes are HALFTONE dot-screens (per-channel RGB grids,
+  // rotations R=1x/G=3x/B=2x - the order @shadergradient/react's
+  // THREE.HalftonePass wrapper hardcodes). They differ only in how the dots
+  // are drawn:
+  //
+  //   "grain" (GRAIN_HALFTONE) - THE PRODUCTION dots, byte-for-byte from
+  //   glass-liquid-runtime v6 (commit 4b7a26a): regular grid, dot radius =
+  //   pow(channel,1.125) * 0.5*cell (HALF the cell, dots never merge - a
+  //   crisp visible lattice), 1.5px smoothstep edge, device-px grid.
+  //
+  //   "noise" (GRAIN_HALFTONE_MERGE) - the closer-to-shaderGradient variant:
+  //   full-step dot radius so bright dots MERGE toward solid, scatter=1
+  //   per-cell jitter, a 2x2 nearest-cell max (their p1..p4 corners), and a
+  //   CSS-px grid (gl_FragCoord / uPixelRatio) so uGrainScale reads the same
+  //   at any display density. Both modes take uGrainScale (the dot-cell
+  //   size) and uGrainStrength (blend toward the dot screen).
+  //
+  // Screen-space (gl_FragCoord) so neither pattern crawls.
+
+  float htRand(vec2 seed) {
+    return fract(sin(dot(seed.xy, vec2(12.9898, 78.233))) * 43758.5453);
+  }
+
   float halftoneDot(vec2 fragPx, float angle, float cell, float channelValue) {
     float s = sin(angle);
     float c = cos(angle);
@@ -257,16 +272,39 @@ export const FRAGMENT_SHADER = `
     return 1.0 - smoothstep(radius - 0.75, radius + 0.75, dist);
   }
 
-  // Per-channel rotations are the SPECIFIC (non-obvious) assignment
-  // @shadergradient/react's own wrapper hardcodes - confirmed by reading
-  // chunk-SOFAB2VP.mjs directly: R gets 1x, G gets 3x, B gets 2x (not the
-  // R/G/B = 1x/2x/3x order the underlying HalftoneShader's own unused
-  // default uniforms would suggest).
   vec3 halftone(vec2 fragPx, vec3 col, float cell) {
     float r = halftoneDot(fragPx, 0.2617994, cell, col.r);
     float g = halftoneDot(fragPx, 0.7853982, cell, col.g);
     float b = halftoneDot(fragPx, 0.5235988, cell, col.b);
     return vec3(r, 0.0, 0.0) + vec3(0.0, g, 0.0) + vec3(0.0, 0.0, b);
+  }
+
+  float halftoneMergeDot(vec2 fragPx, float angle, float cell, float channelValue) {
+    float s = sin(angle);
+    float c = cos(angle);
+    vec2 rot = vec2(fragPx.x * c - fragPx.y * s, fragPx.x * s + fragPx.y * c);
+    float radius = pow(clamp(channelValue, 0.0, 1.0), 1.125) * cell;
+    float aa = cell < 2.5 ? cell * 0.5 : 1.25;
+    vec2 base = floor(rot / cell - 0.5);
+    float cover = 0.0;
+    for (int j = 0; j <= 1; j++) {
+      for (int i = 0; i <= 1; i++) {
+        vec2 cellId = base + vec2(float(i), float(j));
+        vec2 centre = (cellId + 0.5) * cell;
+        float off = htRand(cellId) * 6.28318530718;
+        centre += vec2(cos(off), sin(off)) * (0.25 * cell);
+        cover = max(cover, clamp((radius - length(rot - centre)) / max(aa, 0.001), 0.0, 1.0));
+      }
+    }
+    return cover;
+  }
+
+  vec3 halftoneMerge(vec2 fragPx, vec3 col, float cell) {
+    return vec3(
+      halftoneMergeDot(fragPx, 0.2617994, cell, col.r),
+      halftoneMergeDot(fragPx, 0.7853982, cell, col.g),
+      halftoneMergeDot(fragPx, 0.5235988, cell, col.b)
+    );
   }
 
   vec2 rotate(vec2 uv, float angle) {
@@ -389,22 +427,89 @@ export const FRAGMENT_SHADER = `
     float ridgeHighlight = streak(barShade, 3.2) * 0.16;
     vec3 baseGlass = uBaseColor + uHighlight * ridgeHighlight * uHighlightStrength;
 
+    // --- Flute relief ("Flutes depth") - fakes rounded 3D ridges with pure
+    // analytic shading: no geometry, no lights, no extra passes. lensShape
+    // (= sin(fluteLocal * TAU), already the lens cross-profile slope) is
+    // also the cross-ridge surface tilt, so using it directly as a
+    // directional shade term lights one flank of every ridge and shades the
+    // other - it's zero-mean across a ridge, so overall brightness doesn't
+    // change, only form appears. seamAO is a soft contact-shadow in the
+    // valley between ridges (0 near a seam, 1 mid-ridge). Both scale with
+    // uFlutesDepth; at 0 the branch is skipped and this is exactly the old
+    // flat look. Only touches baseGlass - the refracted trail and the edge
+    // line are composited untouched below. ~5 ALU ops when on.
+    if (uFlutesDepth > 0.0) {
+      // Where the relief shows (uFlutesMask: 0 full / 1 zones / 2 random).
+      // rp.y is the coordinate ALONG the flute axis, so a mask on it fades
+      // the effect in/out down the length of the ridges without disturbing
+      // the per-ridge cross shading. Masked-out pixels get depthAmt 0 =
+      // exactly the flat look.
+      float depthMask = 1.0;
+      if (uFlutesMask > 1.5) {
+        float m = snoise(rp * 2.2 + uTime * 0.03);
+        depthMask = smoothstep(-0.15, 0.55, m);
+      } else if (uFlutesMask > 0.5) {
+        depthMask = abs(cos(rp.y * 3.6));
+      }
+      float depthAmt = uFlutesDepth * depthMask;
+      baseGlass += uHighlight * lensShape * depthAmt * 0.18;
+      float seamAO = smoothstep(0.0, 0.35, fluteLocal) * smoothstep(0.0, 0.35, 1.0 - fluteLocal);
+      baseGlass *= mix(1.0, 0.55 + 0.45 * seamAO, depthAmt);
+      baseGlass = max(baseGlass, vec3(0.0));
+    }
+
     vec3 color = baseGlass;
+
+#ifdef AMBIENT_GRADIENT
+    // A slowly rotating, domain-warped 2-colour gradient filling the whole
+    // surface - a flat analogue of @shadergradient/react's flowing look -
+    // refracted through the SAME flute lens bend as the trail (bendDir *
+    // bend) so the ridges distort it too. Completely independent of the
+    // cursor / SIM trail buffer: purely analytic here (3 snoise calls, only
+    // compiled in when the ambientGradient toggle is on). The whole field
+    // rotates (arm), a low-freq noise warp pushes the sample point around so
+    // the colour reads as organic blobs drifting rather than straight bands,
+    // and a final snoise evolves the pattern in place. Sits BEHIND the trail
+    // (added before color += refracted). uAmbientStrength scales the wash.
+    vec2 ap = (p + bendDir * bend) * 1.4;
+    float arot = uTime * 0.10;
+    mat2 arm = mat2(cos(arot), -sin(arot), sin(arot), cos(arot));
+    vec2 aq = arm * ap;
+    vec2 awarp = vec2(
+      snoise(aq * 0.8 + uTime * 0.12),
+      snoise(aq * 0.8 - uTime * 0.09 + 5.0)
+    ) * 0.7;
+    float ag = snoise((aq + awarp) * 0.9 + uTime * 0.07);
+    ag = smoothstep(0.15, 0.85, ag * 0.5 + 0.5);
+    color += mix(uAmbientColor1, uAmbientColor2, ag) * uAmbientStrength;
+#endif
+
     color += refracted;
 
     float maxChannel = max(color.r, max(color.g, color.b));
     color = color / max(maxChannel, 1.0);
 
-    // Halftone "grain" - blend toward a rotated RGB dot-screen
-    // reconstruction of the glass surface + refracted trail ONLY, matching
-    // the look @shadergradient/react's own grain prop produces. Applied
-    // BEFORE the edge line is added below (explicit direction: grain should
-    // affect the shader surface, not the seam/ridge lines) - lines render
-    // crisp and untouched by the dot pattern regardless of grainStrength.
+    // Surface texture - a halftone dot-screen on the glass surface +
+    // refracted trail ONLY, BEFORE the edge line (lines stay crisp). Which
+    // variant is a compile-time #define set in mount.ts, recompiled only on
+    // a real mode change - the inactive one is dead-code-eliminated, "off"
+    // costs nothing. Both take uGrainScale (dot-cell size) and uGrainStrength
+    // (blend toward the dots). Neither crawls (screen-space gl_FragCoord).
+#ifdef GRAIN_HALFTONE
+    // "grain" - the production v6 dots exactly (half-step radius, device px).
     if (uGrainStrength > 0.0) {
       vec3 ht = halftone(gl_FragCoord.xy, clamp(color, 0.0, 1.0), max(uGrainScale, 1.0));
       color = mix(color, ht, uGrainStrength);
     }
+#endif
+#ifdef GRAIN_HALFTONE_MERGE
+    // "noise" - the closer-to-shaderGradient variant (full-step radius so
+    // bright dots merge, scatter jitter, CSS-px grid via uPixelRatio).
+    if (uGrainStrength > 0.0) {
+      vec3 ht = halftoneMerge(gl_FragCoord.xy / max(uPixelRatio, 1.0), clamp(color, 0.0, 1.0), max(uGrainScale, 1.0));
+      color = mix(color, ht, uGrainStrength);
+    }
+#endif
 
     color += uEdgeColor * edgeLine * uEdgeStrength * edgeMod;
 

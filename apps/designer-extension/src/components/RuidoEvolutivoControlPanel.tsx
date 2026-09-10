@@ -1,11 +1,16 @@
-import { useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import { useState } from "react";
 import { RUIDO_EVOLUTIVO_MAX_COLORS } from "@fluxa/gradient-core";
 import { RangeSlider } from "./RangeSlider";
-import { ColorPicker } from "./ColorPicker";
 import { SegmentedRow } from "./SegmentedRow";
+import { ColorSwatchPicker } from "./ColorSwatchPicker";
 import { formatSliderValue } from "../helpers/format";
 import { useRuidoEvolutivoStore } from "../store/ruidoEvolutivoStore";
+
+// One `colors` entry's per-stop opacity, padded with 100 up to `len` so the
+// array always lines up 1:1 with `colors` even for a preset saved before
+// colorsOpacity existed.
+const padOpacity = (arr: number[], len: number): number[] =>
+  Array.from({ length: len }, (_, i) => arr[i] ?? 100);
 
 // The "ruidoEvolutivo" gallery preset kind's control panel - one flat
 // scrollable panel with section groupings (Colors/Surface/Motion/Color
@@ -18,60 +23,27 @@ import { useRuidoEvolutivoStore } from "../store/ruidoEvolutivoStore";
 // ruidoEvolutivoConfigSchema (packages/gradient-core); step values are the
 // literals in this file's JSX.
 
-const SWATCH_POPUP_WIDTH = 280;
-const SWATCH_POPUP_GAP = 8;
-const SWATCH_POPUP_VIEWPORT_MARGIN = 8;
-
-function ColorSwatchControl({ label, value, onChange }: { label: string; value: string; onChange: (hex: string) => void }) {
-  const [open, setOpen] = useState(false);
-  const [popupPosition, setPopupPosition] = useState<{ top: number; left: number } | null>(null);
-  const buttonRef = useRef<HTMLButtonElement>(null);
-  const popupRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open || !buttonRef.current) return;
-    const rect = buttonRef.current.getBoundingClientRect();
-    const left = Math.min(rect.left, window.innerWidth - SWATCH_POPUP_WIDTH - SWATCH_POPUP_VIEWPORT_MARGIN);
-    const estimatedHeight = 216 + 24;
-    const opensAbove = rect.top - estimatedHeight - SWATCH_POPUP_GAP > SWATCH_POPUP_VIEWPORT_MARGIN;
-    const top = opensAbove ? rect.top - estimatedHeight - SWATCH_POPUP_GAP : rect.bottom + SWATCH_POPUP_GAP;
-    setPopupPosition({ top, left: Math.max(left, SWATCH_POPUP_VIEWPORT_MARGIN) });
-  }, [open]);
-
-  useEffect(() => {
-    if (!open) return;
-    function handlePointerDown(event: PointerEvent) {
-      const target = event.target as Node;
-      if (buttonRef.current?.contains(target)) return;
-      if (popupRef.current?.contains(target)) return;
-      setOpen(false);
-    }
-    window.addEventListener("pointerdown", handlePointerDown);
-    return () => window.removeEventListener("pointerdown", handlePointerDown);
-  }, [open]);
-
+// Label + the shared ColorSwatchPicker modal (Hex/RGB/HSL + opacity +
+// eyedropper) - replaced this file's old lightweight portal popover once
+// every colour selector had to open the same modal shaderGradient uses.
+function ColorField({ label, value, onChange, opacity, onOpacityChange }: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  opacity: number;
+  onOpacityChange: (v: number) => void;
+}) {
   return (
     <div className="flex items-center gap-3">
       <span className="font-sans text-mobile-text-sm-regular text-text-secondary">{label}</span>
-      <button
-        ref={buttonRef}
-        type="button"
-        aria-label={label}
-        onClick={() => setOpen((current) => !current)}
+      <ColorSwatchPicker
+        label={label}
+        value={value}
+        onChange={onChange}
+        opacity={opacity}
+        onOpacityChange={onOpacityChange}
         className="h-6 w-16 shrink-0 rounded-[4px] border border-border-border"
-        style={{ background: value }}
       />
-      {open && popupPosition &&
-        createPortal(
-          <div
-            ref={popupRef}
-            className="fixed z-50 rounded-md bg-neutral-900 p-3 shadow-xl"
-            style={{ top: popupPosition.top, left: popupPosition.left, width: SWATCH_POPUP_WIDTH }}
-          >
-            <ColorPicker value={value} onChange={onChange} />
-          </div>,
-          document.body,
-        )}
     </div>
   );
 }
@@ -175,7 +147,7 @@ export function RuidoEvolutivoControlPanel() {
       <SectionHeader>Colors</SectionHeader>
       {config.colors.map((hex, i) => (
         <div key={i} className="flex items-center gap-3">
-          <ColorSwatchControl
+          <ColorField
             label={`Color ${i + 1}`}
             value={hex}
             onChange={(v) => {
@@ -183,12 +155,23 @@ export function RuidoEvolutivoControlPanel() {
               next[i] = v;
               setConfig({ colors: next });
             }}
+            opacity={config.colorsOpacity[i] ?? 100}
+            onOpacityChange={(v) => {
+              const next = padOpacity(config.colorsOpacity, config.colors.length);
+              next[i] = v;
+              setConfig({ colorsOpacity: next });
+            }}
           />
           {config.colors.length > 2 && (
             <button
               type="button"
               aria-label={`Remove color ${i + 1}`}
-              onClick={() => setConfig({ colors: config.colors.filter((_, j) => j !== i) })}
+              onClick={() =>
+                setConfig({
+                  colors: config.colors.filter((_, j) => j !== i),
+                  colorsOpacity: padOpacity(config.colorsOpacity, config.colors.length).filter((_, j) => j !== i),
+                })
+              }
               className="ml-auto shrink-0 rounded-[4px] border border-border-border px-2 py-0.5 font-sans text-mobile-text-sm-regular text-text-secondary"
             >
               Remove
@@ -199,7 +182,12 @@ export function RuidoEvolutivoControlPanel() {
       {config.colors.length < RUIDO_EVOLUTIVO_MAX_COLORS && (
         <button
           type="button"
-          onClick={() => setConfig({ colors: [...config.colors, "#ffffff"] })}
+          onClick={() =>
+            setConfig({
+              colors: [...config.colors, "#ffffff"],
+              colorsOpacity: [...padOpacity(config.colorsOpacity, config.colors.length), 100],
+            })
+          }
           className="w-fit rounded-[4px] border border-border-border px-2 py-1 font-sans text-mobile-text-sm-regular text-text-black"
         >
           + Add color

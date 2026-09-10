@@ -222,15 +222,24 @@ export interface AppliedGradient {
 
 // Scans the current page (webflow.getAllElements() - the Designer API's own
 // doc comment confirms this is page/component-scoped, not site-wide) for
-// every element with a live Fluxa gradient embed applied - i.e. every
-// PresetTarget-eligible element whose *first* child is an HtmlEmbed
-// carrying MARKER_ATTRIBUTE (the same idempotent-re-apply marker
-// findExistingGradientEmbed above already checks, just from the other
-// direction). There's no parent/reverse-lookup in the Designer API for
-// regular elements (checked its own typings - only asset/page folders and
-// Style expose a getParent()), so this has to walk every eligible element on
-// the page and check its own first child, rather than walking down from a
-// single root once.
+// every element with a live Fluxa shader embed applied - i.e. every
+// PresetTarget-eligible element with an HtmlEmbed child carrying ANY of the
+// three kinds' marker attributes (FLUXA_EMBED_MARKER_ATTRIBUTES:
+// shaderGradient / glassLiquid / ruidoEvolutivo). There's no parent/reverse-
+// lookup in the Designer API for regular elements (checked its own typings -
+// only asset/page folders and Style expose a getParent()), so this has to
+// walk every eligible element on the page and check its own children, rather
+// than walking down from a single root once.
+//
+// REAL BUG, FIXED: this used to check only MARKER_ATTRIBUTE (the
+// shaderGradient marker), so a glassLiquid or ruidoEvolutivo shader applied
+// to a section never showed up in the header dropdown - it was written when
+// shaderGradient was the only kind and never widened when the other two were
+// added (unlike removeOtherFluxaEmbeds / the apply flow, which were). Also
+// only checked children[0]; now scans every HtmlEmbed child, matching
+// findExistingGradientEmbed's own loop. (The Designer API's own limitation
+// that getAllElements() can't see inside a component instance unless you're
+// editing that component is separate and not fixable here.)
 export async function findAppliedGradients(): Promise<AppliedGradient[]> {
   const webflowApi = getWebflowDesigner();
   const allElements = await webflowApi.getAllElements();
@@ -239,10 +248,19 @@ export async function findAppliedGradients(): Promise<AppliedGradient[]> {
   for (const element of allElements) {
     if (!canApplyPreset(element)) continue;
     const children = await element.getChildren();
-    const first = children[0];
-    if (!first || first.type !== "HtmlEmbed") continue;
-    const marker = await first.getAttributeValue(MARKER_ATTRIBUTE);
-    if (marker !== MARKER_VALUE) continue;
+
+    let hasEmbed = false;
+    for (const child of children) {
+      if (child.type !== "HtmlEmbed") continue;
+      for (const attribute of FLUXA_EMBED_MARKER_ATTRIBUTES) {
+        if ((await child.getAttributeValue(attribute)) === MARKER_VALUE) {
+          hasEmbed = true;
+          break;
+        }
+      }
+      if (hasEmbed) break;
+    }
+    if (!hasEmbed) continue;
 
     results.push({ element, label: (await resolveLabel(element)) ?? "Unnamed element" });
   }

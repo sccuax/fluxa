@@ -9,8 +9,10 @@ import type { RuidoEvolutivoConfig } from "@fluxa/gradient-core";
 // runtime, just a new object uploaded to the fluxa-runtime-assets bucket).
 // v2: mount()'s handle gained pause()/resume() (see
 // @fluxa/ruido-evolutivo-renderer's mount.ts) so this embed can stop the
-// render loop via IntersectionObserver below.
-const RUNTIME_URL = "https://fluxa-data-client.jojanmartinez533.workers.dev/api/public/runtime/ruido-evolutivo-runtime.v2.js";
+// render loop via IntersectionObserver below. v3: per-colour opacity
+// (config.colorsOpacity from the picker) now scales each front's blend
+// weight via the shader's uColorAlpha, so opacity shows in the render.
+const RUNTIME_URL = "https://fluxa-data-client.jojanmartinez533.workers.dev/api/public/runtime/ruido-evolutivo-runtime.v3.js";
 
 // A leading HTML comment marker so applyRuidoEvolutivo.ts can recognize an
 // embed it created earlier (re-applying should update that embed's code in

@@ -164,21 +164,50 @@ export const glassLiquidConfigSchema = z.object({
   wobbleAmount: z.number().min(0).max(0.2).default(0.05),
   fluteVariation: z.number().min(0).max(1).default(0),
   highlightStrength: z.number().min(0).max(1).default(0.55),
-  // Halftone "grain" - blend intensity toward a rotated CMY dot-screen
-  // reconstruction of the final composited image, the SAME technique
-  // ruidoEvolutivoConfigSchema's own `grain`/`grainScale` already use (see
-  // that field's own comment) - itself matching the look
-  // @shadergradient/react's `grain` prop produces via THREE.HalftonePass.
-  // REPLACED (not added alongside) a simple additive noise grain this field
-  // used to drive (range was 0..0.3, an additive noise amount) - real,
-  // deliberate behavior change: any already-published glassLiquid preset
-  // with a nonzero grainStrength now renders halftone dots instead of
-  // noise, per explicit direction to replace rather than add a second
-  // effect. grainOnEdge (a toggle specific to the old technique, deciding
-  // whether noise landed on the edge line or the general surface) had no
-  // sensible equivalent for a whole-image post-blend, so it's gone too -
-  // removed, not just unused.
+  // Fakes rounded 3D depth on the flutes with pure analytic shading in the
+  // display fragment shader - no geometry, no lights, no extra passes
+  // (~5 ALU ops, guarded so it's ~free at 0): a per-ridge lit-flank/
+  // shaded-flank split (zero-mean, overall brightness unchanged) plus a soft
+  // contact-shadow in the valley between ridges. Only touches the glass
+  // surface - the refracted trail and edge line are untouched. 0 = the
+  // original flat look (unchanged for every existing preset); 1 = strongest.
+  flutesDepth: z.number().min(0).max(1).default(0),
+  // Where the flutesDepth relief actually shows, along the flute axis:
+  //  - "full": everywhere (uniform).
+  //  - "zones": concentrated at the two ends of the flute axis + the centre
+  //    (at 45deg that's the two opposite corners plus the middle) -
+  //    abs(cos()) of the along-flute coordinate.
+  //  - "random": soft organic patches from one slowly-drifting snoise call.
+  // Masked-out regions render exactly as flutesDepth 0 (flat). Costs 0-1
+  // extra snoise; only evaluated when flutesDepth > 0.
+  flutesDepthMask: z.enum(["full", "zones", "random"]).default("full"),
+  // Surface texture - a halftone dot-screen on the glass surface + refracted
+  // trail only (never the seam/edge lines). BOTH non-off modes are halftones
+  // (per-channel RGB grids, R=1x/G=3x/B=2x rotations, screen-space so neither
+  // crawls); they differ only in how the dots are drawn:
+  //  - "grain": THE PRODUCTION dots (glass-liquid-runtime v6, byte-for-byte)
+  //    - regular grid, half-step dot radius so dots stay a crisp visible
+  //    lattice, device-px grid. **Default** - a preset with a `grainStrength`
+  //    but no `grainMode` field (everything published so far) renders exactly
+  //    as v6 did.
+  //  - "noise": the closer-to-shaderGradient variant - full-step dot radius
+  //    so bright dots merge toward solid, scatter=1 per-cell jitter, a 2x2
+  //    supersample, and a CSS-px grid so `grainScale` reads the same at any
+  //    display density.
+  //  - "off": neither.
+  // Both take `grainStrength` (blend toward the dots) and `grainScale` (the
+  // dot-cell size). Compiled per-mode via the renderer's ShaderMaterial
+  // `defines` (recompile on mode change, not a per-frame branch) so the
+  // unused mode's GLSL is dead-code-eliminated and "off" costs nothing.
+  grainMode: z.enum(["off", "grain", "noise"]).default("grain"),
+  // Blend toward the dot screen (1 = the dots fully replace the surface
+  // colour, matching the real HalftonePass which has no intensity control).
+  // Same field/range/default as when this drove the single pre-grainMode
+  // halftone - a nonzero value on an old preset still means the same thing.
   grainStrength: z.number().min(0).max(1).default(0.05),
+  // Dot-cell size. For "grain" it's device px (production v6 semantics); for
+  // "noise" it's CSS px - set it to ~2 there to match shaderGradient's own
+  // `radius`. Range/default are the production (v6) values.
   grainScale: z.number().min(2).max(12).default(4),
 
   // --- Edge line ---
@@ -192,6 +221,18 @@ export const glassLiquidConfigSchema = z.object({
   seamWobble: z.boolean().default(false),
   edgeAA: z.boolean().default(true),
   isolateLines: z.boolean().default(false),
+  // A slow-moving colour gradient that fills the whole surface, refracted
+  // through the flutes like the trail - so the glass reads as coloured and
+  // alive even when nobody is moving the cursor. Fully independent of the
+  // cursor/trail (a separate analytic layer in the display shader, sitting
+  // BEHIND the trail), compiled in via a ShaderMaterial #define only when
+  // this is on so it costs nothing off. ambientColor1/2 are its two gradient
+  // colours; ambientStrength keeps it a subtle wash by default. Default off
+  // - unchanged for every existing preset.
+  ambientGradient: z.boolean().default(false),
+  ambientColor1: z.string().default("#4073f2"),
+  ambientColor2: z.string().default("#8c26d9"),
+  ambientStrength: z.number().min(0).max(1).default(0.35),
 
   // --- Colors ---
   glowColor1: z.string().default("#4073f2"),
@@ -200,6 +241,21 @@ export const glassLiquidConfigSchema = z.object({
   glowColor: z.string().default("#ff1a80"),
   edgeColor: z.string().default("#767676"),
   baseColor: z.string().default("#050508"),
+  // Per-colour opacity for the shared ColorSwatchPicker modal (0-100).
+  // **Wired to the render** (unlike shaderGradient's colorNOpacity, whose
+  // compiled shader has no alpha): mount.ts premultiplies each colour by
+  // opacity/100 before it goes into a uniform. This shader is additive/blend
+  // everywhere a colour lands, so a dimmed colour reads as "contributes
+  // less" i.e. more transparent. `?? 100` in mount.ts guards a preset saved
+  // before these fields.
+  glowColor1Opacity: z.number().min(0).max(100).default(100),
+  glowColor2Opacity: z.number().min(0).max(100).default(100),
+  highlightColorOpacity: z.number().min(0).max(100).default(100),
+  glowColorOpacity: z.number().min(0).max(100).default(100),
+  edgeColorOpacity: z.number().min(0).max(100).default(100),
+  baseColorOpacity: z.number().min(0).max(100).default(100),
+  ambientColor1Opacity: z.number().min(0).max(100).default(100),
+  ambientColor2Opacity: z.number().min(0).max(100).default(100),
 });
 
 export type GlassLiquidConfig = z.infer<typeof glassLiquidConfigSchema>;
@@ -235,6 +291,14 @@ export const ruidoEvolutivoConfigSchema = z.object({
     .min(2)
     .max(RUIDO_EVOLUTIVO_MAX_COLORS)
     .default(["#2EE550", "#6f93e0", "#CA0DCD"]),
+  // Per-stop opacity (0-100) for the shared ColorSwatchPicker modal, one
+  // entry per `colors` entry (a missing/short tail is treated as 100). The
+  // control panel keeps this array's length in step with `colors` on
+  // add/remove. **Wired to the render**: the shader's `uColorAlpha[i]`
+  // scales that front's blend WEIGHT, so a low-opacity colour's influence
+  // drops and the result shifts toward the other colours (not toward
+  // black). All 100 = identical to before this existed.
+  colorsOpacity: z.array(z.number().min(0).max(100)).default([]),
   // Post-blend saturation multiplier (1 = untouched). Blending many fronts'
   // colours by weighted average pulls the result toward a desaturated
   // centroid; nudge this up to keep 4-5 colour configs vivid. At 1 (the

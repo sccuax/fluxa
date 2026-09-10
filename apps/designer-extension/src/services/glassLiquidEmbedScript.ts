@@ -14,10 +14,18 @@ import type { GlassLiquidConfig } from "@fluxa/gradient-core";
 // redid that halftone to match @shadergradient/react's real
 // THREE.HalftonePass mechanics (RGB additive dot grids). v6: excluded the
 // edge/seam lines from the grain entirely, applying it only to the glass
-// surface + refracted trail - each a real behavior change to the runtime,
-// so it ships as a new filename rather than overwriting a previous
-// version's immutably-cached bytes.
-const RUNTIME_URL = "https://fluxa-data-client.jojanmartinez533.workers.dev/api/public/runtime/glass-liquid-runtime.v6.js";
+// surface + refracted trail. v7: config.grainMode enum - "grain" (the v6
+// halftone, unchanged) / "noise" (a second, closer-to-shaderGradient
+// halftone variant - merging dots, scatter, CSS-px grid) / "off"; also
+// config.flutesDepth / flutesDepthMask (analytic ridge relief). v8:
+// config.ambientGradient (+ ambientColor1/2, ambientStrength) - a slow
+// moving colour gradient refracted through the flutes, independent of the
+// cursor trail, so the glass stays coloured on an un-hovered page. v9:
+// per-colour opacity (config.*Opacity from the picker) now premultiplies
+// each colour uniform, so opacity actually shows in the render. Each a real
+// behavior change to the runtime, so it ships as a new filename rather than
+// overwriting a previous version's immutably-cached bytes.
+const RUNTIME_URL = "https://fluxa-data-client.jojanmartinez533.workers.dev/api/public/runtime/glass-liquid-runtime.v9.js";
 
 // A leading HTML comment marker so applyGlassLiquid.ts can recognize an
 // embed it created earlier (re-applying should update that embed's code in

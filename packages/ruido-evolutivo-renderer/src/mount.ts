@@ -75,6 +75,18 @@ export function mountRuidoEvolutivo(
   };
   applyColors(initialConfig.colors);
 
+  // Per-front opacity 0..1 (colorsOpacity/100), same fixed-length + mutate-
+  // in-place discipline as colorVecs. A missing/short colorsOpacity tail
+  // (a preset saved before it existed) defaults to 1 = no change.
+  const colorAlphas: number[] = Array.from({ length: RUIDO_EVOLUTIVO_MAX_COLORS }, () => 1);
+  const applyAlphas = (colorsOpacity: number[] | undefined, count: number) => {
+    for (let i = 0; i < RUIDO_EVOLUTIVO_MAX_COLORS; i++) {
+      // Tail slots (>= count) never read by the shader loop, but keep them 1.
+      colorAlphas[i] = i < count ? (colorsOpacity?.[i] ?? 100) / 100 : 1;
+    }
+  };
+  applyAlphas(initialConfig.colorsOpacity, initialConfig.colors.length);
+
   const material = new THREE.ShaderMaterial({
     vertexShader: VERTEX_SHADER,
     fragmentShader: FRAGMENT_SHADER,
@@ -104,6 +116,7 @@ export function mountRuidoEvolutivo(
       uLightStrength: { value: initialConfig.lightStrength },
       uSaturation: { value: initialConfig.saturation },
       uColors: { value: colorVecs },
+      uColorAlpha: { value: colorAlphas },
       uColorCount: { value: initialConfig.colors.length },
     },
   });
@@ -203,6 +216,7 @@ export function mountRuidoEvolutivo(
     u.uSaturation.value = config.saturation;
 
     applyColors(config.colors);
+    applyAlphas(config.colorsOpacity, config.colors.length);
     u.uColorCount.value = config.colors.length;
   }
 
