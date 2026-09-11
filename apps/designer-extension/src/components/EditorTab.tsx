@@ -9,37 +9,47 @@ import { ControlPanel } from "./ControlPanel";
 import { GradientCanvas } from "./GradientCanvas";
 import { ButtonPrimary } from "./ButtonPrimary";
 import { BetaFeedbackModal } from "./BetaFeedbackModal";
+import { Icon } from "./Icon";
 
 // Editor tab content: DashboardScreen renders this inside its flex-1
-// min-h-0 overflow-hidden center area. Two independent regions, each its own
-// swap on selection state:
-// - Top: EditorEmptyState (heading + SVG) when nothing is selected <->
-//   GradientCanvas (live WebGL preview) once something is selected -
-//   min-h-[195px] matches EditorEmptyState's own min-height so there's no
-//   layout jump swapping between the two, and gives the canvas's h-full a
-//   definite height to fill. shrink-0 keeps it pinned at its natural height
-//   instead of being squashed once the region below claims flex-1.
-// - Bottom: SupportedElementsGuide (no selection) <-> ControlPanel
-//   (selection) - siblings that swap places, not one nested in the other.
-//   GradientCanvas and ControlPanel both read/write the same
-//   useGradientStore, so the preview already updates live as the (still
-//   unstyled) controls change - no extra wiring needed for that part.
-//   This wrapper is flex-1 min-h-0 so it claims all height left over after
-//   the preview and the Apply button - ControlPanel's own tab bar stays
-//   fixed inside it and only its fields list scrolls (see ControlPanel.tsx).
-//   Apply button itself is shrink-0, always visible, never part of the
-//   scrolling area - per explicit direction: preview, tab bar, and Apply
-//   button all stay fixed in view, only the controls scroll.
+// min-h-0 overflow-hidden center area.
+//
+// `accepted` is owned by DashboardScreen (survives tab switches, resets
+// only on a fresh sign-in) and threaded in here:
+// - Before accepting: BOTH regions show the intro (EditorEmptyState +
+//   SupportedElementsGuide) regardless of selection, and the bottom button
+//   is an enabled "Accept" that just calls onAccept.
+// - After accepting: the top region is the live GradientCanvas preview and
+//   the bottom region is the ControlPanel - shown unconditionally, no
+//   longer gated by selection. The "Apply gradient" button is always
+//   enabled (only disabled while a previous apply is in flight); with no
+//   element selected, clicking it just surfaces handleApplyGradient's own
+//   "no supported element" toast. min-h-[195px] on the top region matches
+//   EditorEmptyState's own min-height so there's no layout jump on accept,
+//   and gives the canvas's h-full a definite height to fill. shrink-0
+//   keeps it pinned at its natural height instead of being squashed once
+//   the region below claims flex-1.
+//   The bottom wrapper is flex-1 min-h-0 so it claims all height left over
+//   after the preview and the Apply button - ControlPanel's own tab bar
+//   stays fixed inside it and only its fields list scrolls (see
+//   ControlPanel.tsx). The Apply button itself is shrink-0, always
+//   visible, never part of the scrolling area.
 // ControlPanel itself is still the rough, unstyled gradient-core prototype
 // (raw color/range inputs) - wired in here as a functional placeholder per
-// explicit direction, real Figma styling comes later. The Apply button
-// lives outside both swaps entirely, always at the very bottom, just gated
-// by `disabled`.
-export function EditorTab() {
+// explicit direction, real Figma styling comes later.
+//
+// Props default so a standalone <EditorTab /> (e.g. the sandbox harness)
+// still renders - it just stays on the intro with a no-op Accept.
+export function EditorTab({
+  accepted = false,
+  onAccept = () => {},
+}: {
+  accepted?: boolean;
+  onAccept?: () => void;
+}) {
   const { element } = useSelectedElement();
   const config = useGradientStore((state) => state.config);
   const colorModalOpen = useGradientStore((state) => state.colorModalOpen);
-  const hasSelection = element !== null;
   const [applying, setApplying] = useState(false);
   // Beta feedback-collection popup - shown every time Apply gradient
   // actually succeeds (not on a no-op/error), per explicit direction that
@@ -80,15 +90,21 @@ export function EditorTab() {
             time anyway (FullViewModal spans this entire header-to-nav
             area), so there's nothing lost by not rendering anything here
             in its place. */}
-        {hasSelection ? (colorModalOpen ? null : <GradientCanvas />) : <EditorEmptyState />}
+        {accepted ? (colorModalOpen ? null : <GradientCanvas />) : <EditorEmptyState />}
       </div>
 
-      <div className="w-full items-center flex min-h-0 flex-1">{hasSelection ? <ControlPanel /> : <SupportedElementsGuide />}</div>
+      <div className="w-full items-center flex min-h-0 flex-1">
+        {accepted ? <ControlPanel /> : <SupportedElementsGuide />}
+      </div>
 
-      <div className="w-full shrink-0 px-[20px] py-[12px] border-t border-border-border">
-        <ButtonPrimary disabled={!hasSelection || applying} onClick={handleApplyGradient}>
-          {applying ? "Applying…" : "Apply gradient"}
-        </ButtonPrimary>
+      <div className="w-full shrink-0 px-[20px] py-[12px] ">
+        {accepted ? (
+          <ButtonPrimary disabled={applying} icon={<Icon name="stars" />} onClick={handleApplyGradient}>
+            {applying ? "Applying…" : "Apply gradient"}
+          </ButtonPrimary>
+        ) : (
+          <ButtonPrimary onClick={onAccept}>Accept</ButtonPrimary>
+        )}
       </div>
 
       <BetaFeedbackModal open={showBetaFeedback} onClose={() => setShowBetaFeedback(false)} />

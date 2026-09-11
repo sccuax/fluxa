@@ -2,8 +2,14 @@ import { useState, type ButtonHTMLAttributes, type ReactNode } from "react";
 import { LiquidGradientBackground } from "./LiquidGradientBackground";
 
 interface ButtonPrimaryProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  // Optional leading icon (e.g. AccountTab's "Upgrade to Pro" sparkle) -
-  // rendered inside the same always-on-top span as the label, left of it.
+  // Optional leading icon (e.g. AccountTab's "Upgrade to Pro" sparkle, or
+  // EditorTab's "Apply gradient" stars) - rendered inside the same
+  // always-on-top span as the label, left of it, with the label's own
+  // gap-2 (8px) between them. Deliberately no color class of its own here:
+  // an Icon.tsx entry passed in must use stroke="currentColor" (not a
+  // hardcoded color) so it inherits this button's own text color -
+  // text-text-white normally, disabled:text-text-secondary while disabled -
+  // for free, the same way the label text does.
   icon?: ReactNode;
 }
 

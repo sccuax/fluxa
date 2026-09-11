@@ -36,7 +36,7 @@ export function DashboardNav({ activeTab, onTabChange }: DashboardNavProps) {
             }`}
           >
             <Icon name={icon} />
-            <span className="mobile-text-md-regular font-sans">{label}</span>
+            <span className="text-mobile-text-sm-medium font-sans">{label}</span>
           </button>
         );
       })}

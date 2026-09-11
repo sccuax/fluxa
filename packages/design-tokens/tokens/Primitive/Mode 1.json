@@ -1057,6 +1057,10 @@
     "10": {
       "$type": "fontSizes",
       "$value": 11
+    },
+    "11": {
+      "$type": "fontSizes",
+      "$value": 8
     }
   },
   "letterSpacing": {
@@ -1258,6 +1262,22 @@
     }
   },
   "Mobile": {
+    "Text xsm": {
+      "Regular": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{General Sans}",
+          "fontWeight": "{fontWeights.general-sans-2}",
+          "lineHeight": "{lineHeights.2}",
+          "fontSize": "{fontSize.11}",
+          "letterSpacing": "{letterSpacing.2}",
+          "paragraphSpacing": "{paragraphSpacing.0}",
+          "paragraphIndent": "{paragraphIndent.0}",
+          "textCase": "{textCase.none}",
+          "textDecoration": "{textDecoration.none}"
+        }
+      }
+    },
     "Text sm": {
       "Regular": {
         "$type": "typography",

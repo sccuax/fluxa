@@ -26,7 +26,12 @@ export type IconName =
   | "delete"
   | "lock"
   | "search"
-  | "filter";
+  | "filter"
+  | "cluster"
+  | "box"
+  | "code"
+  | "chain"
+  | "stars";
 
 // SVG markup lives inline here (not imported from an assets folder) so
 // adding a new icon is a one-file edit - see the paste.txt example this
@@ -413,6 +418,46 @@ const icons: Record<IconName, (props: SVGProps<SVGSVGElement>) => ReactElement> 
       <circle cx="12" cy="4" r="1.33333" stroke="currentColor" strokeWidth="1.33333" />
       <circle cx="6.66667" cy="8" r="1.33333" stroke="currentColor" strokeWidth="1.33333" />
       <circle cx="10" cy="12" r="1.33333" stroke="currentColor" strokeWidth="1.33333" />
+    </svg>
+  ),
+
+  cluster: (props) => (
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+<path d="M4.16667 9.99992H15.8333M4.16667 9.99992C3.72464 9.99992 3.30072 9.82432 2.98816 9.51176C2.67559 9.1992 2.5 8.77528 2.5 8.33325V4.99992C2.5 4.55789 2.67559 4.13397 2.98816 3.82141C3.30072 3.50885 3.72464 3.33325 4.16667 3.33325H15.8333C16.2754 3.33325 16.6993 3.50885 17.0118 3.82141C17.3244 4.13397 17.5 4.55789 17.5 4.99992V8.33325C17.5 8.77528 17.3244 9.1992 17.0118 9.51176C16.6993 9.82432 16.2754 9.99992 15.8333 9.99992M4.16667 9.99992C3.72464 9.99992 3.30072 10.1755 2.98816 10.4881C2.67559 10.8006 2.5 11.2246 2.5 11.6666V14.9999C2.5 15.4419 2.67559 15.8659 2.98816 16.1784C3.30072 16.491 3.72464 16.6666 4.16667 16.6666H15.8333C16.2754 16.6666 16.6993 16.491 17.0118 16.1784C17.3244 15.8659 17.5 15.4419 17.5 14.9999V11.6666C17.5 11.2246 17.3244 10.8006 17.0118 10.4881C16.6993 10.1755 16.2754 9.99992 15.8333 9.99992M14.1667 6.66659H14.175M14.1667 13.3333H14.175" stroke="#858179" stroke-width="0.833333" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
+  ),
+  box: (props) => (
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+      <path d="M10.0002 17.5L3.3335 14.1667V5.83333L10.0002 2.5L16.6668 5.83333V14.1667L10.0002 17.5ZM16.6668 5.83333L10.0002 9.16667M3.3335 5.83333L10.0002 9.16667M10.0002 9.16667V17.5" stroke="#858179" stroke-width="0.833333" stroke-linecap="round" stroke-linejoin="round" />
+    </svg>
+  ),
+
+  code: (props) => (
+    <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+<path d="M11.6668 23.3334L16.3335 4.66675M21.0002 9.33341L25.6668 14.0001L21.0002 18.6667M7.00016 18.6667L2.3335 14.0001L7.00016 9.33341" stroke="#858179" stroke-width="1.16667" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
+  ),
+
+  chain: (props) => (
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+<path d="M11.5233 8.47672C10.8982 7.85182 10.0505 7.50077 9.16661 7.50077C8.28273 7.50077 7.43504 7.85182 6.80994 8.47672L3.47661 11.8101C3.15824 12.1175 2.9043 12.4854 2.72961 12.892C2.55491 13.2987 2.46296 13.7361 2.45911 14.1787C2.45526 14.6213 2.5396 15.0602 2.70721 15.4699C2.87481 15.8796 3.12232 16.2517 3.43529 16.5647C3.74827 16.8777 4.12044 17.1252 4.5301 17.2928C4.93975 17.4604 5.37868 17.5447 5.82128 17.5409C6.26388 17.537 6.70128 17.4451 7.10796 17.2704C7.51464 17.0957 7.88246 16.8418 8.18995 16.5234L9.10828 15.6059M8.47661 11.5234C9.1017 12.1483 9.9494 12.4993 10.8333 12.4993C11.7172 12.4993 12.5649 12.1483 13.1899 11.5234L16.5233 8.19006C17.1305 7.56138 17.4665 6.71937 17.4589 5.84538C17.4513 4.9714 17.1007 4.13535 16.4827 3.51733C15.8646 2.8993 15.0286 2.54874 14.1546 2.54114C13.2806 2.53355 12.4386 2.86953 11.8099 3.47672L10.8933 4.39339" stroke="#858179" stroke-width="0.833333" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
+  ),
+
+  // stroke is currentColor (was a hardcoded #ECE8E2 from the pasted Figma
+  // asset - the exact recurring bug this file's own top comment warns
+  // about) so ButtonPrimary's icon prop can drive its color purely via CSS
+  // inheritance: text-text-white normally, text-text-secondary when the
+  // button is disabled - see ButtonPrimary.tsx's own comment on this.
+  stars: (props) => (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+      <path
+        d="M3.33333 2V4.66667V2ZM2 3.33333H4.66667H2ZM4 11.3333V14V11.3333ZM2.66667 12.6667H5.33333H2.66667ZM8.66667 2L10.1907 6.57133L14 8L10.1907 9.42867L8.66667 14L7.14267 9.42867L3.33333 8L7.14267 6.57133L8.66667 2Z"
+        stroke="currentColor"
+        strokeWidth="1.33333"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   ),
 };

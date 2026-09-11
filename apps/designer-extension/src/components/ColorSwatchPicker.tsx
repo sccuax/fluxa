@@ -118,9 +118,9 @@ function ColorValueField({ format, value, onChange }: {
   onChange: (value: string) => void;
 }) {
   return (
-    <div className="flex flex-col gap-1">
+    <div className="flex flex-row items-center my-5 justify-between gap-1">
       <span className="font-sans text-mobile-text-md-medium text-text-black">{FORMAT_LABEL[format]}</span>
-      <div className="relative flex items-center rounded-4 border border-border-border">
+      <div className="relative w-full flex items-center rounded-4 border border-border-border max-[480px]:max-w-[194px]">
         <EditableValue
           value={value}
           format={(hex) => formatColorValue(format, hex)}
@@ -152,7 +152,7 @@ function ColorValueField({ format, value, onChange }: {
 }
 
 const OPACITY_INPUT_CLASSNAME = (focused: boolean) =>
-  `flex max-w-[64px] size-fit items-center justify-center rounded-[4px] border border-border-border px-2 py-1 text-center font-sans text-mobile-text-md-regular appearance-none focus:outline-none ${
+  `flex max-w-[48px] size-fit items-center justify-center rounded-[4px] border border-border-border px-2 py-1 text-center font-sans text-mobile-text-md-regular appearance-none focus:outline-none ${
     focused ? "text-text-color-accent" : "text-text-secondary"
   }`;
 
@@ -286,9 +286,9 @@ function OpacityField({ color, opacity, onOpacityChange }: {
   onOpacityChange: (value: number) => void;
 }) {
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-row items-center mb-5 justify-between gap-3">
       <span className="font-sans text-mobile-text-md-medium text-text-black">Opacity</span>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 w-full max-[480px]:max-w-[194px]">
         <OpacitySlider color={color} value={opacity} onChange={onOpacityChange} />
         <EditableValue
           value={opacity}

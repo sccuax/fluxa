@@ -26,6 +26,13 @@ export function DashboardScreen({ onSignOut }: { onSignOut: () => void }) {
   // both eventually need to react to the active tab too.
   const [activeTab, setActiveTab] = useState<DashboardTab>("editor");
 
+  // Editor tab's intro gate: EditorTab shows EditorEmptyState +
+  // SupportedElementsGuide + an "Accept" button until this flips true, then
+  // it shows the real GradientCanvas + ControlPanel. Owned here (not in
+  // EditorTab) so switching to Presets/Account and back doesn't re-show the
+  // intro - it only resets on a fresh mount of DashboardScreen (sign-in).
+  const [editorAccepted, setEditorAccepted] = useState(false);
+
   return (
     <div className="flex h-screen w-full flex-col bg-white">
       <DashboardHeader />
@@ -39,7 +46,9 @@ export function DashboardScreen({ onSignOut }: { onSignOut: () => void }) {
           EditorTab's content (the default flex min-height:auto would
           otherwise let it overflow the fixed-height panel). */}
       <div className="flex-1 min-h-0 overflow-hidden bg-background-white">
-        {activeTab === "editor" && <EditorTab />}
+        {activeTab === "editor" && (
+          <EditorTab accepted={editorAccepted} onAccept={() => setEditorAccepted(true)} />
+        )}
         {activeTab === "presets" && <PresetsTab />}
         {activeTab === "account" && <AccountTab onSignOut={onSignOut} />}
       </div>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 interface RangeSliderProps {
   value: number;
@@ -6,6 +6,11 @@ interface RangeSliderProps {
   max: number;
   step: number;
   onChange: (value: number) => void;
+  // Fired whenever the slider's active (hover/focus) state flips - lets the
+  // sibling value readout in a NumberFieldList row highlight itself in sync
+  // with the slider, not just on its own focus. Optional; callers that
+  // don't care (AccountTab's progress bar, etc.) just omit it.
+  onActiveChange?: (active: boolean) => void;
 }
 
 // Design spec (from a fresh Figma Dev Mode copy, see CLAUDE.md's "Gradient
@@ -46,10 +51,16 @@ const ACTIVE_FILL_GLOW =
 // `<input type="range">` still drives it (opacity-0, stacked on top) for
 // native drag/keyboard/focus behavior - everything visible is a separate
 // layer purely reflecting `value`, not read off the native thumb's position.
-export function RangeSlider({ value, min, max, step, onChange }: RangeSliderProps) {
+export function RangeSlider({ value, min, max, step, onChange, onActiveChange }: RangeSliderProps) {
   const [hovered, setHovered] = useState(false);
   const [focused, setFocused] = useState(false);
   const isActive = hovered || focused;
+
+  useEffect(() => {
+    onActiveChange?.(isActive);
+    // onActiveChange is expected to be a stable setter; intentionally not a dep.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isActive]);
 
   const percent = ((value - min) / (max - min)) * 100;
   const minFillPx = isActive ? MIN_FILL_PX.active : MIN_FILL_PX.inactive;

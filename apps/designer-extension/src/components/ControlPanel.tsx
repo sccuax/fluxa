@@ -4,6 +4,7 @@ import { useGradientStore } from "../store/gradientStore";
 import { formatSliderValue } from "../helpers/format";
 import { RangeSlider } from "./RangeSlider";
 import { Icon } from "./Icon";
+import { Tooltip } from "./Tooltip";
 import { SegmentedRow } from "./SegmentedRow";
 import { clamp, parseHex } from "./ColorPicker";
 import { ColorSwatchPicker, EditableValue } from "./ColorSwatchPicker";
@@ -93,6 +94,11 @@ interface NumberField {
   min: number;
   max: number;
   step: number;
+  // Shown in an info-icon Tooltip next to the label - NumberFieldList rows
+  // only (IconInputRow's own Orbit/Position/Rotation fields don't render
+  // one, different row shape, no shared label to hang it off). Optional so
+  // those arrays aren't forced to supply a value they'd never use.
+  description?: string;
 }
 
 // Strength/Density/Pixel density/Frequency shape the noise wave pattern
@@ -101,18 +107,18 @@ interface NumberField {
 // tab-grouping comment on ControlPanel below). Speed is the only temporal
 // one, so it stays under Motion; Camera distance now has its own Camera tab.
 const SHAPE_NUMBER_FIELDS: NumberField[] = [
-  { label: "Distortion", key: "uStrength", min: 0, max: 10, step: 0.1 },
-  { label: "Detail", key: "uDensity", min: 0, max: 4, step: 0.1 },
-  { label: "Quality", key: "pixelDensity", min: 0.5, max: 3, step: 0.1 },
-  { label: "Frequency", key: "uFrequency", min: 0, max: 10, step: 0.01 },
+  { label: "Distortion", key: "uStrength", min: 0, max: 10, step: 0.1, description: "How strongly the noise pattern displaces the surface." },
+  { label: "Detail", key: "uDensity", min: 0, max: 4, step: 0.1, description: "How much fine detail the noise pattern shows." },
+  { label: "Quality", key: "pixelDensity", min: 0.5, max: 3, step: 0.1, description: "Render resolution of the canvas." },
+  { label: "Frequency", key: "uFrequency", min: 0, max: 10, step: 0.01, description: "How tightly packed the noise pattern's waves are." },
 ];
 
 const MOTION_NUMBER_FIELDS: NumberField[] = [
-  { label: "Speed", key: "uSpeed", min: 0, max: 1, step: 0.01 },
+  { label: "Speed", key: "uSpeed", min: 0, max: 1, step: 0.01, description: "How fast the gradient animates." },
 ];
 
 const CAMERA_NUMBER_FIELDS: NumberField[] = [
-  { label: "Zoom", key: "cDistance", min: 1, max: 10, step: 0.1 },
+  { label: "Zoom", key: "cDistance", min: 1, max: 10, step: 0.1, description: "How close the camera sits to the gradient." },
 ];
 
 // Azimuth/Polar min/max (0-360, 0-180) match @shadergradient/react's own
@@ -146,12 +152,12 @@ const ROTATION_NUMBER_FIELDS: NumberField[] = [
 // (10/180/45) match @shadergradient/react's own reference Framer controls
 // (canvas.fov).
 const FOV_NUMBER_FIELDS: NumberField[] = [
-  { label: "FOV", key: "fov", min: 10, max: 180, step: 1 },
+  { label: "FOV", key: "fov", min: 10, max: 180, step: 1, description: "The camera's field of view." },
 ];
 
 const RANGE_NUMBER_FIELDS: NumberField[] = [
-  { label: "Range start", key: "rangeStart", min: 0, max: 100, step: 1 },
-  { label: "Range end", key: "rangeEnd", min: 0, max: 100, step: 1 },
+  { label: "Range start", key: "rangeStart", min: 0, max: 100, step: 1, description: "Where the animation loop starts." },
+  { label: "Range end", key: "rangeEnd", min: 0, max: 100, step: 1, description: "Where the animation loop ends." },
 ];
 
 const COLOR_FIELDS: { label: string; key: "color1" | "color2" | "color3" }[] = [
@@ -172,12 +178,25 @@ const COLOR_FIELDS: { label: string; key: "color1" | "color2" | "color3" }[] = [
 // native blur event (and its onBlur handler) before React re-renders with
 // the just-set state, so onBlur would otherwise still close over the
 // pre-Escape draft and commit the very text Escape was meant to discard.
-// Default look: a plain right-aligned value readout, no border/background -
-// used by every NumberFieldList row. `className` lets a caller (e.g.
-// IconInputRow below) swap in a different look driven by the same focus state,
+// Default look for every NumberFieldList row's value readout. Rest state:
+// a plain right-aligned number, transparent 1px border (reserved so the
+// active state doesn't reflow). Highlighted state (the row's slider is
+// being hovered/dragged, OR this input itself is focused): the number
+// turns accent-500 and the 1px border becomes visible (border-border-border).
+// 4px horizontal padding is always present. `className` lets a caller (e.g.
+// IconInputRow below) swap in a different look driven by the same flag,
 // without duplicating the commit/cancel logic above.
-const DEFAULT_EDITABLE_VALUE_CLASSNAME = () =>
-  "max-w-[25px] shrink-0 appearance-none border-none bg-transparent text-right text-mobile-text-md-medium font-sans text-text-secondary focus:outline-none";
+// Rest state: a plain centred number, no border, no padding - close to the
+// old readout. Highlighted (the row's slider is hovered/dragged, OR this
+// input is focused): the number turns accent-500 and gains a 1px
+// border-border-border box with 4px side padding. Capped at max-w-[28px]
+// in both states per explicit direction (the widest readout, "10.00" on
+// uFrequency, can clip slightly in the highlighted state once the
+// padding+border eat into that 28px - accepted).
+const DEFAULT_EDITABLE_VALUE_CLASSNAME = (highlighted: boolean) =>
+  `flex max-w-[32px] shrink-0 appearance-none items-center rounded-[4px] bg-transparent text-center text-mobile-text-md-medium font-sans transition-colors focus:outline-none ${
+    highlighted ? "border border-border-border px-[2px] text-accent-500" : "border-0 px-0 text-text-secondary"
+  }`;
 
 // Every row shape in this panel (NumberFieldList/IconInputRow/SegmentedRow)
 // pushes its own left-hand label out via mr-auto, then packs its
@@ -195,13 +214,18 @@ const ROW_CONTROLS_MAX_WIDTH = "max-w-[203px]";
 // ColorSwatchPicker.tsx when the picker was extracted there - re-imported
 // above so EditableNumberValue / HexColorInput below are unchanged.
 
-function EditableNumberValue({ value, min, max, step, onCommit, className = DEFAULT_EDITABLE_VALUE_CLASSNAME }: {
+// `active` = an external highlight trigger (the row's RangeSlider is
+// hovered/dragged). It's OR'd with the input's own focus state, so the
+// className fn receives a single "highlighted" flag and callers don't have
+// to know which of the two caused it.
+function EditableNumberValue({ value, min, max, step, onCommit, active = false, className = DEFAULT_EDITABLE_VALUE_CLASSNAME }: {
   value: number;
   min: number;
   max: number;
   step: number;
   onCommit: (value: number) => void;
-  className?: (focused: boolean) => string;
+  active?: boolean;
+  className?: (highlighted: boolean) => string;
 }) {
   return (
     <EditableValue
@@ -212,7 +236,7 @@ function EditableNumberValue({ value, min, max, step, onCommit, className = DEFA
         return Number.isFinite(parsed) ? Math.min(max, Math.max(min, parsed)) : null;
       }}
       onCommit={onCommit}
-      className={className}
+      className={(focused) => className(focused || active)}
     />
   );
 }
@@ -238,6 +262,70 @@ function HexColorInput({ value, onCommit, className = HEX_INPUT_CLASSNAME }: {
   );
 }
 
+// One NumberFieldList row. Its own `sliderActive` state is what lets the
+// value readout light up (accent-500 + visible border) while the sibling
+// RangeSlider is hovered/dragged, not only when the input itself is focused.
+//
+// A separate info icon next to the label was tried and dropped - it ate
+// ~20px (icon + gap) out of a label column that only has ~70-80px to begin
+// with (the range+value group on the right is fixed at up to
+// ROW_CONTROLS_MAX_WIDTH/203px), so on the longer labels it visibly
+// crowded/broke the row. Instead, when `description` is given, the label
+// TEXT ITSELF is the Tooltip trigger - same hover-to-explain behavior, zero
+// extra width, and it removes the "Frequency has to wrap" problem too,
+// since there's no icon competing for that same tight space anymore.
+// side="bottom" (not "top"): these rows can sit at the very top of
+// ControlPanel's scrolling field list, and a "top" bubble there opens
+// upward past the scroll container into the fixed header/tab bar above it
+// and gets clipped/lost - "bottom" opens down into the rest of the
+// (taller) scrolling list instead, which has far more clearance.
+function NumberFieldRow({ label, description, min, max, step, value, onChange }: {
+  label: string;
+  description?: string;
+  min: number;
+  max: number;
+  step: number;
+  value: number;
+  onChange: (value: number) => void;
+}) {
+  const [sliderActive, setSliderActive] = useState(false);
+  const labelSpan = <span className="font-sans text-mobile-header-h2 text-text-black">{label}</span>;
+  return (
+    <label className="flex w-full flex-row items-center justify-between">
+      {description ? (
+        <Tooltip text={description} side="bottom" align="start">
+          {labelSpan}
+        </Tooltip>
+      ) : (
+        labelSpan
+      )}
+      {/* Everything right of the label - slider + its value readout,
+          combined - is capped at ROW_CONTROLS_MAX_WIDTH (203px), the same
+          cap IconInputRow/SegmentedRow's own right-side groups share
+          below, so every tab's rows line up to the same right-hand
+          width regardless of row shape. */}
+      <div className={`flex w-full items-center justify-between ${ROW_CONTROLS_MAX_WIDTH}`}>
+        <RangeSlider
+          min={min}
+          max={max}
+          step={step}
+          value={value}
+          onChange={onChange}
+          onActiveChange={setSliderActive}
+        />
+        <EditableNumberValue
+          min={min}
+          max={max}
+          step={step}
+          value={value}
+          onCommit={onChange}
+          active={sliderActive}
+        />
+      </div>
+    </label>
+  );
+}
+
 function NumberFieldList({ fields, config, setConfig }: {
   fields: NumberField[];
   config: GradientConfig;
@@ -245,33 +333,17 @@ function NumberFieldList({ fields, config, setConfig }: {
 }) {
   return (
     <>
-      {fields.map(({ label, key, min, max, step }) => (
-        <label key={key} className="flex flex-row items-center justify-end gap-[17px]">
-          <span className="flex justify-between mr-auto">
-            <span className="font-sans mr-auto text-mobile-header-h2 text-text-black">{label}</span>
-          </span>
-          {/* Everything right of the label - slider + its value readout,
-              combined - is capped at ROW_CONTROLS_MAX_WIDTH (203px), the same
-              cap IconInputRow/SegmentedRow's own right-side groups share
-              below, so every tab's rows line up to the same right-hand
-              width regardless of row shape. */}
-          <div className={`flex w-full items-center gap-[17px] ${ROW_CONTROLS_MAX_WIDTH}`}>
-            <RangeSlider
-              min={min}
-              max={max}
-              step={step}
-              value={config[key]}
-              onChange={(value) => setConfig({ [key]: value })}
-            />
-            <EditableNumberValue
-              min={min}
-              max={max}
-              step={step}
-              value={config[key]}
-              onCommit={(value) => setConfig({ [key]: value })}
-            />
-          </div>
-        </label>
+      {fields.map(({ label, key, min, max, step, description }) => (
+        <NumberFieldRow
+          key={key}
+          label={label}
+          description={description}
+          min={min}
+          max={max}
+          step={step}
+          value={config[key]}
+          onChange={(value) => setConfig({ [key]: value })}
+        />
       ))}
     </>
   );
@@ -281,7 +353,7 @@ function NumberFieldList({ fields, config, setConfig }: {
 // inputs in the Orbit row below, no per-axis variant.
 function OrbitIcon() {
   return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <svg width="12" height="12" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path
         d="M10.129 9.13804L12.6717 10.378L11.4317 12.9207M10.9811 5.01861C10.7029 3.9058 10.2745 2.97089 9.74449 2.31963C9.21443 1.66838 8.60383 1.32678 7.98176 1.33347C7.35968 1.34016 6.75096 1.69487 6.22443 2.35748C5.69791 3.02009 5.27461 3.96416 5.0024 5.0829C4.73019 6.20164 4.61995 7.4504 4.68414 8.68792C4.74833 9.92545 4.98439 11.1024 5.36561 12.0855C5.74684 13.0687 6.25802 13.8189 6.84134 14.2512C7.42466 14.6836 8.05683 14.7808 8.66634 14.532M14.5316 7.33337C14.2353 6.60737 13.4635 5.95143 12.3383 5.4692C11.2132 4.98698 9.7987 4.70595 8.31843 4.67052C6.83817 4.63509 5.37649 4.84728 4.16434 5.27357C2.95218 5.69985 2.05865 6.31593 1.62492 7.02446C1.1912 7.733 1.24199 8.49359 1.76929 9.18608C2.29659 9.87857 3.27033 10.4635 4.53666 10.8484C5.80299 11.2333 7.28972 11.3962 8.76196 11.3115C10.2342 11.2268 11.608 10.8992 12.6663 10.3805"
         stroke="#858179"
@@ -299,7 +371,7 @@ function OrbitIcon() {
 // ends in its axis letter.
 function AxisLabel({ field }: { field: NumberField }) {
   return (
-    <span className="font-sans text-mobile-text-sm text-text-black">
+    <span className="font-sans text-mobile-text-xsm-regular text-text-secondary">
       {field.key.slice(-1).toUpperCase()}
     </span>
   );
@@ -314,13 +386,29 @@ function AxisLabel({ field }: { field: NumberField }) {
 // pills (2 per row) get a 73.5px max-width with a 61px floor; Position/
 // Rotation's (3 per row, narrower to fit) get 46.33px with no floor - both
 // per explicit design spec, not derived from one another.
+//
+// Orbit's own border/rounded/padding moved OFF the input itself and onto
+// ORBIT_PILL_CLASSNAME below, so the "°" suffix can sit inside that same
+// bordered box, immediately next to the digits, instead of being a sibling
+// outside it (a first attempt at this put the "°" outside the input's own
+// border, which visibly read as "detached" from the value it labels).
 const ORBIT_INPUT_CLASSNAME = (focused: boolean) =>
-  `flex min-w-[61px] max-w-[73.5px] size-fit items-center justify-center rounded-[4px] border border-border-border px-2 py-1 text-center font-sans text-mobile-text-md-regular appearance-none focus:outline-none ${
+  `w-auto [field-sizing:content] shrink-0 appearance-none bg-transparent text-center font-sans text-mobile-text-md-regular focus:outline-none ${
     focused ? "text-text-color-accent" : "text-text-secondary"
   }`;
 
+// The bordered pill Orbit's input used to be styled as directly - now wraps
+// the (borderless) input + the static "°" suffix together via IconInputRow's
+// `valueSuffix`, so they render as one visual unit inside one box.
+const ORBIT_PILL_CLASSNAME =
+  "flex min-w-[61px] w-full items-center justify-center rounded-[4px] border border-border-border px-2 py-1";
+
+// w-full (was max-w-[46.33px] size-fit) so the input actually fills the
+// leftover space in its row instead of shrinking to its own content -
+// pairs with the ScrubHandle wrapping it below getting flex-1, which is
+// what actually gives this w-full something real to resolve against.
 const AXIS_INPUT_CLASSNAME = (focused: boolean) =>
-  `flex max-w-[46.33px] size-fit items-center justify-center rounded-[4px] border border-border-border px-2 py-1 text-center font-sans text-mobile-text-md-regular appearance-none cursor-ew-resize focus:outline-none ${
+  `flex w-full items-center justify-center rounded-[4px] border border-border-border px-2 py-1 text-center font-sans text-mobile-text-md-regular appearance-none cursor-ew-resize focus:outline-none ${
     focused ? "text-text-color-accent" : "text-text-secondary"
   }`;
 
@@ -355,13 +443,20 @@ const DRAG_THRESHOLD_PX = 3;
 //   cancels any text edit the initial click may have started) and taking
 //   over from there. A plain click/tap (no real movement) never crosses the
 //   threshold, so it still focuses the input for typing exactly as before.
-function ScrubHandle({ value, min, max, step, onChange, immediate = false, children }: {
+function ScrubHandle({ value, min, max, step, onChange, immediate = false, className = "", children }: {
   value: number;
   min: number;
   max: number;
   step: number;
   onChange: (value: number) => void;
   immediate?: boolean;
+  // Extra classes for the wrapping span - e.g. Position/Rotation's own use
+  // passes "flex-1" so the input inside can actually grow to fill the
+  // leftover row space once its own className drops its old fixed max-width
+  // (see AXIS_INPUT_CLASSNAME) - a percentage width on the <input> only
+  // resolves against a definite size, which this span otherwise doesn't have
+  // as a plain content-sized flex item.
+  className?: string;
   children: ReactNode;
 }) {
   const stateRef = useRef<{ dragging: boolean; startX: number; startValue: number } | null>(null);
@@ -448,7 +543,7 @@ function ScrubHandle({ value, min, max, step, onChange, immediate = false, child
           stateRef.current = { dragging: false, startX: event.clientX, startValue: value };
         }
       }}
-      className="cursor-ew-resize select-none touch-none"
+      className={`cursor-ew-resize select-none touch-none ${className}`}
     >
       {children}
     </span>
@@ -464,21 +559,47 @@ function ScrubHandle({ value, min, max, step, onChange, immediate = false, child
 // on for Position/Rotation (per explicit direction: hover *the input* there),
 // off for Orbit, whose own scrub trigger is its icon instead (wrapped
 // directly in the renderMarker call site, see the Camera tab's Orbit row).
-function IconInputRow({ label, fields, config, setConfig, renderMarker, inputClassName, scrubInput = false }: {
+function IconInputRow({
+  label,
+  description,
+  fields,
+  config,
+  setConfig,
+  renderMarker,
+  inputClassName,
+  scrubInput = false,
+  valueSuffix,
+}: {
   label: string;
+  description?: string;
   fields: NumberField[];
   config: GradientConfig;
   setConfig: (patch: Partial<GradientConfig>) => void;
   renderMarker: (field: NumberField) => ReactNode;
   inputClassName: (focused: boolean) => string;
   scrubInput?: boolean;
+  // A static, non-editable label always shown right next to every field's
+  // value (e.g. "°" for Orbit's Azimuth/Polar) - rendered INSIDE the same
+  // bordered pill as the input itself (see ORBIT_PILL_CLASSNAME), not as a
+  // sibling outside it, so it visually reads as part of the value ("45°"),
+  // not a detached label floating next to the input's own box.
+  valueSuffix?: string;
 }) {
+  const labelNode = description ? (
+    // Same "label text is the trigger, mr-auto moves to the Tooltip
+    // wrapper" fix as SegmentedRow/NumberFieldRow - see either's comment.
+    <Tooltip text={description} side="bottom" align="start" className="mr-auto">
+      <p className="font-sans text-mobile-header-h2 text-text-black">{label}</p>
+    </Tooltip>
+  ) : (
+    <p className="font-sans mr-auto text-mobile-header-h2 text-text-black">{label}</p>
+  );
   return (
     <div className="flex w-full items-center justify-end gap-[8px]">
-      <p className="font-sans mr-auto text-mobile-header-h2 text-text-black">{label}</p>
+      {labelNode}
       <div className={`flex w-full items-center gap-[8px] ${ROW_CONTROLS_MAX_WIDTH}`}>
         {fields.map((field) => {
-          const input = (
+          const editableValue = (
             <EditableNumberValue
               min={field.min}
               max={field.max}
@@ -488,8 +609,22 @@ function IconInputRow({ label, fields, config, setConfig, renderMarker, inputCla
               className={inputClassName}
             />
           );
+          // With a suffix (Orbit only), wrap the input + suffix together in
+          // the bordered pill - one visual box, "°" always inside it right
+          // after the digits. Without one (Position/Rotation), the input
+          // keeps drawing its own border via inputClassName, unchanged.
+          const input = valueSuffix ? (
+            <div className={ORBIT_PILL_CLASSNAME}>
+              {editableValue}
+              <span className="shrink-0 font-sans text-mobile-text-md-regular text-text-secondary">
+                {valueSuffix}
+              </span>
+            </div>
+          ) : (
+            editableValue
+          );
           return (
-            <div key={field.key} className="flex items-center gap-[8px]">
+            <div key={field.key} className="flex w-full items-center gap-[8px]">
               {renderMarker(field)}
               {scrubInput ? (
                 <ScrubHandle
@@ -498,6 +633,7 @@ function IconInputRow({ label, fields, config, setConfig, renderMarker, inputCla
                   max={field.max}
                   step={field.step}
                   onChange={(value) => setConfig({ [field.key]: value })}
+                  className="flex-1"
                 >
                   {input}
                 </ScrubHandle>
@@ -633,7 +769,7 @@ export function ControlPanel() {
       {/* shrink-0: the tab bar itself never scrolls, only the fields below
           it do - see the "only the controls container scrolls" direction
           on EditorTab.tsx above this component. */}
-      <div className="flex shrink-0 bg-background-white-2 border-b border-border-border gap-[8px] px-[20px] pt-[12px]">
+      <div className="flex shrink-0 bg-background-white-2 border-b border-border-border gap-4 px-[20px] pt-[12px]">
         {TABS.map(({ tab, label }) => {
           const isActive = tab === activeTab;
           return (
@@ -695,17 +831,19 @@ export function ControlPanel() {
           GradientCanvas.tsx's own powerPreference comment) - removed as one
           of two isolation tests while chasing that, with the stutter
           persisting either way, before being restored here. */}
-      <div className="flex flex-1 min-h-0 flex-col gap-3 overflow-y-auto overflow-x-hidden pl-5 pr-[14px] py-3 [scrollbar-gutter:stable]">
+      <div className="flex flex-1 min-h-0 flex-col gap-5 overflow-y-auto overflow-x-hidden pl-5 pr-[14px] py-3 [scrollbar-gutter:stable]">
         {activeTab === "shape" && (
           <>
             <SegmentedRow
               label="Type"
+              description="The mesh shape the gradient renders on."
               options={TYPE_OPTIONS}
               value={config.type}
               onChange={(value) => setConfig({ type: value })}
             />
             <SegmentedRow
               label="Shader"
+              description="Which shader variant renders the gradient."
               options={SHADER_OPTIONS}
               value={config.shader}
               onChange={(value) => setConfig({ shader: value })}
@@ -737,6 +875,7 @@ export function ControlPanel() {
 
             <SegmentedRow
               label="Noise"
+              description="Adds a dotted halftone texture over the gradient."
               options={GRAIN_OPTIONS}
               value={config.grain}
               onChange={(value) => setConfig({ grain: value })}
@@ -744,6 +883,7 @@ export function ControlPanel() {
 
             <SegmentedRow
               label="Lighting"
+              description="3D lighting, or an environment reflection instead."
               options={LIGHT_TYPE_OPTIONS}
               value={config.lightType}
               onChange={(value) => setConfig({ lightType: value })}
@@ -753,19 +893,38 @@ export function ControlPanel() {
               <>
                 <SegmentedRow
                   label="Env preset"
+                  description="The environment map used for lighting/reflections."
                   options={ENV_PRESET_OPTIONS}
                   value={config.envPreset}
                   onChange={(value) => setConfig({ envPreset: value })}
                 />
                 <NumberFieldList
-                  fields={[{ label: "Reflection", key: "reflection", min: 0, max: 1, step: 0.1 }]}
+                  fields={[
+                    {
+                      label: "Reflection",
+                      key: "reflection",
+                      min: 0,
+                      max: 1,
+                      step: 0.1,
+                      description: "How reflective the surface looks under the environment lighting.",
+                    },
+                  ]}
                   config={config}
                   setConfig={setConfig}
                 />
               </>
             ) : (
               <NumberFieldList
-                fields={[{ label: "Brightness", key: "brightness", min: 0, max: 3, step: 0.1 }]}
+                fields={[
+                  {
+                    label: "Brightness",
+                    key: "brightness",
+                    min: 0,
+                    max: 3,
+                    step: 0.1,
+                    description: "Overall brightness of the 3D lighting.",
+                  },
+                ]}
                 config={config}
                 setConfig={setConfig}
               />
@@ -778,6 +937,7 @@ export function ControlPanel() {
             <NumberFieldList fields={MOTION_NUMBER_FIELDS} config={config} setConfig={setConfig} />
             <SegmentedRow
               label="Range"
+              description="Loop the animation within a fixed time range instead of running it freely."
               options={RANGE_OPTIONS}
               value={config.range}
               onChange={(value) => setConfig({ range: value })}
@@ -792,6 +952,7 @@ export function ControlPanel() {
           <>
             <IconInputRow
               label="Orbit"
+              description="Orbits the camera around the gradient (azimuth/polar angle)."
               fields={CAMERA_ANGLE_FIELDS}
               config={config}
               setConfig={setConfig}
@@ -808,11 +969,13 @@ export function ControlPanel() {
                 </ScrubHandle>
               )}
               inputClassName={ORBIT_INPUT_CLASSNAME}
+              valueSuffix="°"
             />
             <NumberFieldList fields={CAMERA_NUMBER_FIELDS} config={config} setConfig={setConfig} />
             <NumberFieldList fields={FOV_NUMBER_FIELDS} config={config} setConfig={setConfig} />
             <IconInputRow
               label="Position"
+              description="Moves the camera along X/Y/Z."
               fields={POSITION_NUMBER_FIELDS}
               config={config}
               setConfig={setConfig}
@@ -822,6 +985,7 @@ export function ControlPanel() {
             />
             <IconInputRow
               label="Rotation"
+              description="Rotates the camera along X/Y/Z."
               fields={ROTATION_NUMBER_FIELDS}
               config={config}
               setConfig={setConfig}
