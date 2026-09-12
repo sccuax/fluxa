@@ -31,7 +31,9 @@ export type IconName =
   | "box"
   | "code"
   | "chain"
-  | "stars";
+  | "stars"
+  | "filterFunnel"
+  | "closeChip";
 
 // SVG markup lives inline here (not imported from an assets folder) so
 // adding a new icon is a one-file edit - see the paste.txt example this
@@ -142,6 +144,17 @@ const icons: Record<IconName, (props: SVGProps<SVGSVGElement>) => ReactElement> 
   close: (props) => (
     <svg width="11" height="11" viewBox="0 0 11 11" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
       <path d="M1 1L10 10M1 10L10 1L1 10Z" stroke="#2D2C29" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  ),
+  // A separate, much smaller "x" for the filter chips' own remove button -
+  // not just `close` scaled down via width/height props, since scaling the
+  // whole 11x11/strokeWidth:2 glyph down to 6x6 would scale the stroke down
+  // with it (to ~1.1px, not the requested 0.67px) rather than keep a real,
+  // separately-chosen hairline weight. Own viewBox sized to match the
+  // rendered box 1:1, so strokeWidth is a literal px value, not a ratio.
+  closeChip: (props) => (
+    <svg width="6" height="6" viewBox="0 0 6 6" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+      <path d="M1 1L5 5M1 5L5 1" stroke="currentColor" strokeWidth="0.67" strokeLinecap="round" />
     </svg>
   ),
   copy: (props) => (
@@ -418,6 +431,24 @@ const icons: Record<IconName, (props: SVGProps<SVGSVGElement>) => ReactElement> 
       <circle cx="12" cy="4" r="1.33333" stroke="currentColor" strokeWidth="1.33333" />
       <circle cx="6.66667" cy="8" r="1.33333" stroke="currentColor" strokeWidth="1.33333" />
       <circle cx="10" cy="12" r="1.33333" stroke="currentColor" strokeWidth="1.33333" />
+    </svg>
+  ),
+
+  // A real funnel glyph (copy-paste/paste.txt) - distinct from the "sliders"
+  // `filter` icon above (that one's the PresetsTab button that opens this
+  // modal; this one is the modal's own header icon). stroke="currentColor"
+  // rather than the pasted asset's hardcoded "#20242D" - a hardcoded stroke
+  // baked in from whatever state a Figma export was captured in is a
+  // recurring real bug in this file (see HeaderAppMenu's own icons).
+  filterFunnel: (props) => (
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+      <path
+        d="M2.74408 2.74408C2.5878 2.90036 2.5 3.11232 2.5 3.33333V5.48833C2.50005 5.70933 2.58788 5.92126 2.74417 6.0775L8.08917 11.4225C8.24546 11.5787 8.33329 11.7907 8.33333 12.0117V17.5L11.6667 14.1667V12.0117C11.6667 11.7907 11.7545 11.5787 11.9108 11.4225L17.2558 6.0775C17.4121 5.92126 17.5 5.70933 17.5 5.48833V3.33333C17.5 3.11232 17.4122 2.90036 17.2559 2.74408C17.0996 2.5878 16.8877 2.5 16.6667 2.5H3.33333C3.11232 2.5 2.90036 2.5878 2.74408 2.74408Z"
+        stroke="currentColor"
+        strokeWidth="1.875"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   ),
 

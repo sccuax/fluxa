@@ -57,7 +57,17 @@ export function useChromeInsets() {
 // together.
 const MODAL_ANIMATION_MS = 540;
 
-export function FullViewModal({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
+export function FullViewModal({
+  title,
+  titleIcon,
+  onClose,
+  children,
+}: {
+  title: string;
+  titleIcon?: ReactNode;
+  onClose: () => void;
+  children: ReactNode;
+}) {
   const { top, bottom } = useChromeInsets();
   const [closing, setClosing] = useState(false);
 
@@ -85,7 +95,7 @@ export function FullViewModal({ title, onClose, children }: { title: string; onC
           closing ? "animate-modal-slide-down" : "animate-modal-slide-up"
         }`}
       >
-        <PanelHeader title={title} onClose={handleClose} />
+        <PanelHeader title={title} titleIcon={titleIcon} onClose={handleClose} />
         <div className="flex-1 min-h-0 overflow-y-auto">{children}</div>
       </div>
     </div>

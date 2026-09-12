@@ -1,11 +1,17 @@
+import type { ReactNode } from "react";
 import { Icon } from "./Icon";
 
 export function PanelHeader({
   title,
+  titleIcon,
   onClose,
   titleUnderline = false,
 }: {
   title: string;
+  // Optional icon to the left of the title, 8px gap - PresetFilterModal's
+  // "Filter" header is the first (only) caller to use this; every other
+  // FullViewModal/PanelHeader title stays plain text.
+  titleIcon?: ReactNode;
   // Also doubles as ManageProfileScreen's "back to Account" trigger - per
   // explicit direction to reuse the Color modal's own X affordance for that
   // instead of a dedicated back-arrow button (which this component used to
@@ -33,12 +39,13 @@ export function PanelHeader({
       }`}
     >
       <span
-        className={
+        className={`flex items-center gap-[8px] ${
           titleUnderline
             ? " py-3 border-b border-b-accent-500 font-display text-header-h5 text-text-black"
             : "font-display text-mobile-display-d1 text-text-black"
-        }
+        }`}
       >
+        {titleIcon}
         {title}
       </span>
       {onClose && (

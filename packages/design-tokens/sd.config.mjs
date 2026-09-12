@@ -125,6 +125,19 @@ StyleDictionary.registerFormat({
           setNested(backgroundImage, pathToKeys(path), value);
         } else {
           const keys = pathToKeys(path[0]?.toLowerCase() === "colors" ? path.slice(1) : path);
+          // Tailwind reserves the bare "transparent" key for its own built-in
+          // bg-transparent/text-transparent/border-transparent utilities
+          // (theme.colors.transparent must stay the plain string
+          // "transparent" for those to generate at all). A Figma "Transparent"
+          // color GROUP (translucent-white swatches, e.g. "10% White") slugs
+          // to that exact same top-level key and silently shadows it once
+          // merged into tailwind.config.js's theme.extend.colors - Tailwind
+          // then emits neither the real utilities NOR anything for this
+          // group (it can't emit a flat utility for what looks like a color
+          // scale object), with no error anywhere. Renamed to "alpha" so both
+          // survive: the reserved keyword stays intact, and this group's own
+          // swatches become bg-alpha-<shade> instead.
+          if (keys[0] === "transparent") keys[0] = "alpha";
           setNested(colors, keys, value);
         }
         continue;

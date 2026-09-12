@@ -20,6 +20,16 @@
       "$type": "color",
       "$value": "{Colors.Neutral.900}"
     },
+    "Background Dark 2": {
+      "$extensions": {
+        "com.figma.scopes": [
+          "ALL_SCOPES"
+        ],
+        "com.figma.hiddenFromPublishing": false
+      },
+      "$type": "color",
+      "$value": "{Colors.Neutral.800}"
+    },
     "Background White 2": {
       "$extensions": {
         "com.figma.scopes": [

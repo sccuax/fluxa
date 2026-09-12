@@ -401,14 +401,14 @@ const ORBIT_INPUT_CLASSNAME = (focused: boolean) =>
 // the (borderless) input + the static "°" suffix together via IconInputRow's
 // `valueSuffix`, so they render as one visual unit inside one box.
 const ORBIT_PILL_CLASSNAME =
-  "flex min-w-[61px] w-full items-center justify-center rounded-[4px] border border-border-border px-2 py-1";
+  "flex min-w-[61px] w-full items-center justify-center rounded-[4px] border border-border-border px-2 py-1 shadow-[-1px_4px_3px_0_rgba(133,129,121,0.05),-1px_2px_2px_0_rgba(133,129,121,0.09),0_0_1px_0_rgba(133,129,121,0.10)]";
 
 // w-full (was max-w-[46.33px] size-fit) so the input actually fills the
 // leftover space in its row instead of shrinking to its own content -
 // pairs with the ScrubHandle wrapping it below getting flex-1, which is
 // what actually gives this w-full something real to resolve against.
 const AXIS_INPUT_CLASSNAME = (focused: boolean) =>
-  `flex w-full items-center justify-center rounded-[4px] border border-border-border px-2 py-1 text-center font-sans text-mobile-text-md-regular appearance-none cursor-ew-resize focus:outline-none ${
+  `flex w-full items-center justify-center rounded-[4px] border border-border-border px-2 py-1 text-center font-sans text-mobile-text-md-regular appearance-none cursor-ew-resize focus:outline-none shadow-[-1px_4px_3px_0_rgba(133,129,121,0.05),-1px_2px_2px_0_rgba(133,129,121,0.09),0_0_1px_0_rgba(133,129,121,0.10)] ${
     focused ? "text-text-color-accent" : "text-text-secondary"
   }`;
 
@@ -687,7 +687,7 @@ function IconInputRow({
 // clipping the last character at the requested 64px max-width. px-1 frees up
 // the extra room while keeping the 64px cap intact.
 const HEX_INPUT_CLASSNAME = (focused: boolean) =>
-  `flex max-w-[64px] size-fit items-center justify-center rounded-[4px] border border-border-border px-1 py-1 text-center font-sans text-mobile-text-md-regular appearance-none focus:outline-none ${
+  `flex max-w-[64px] size-fit items-center justify-center rounded-[4px] border border-border-border px-1 py-1 text-center font-sans text-mobile-text-md-regular appearance-none focus:outline-none shadow-[-1px_4px_3px_0_rgba(133,129,121,0.05),-1px_2px_2px_0_rgba(133,129,121,0.09),0_0_1px_0_rgba(133,129,121,0.10)] ${
     focused ? "text-text-color-accent" : "text-text-black"
   }`;
 
@@ -859,7 +859,7 @@ export function ControlPanel() {
                 <button
                   type="button"
                   onClick={() => setConfig({ colorCount: "3" })}
-                  className="flex items-center gap-1 rounded-[4px] border border-border-border px-2 py-1"
+                  className="flex items-center gap-1 rounded-[4px] border border-border-border px-2 py-1 shadow-[-1px_4px_3px_0_rgba(133,129,121,0.05),-1px_2px_2px_0_rgba(133,129,121,0.09),0_0_1px_0_rgba(133,129,121,0.10)]"
                 >
                   <Icon name="add" />
                   <span className="font-sans text-mobile-text-md-regular text-text-black">Add color</span>

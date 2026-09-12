@@ -152,7 +152,7 @@ function ColorValueField({ format, value, onChange }: {
 }
 
 const OPACITY_INPUT_CLASSNAME = (focused: boolean) =>
-  `flex max-w-[48px] size-fit items-center justify-center rounded-[4px] border border-border-border px-2 py-1 text-center font-sans text-mobile-text-md-regular appearance-none focus:outline-none ${
+  `flex max-w-[48px] size-fit items-center justify-center rounded-[4px] border border-border-border px-2 py-1 text-center font-sans text-mobile-text-md-regular appearance-none focus:outline-none shadow-[-1px_4px_3px_0_rgba(133,129,121,0.05),-1px_2px_2px_0_rgba(133,129,121,0.09),0_0_1px_0_rgba(133,129,121,0.10)] ${
     focused ? "text-text-color-accent" : "text-text-secondary"
   }`;
 
@@ -329,7 +329,7 @@ function EyeDropperButton({ onPick }: { onPick: (hex: string) => void }) {
       disabled={!EYEDROPPER_SUPPORTED}
       onClick={handleClick}
       aria-label="Pick color from screen"
-      className={`flex h-8 w-full justify-center items-center gap-2 rounded-4 border border-border-border py-2 px-2 font-sans text-mobile-text-md-regular ${
+      className={`flex h-8 w-full justify-center items-center gap-2 rounded-4 border border-border-border py-2 px-2 font-sans text-mobile-text-md-regular shadow-[-1px_4px_3px_0_rgba(133,129,121,0.05),-1px_2px_2px_0_rgba(133,129,121,0.09),0_0_1px_0_rgba(133,129,121,0.10)] ${
         EYEDROPPER_SUPPORTED
           ? "text-text-secondary transition-colors hover:text-text-color-accent"
           : "cursor-not-allowed text-text-secondary opacity-40"

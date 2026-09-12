@@ -56,9 +56,9 @@ export function SegmentedRow<T extends string>({
               key={optionValue}
               type="button"
               onClick={() => onChange(optionValue)}
-              className={`flex py-1 w-full size-fit items-center justify-center rounded-[4px] border px-2 font-sans text-mobile-text-md-regular ${
+              className={`flex py-1 w-full size-fit items-center justify-center rounded-[4px] border px-2 font-sans text-mobile-text-md-regular shadow-[-1px_4px_3px_0_rgba(133,129,121,0.05),-1px_2px_2px_0_rgba(133,129,121,0.09),0_0_1px_0_rgba(133,129,121,0.10)] ${
                 isActive
-                  ? "border-accent-500 text-accent-500 bg-accent-50"
+                  ? "border-accent-500/50 text-accent-500 bg-accent-50"
                   : "border-border-border text-text-secondary"
               }`}
             >
