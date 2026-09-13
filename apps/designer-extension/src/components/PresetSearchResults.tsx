@@ -51,19 +51,37 @@ function PresetSearchResultRow({
   // needs `background` to actually change between states, not just a
   // border-color swap.
   const [hovered, setHovered] = useState(false);
-  // Percent position within the row (0-100 both axes) - starts centered so
-  // the very first hover frame (before any real mousemove has fired yet)
-  // shows something reasonable rather than a value from a stale previous
-  // hover.
-  const [pointerPercent, setPointerPercent] = useState({ x: 50, y: 50 });
+  // Percent position within the row (0-100 both axes, for the panning
+  // gradient-border background below) plus `edgeProximity`/`cursorAngle` (for
+  // the separate edge-glow overlay below) - starts centered/zeroed so the
+  // very first hover frame (before any real mousemove has fired yet) shows
+  // something reasonable rather than a value from a stale previous hover.
+  const [pointer, setPointer] = useState({ x: 50, y: 50, edgeProximity: 0, cursorAngle: 0 });
   const showGradientBorder = clickable && hovered;
 
+  // `edgeProximity` (0-100) and `cursorAngle` (deg) are the same plain
+  // geometry a pasted BorderGlow-style reference used (conceptual reference
+  // only - nothing from it was imported, no CDN/bundle/package was added to
+  // this project): edgeProximity is 0 at the row's exact center and rises to
+  // 100 at any point on the row's own boundary (dx/cx and dy/cy both hit 1
+  // there), so the edge-glow overlay below can fade in near-nothing at the
+  // center and intensify approaching the border. cursorAngle is the cursor's
+  // angle from center, used to mask that glow so it only lights up the
+  // border segment nearest the cursor rather than the whole ring at once.
   function handlePointerMove(event: React.MouseEvent<HTMLDivElement>) {
     const rect = event.currentTarget.getBoundingClientRect();
-    setPointerPercent({
-      x: ((event.clientX - rect.left) / rect.width) * 100,
-      y: ((event.clientY - rect.top) / rect.height) * 100,
-    });
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+    const cx = rect.width / 2;
+    const cy = rect.height / 2;
+    const dx = x - cx;
+    const dy = y - cy;
+    const kx = dx !== 0 ? cx / Math.abs(dx) : Infinity;
+    const ky = dy !== 0 ? cy / Math.abs(dy) : Infinity;
+    const edgeProximity = Math.min(Math.max(1 / Math.min(kx, ky), 0), 1) * 100;
+    let cursorAngle = Math.atan2(dy, dx) * (180 / Math.PI) + 90;
+    if (cursorAngle < 0) cursorAngle += 360;
+    setPointer({ x: (x / rect.width) * 100, y: (y / rect.height) * 100, edgeProximity, cursorAngle });
   }
 
   return (
@@ -84,15 +102,33 @@ function PresetSearchResultRow({
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       onMouseMove={clickable ? handlePointerMove : undefined}
-      className={`flex items-center gap-3 rounded-4 border p-3 ${clickable ? "cursor-pointer" : ""} ${
+      className={`relative flex items-center gap-3 rounded-4 border p-3 ${clickable ? "cursor-pointer" : ""} ${
         showGradientBorder ? "border-transparent" : "border-border-border"
       }`}
       style={
         showGradientBorder
-          ? { ...GRADIENT_BORDER_STYLE, backgroundPosition: `0 0, ${pointerPercent.x}% ${pointerPercent.y}%` }
+          ? { ...GRADIENT_BORDER_STYLE, backgroundPosition: `0 0, ${pointer.x}% ${pointer.y}%` }
           : undefined
       }
     >
+      {/* The actual "glow" layer, separate from the panning gradient border
+          above - near-invisible at the row's center, intensifying toward
+          its edge (opacity driven by --edge-proximity), and masked to only
+          light up the border segment nearest the cursor (--cursor-angle) -
+          see PresetsTab.tsx's/this file's own comment above `pointer` state
+          for the geometry this is built on. */}
+      {showGradientBorder && (
+        <span
+          aria-hidden
+          className="preset-result-edge-glow pointer-events-none absolute inset-0 rounded-[inherit]"
+          style={
+            {
+              "--edge-proximity": pointer.edgeProximity,
+              "--cursor-angle": `${pointer.cursorAngle}deg`,
+            } as React.CSSProperties
+          }
+        />
+      )}
       {preset.thumbnailUrl ? (
         <img src={preset.thumbnailUrl} alt="" className="h-10 w-10 shrink-0 rounded-[4px] object-cover" />
       ) : (

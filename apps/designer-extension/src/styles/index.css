@@ -179,6 +179,43 @@
     no-repeat center;
 }
 
+/* PresetSearchResults.tsx's edge-glow overlay (the "By Fluxa team" search
+   result rows). Self-authored - inspired conceptually by a pasted BorderGlow-
+   style reference (edge-proximity + cursor-angle geometry, computed in that
+   component), nothing from it copied/imported here, just the same plain math
+   reproduced against this app's own token color. `--edge-proximity` (0-100,
+   set inline per-row) drives an opacity ramp that's ~0 at the row's center
+   and rises to 1 approaching its border - the `45`/`55` split below is the
+   "dead zone" width (no visible glow until proximity crosses ~45/100).
+   `--cursor-angle` (deg) feeds a conic-gradient mask so only the border arc
+   nearest the cursor lights up, not the whole ring at once. Uses
+   `color-mix()` against the real `--colors-accent-500` token (not a
+   hardcoded hex) so this stays in sync if that token's color ever changes. */
+.preset-result-edge-glow {
+  opacity: calc((var(--edge-proximity, 0) - 45) / 55);
+  transition: opacity 0.15s ease-out;
+  mask-image: conic-gradient(
+    from var(--cursor-angle, 0deg) at center,
+    black 20%,
+    transparent 35%,
+    transparent 65%,
+    black 80%
+  );
+  -webkit-mask-image: conic-gradient(
+    from var(--cursor-angle, 0deg) at center,
+    black 20%,
+    transparent 35%,
+    transparent 65%,
+    black 80%
+  );
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--colors-accent-500) 90%, transparent),
+    inset 0 0 6px 0 color-mix(in srgb, var(--colors-accent-500) 55%, transparent),
+    inset 0 0 12px 1px color-mix(in srgb, var(--colors-accent-500) 30%, transparent),
+    0 0 6px 0 color-mix(in srgb, var(--colors-accent-500) 45%, transparent),
+    0 0 14px 1px color-mix(in srgb, var(--colors-accent-500) 25%, transparent);
+}
+
 *::-webkit-scrollbar-button:vertical:end:increment {
   height: 8px;
   background: var(--colors-neutral-400)

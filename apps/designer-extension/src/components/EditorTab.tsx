@@ -97,7 +97,9 @@ export function EditorTab({
         {accepted ? <ControlPanel /> : <SupportedElementsGuide />}
       </div>
 
-      <div className="w-full shrink-0 px-[20px] py-[12px] ">
+      {/* border-t only once accepted - the initial Accept screen is the one
+          deliberate exception, per explicit direction. */}
+      <div className={`w-full shrink-0 px-[20px] py-[12px] ${accepted ? "border-t border-border-border" : ""}`}>
         {accepted ? (
           <ButtonPrimary disabled={applying} icon={<Icon name="stars" />} onClick={handleApplyGradient}>
             {applying ? "Applying…" : "Apply gradient"}

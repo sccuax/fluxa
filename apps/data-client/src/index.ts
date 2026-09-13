@@ -5,6 +5,8 @@ import { HTTPException } from "hono/http-exception";
 import { ZodError } from "zod";
 import type { AppEnv } from "./types";
 import { createAuth } from "./lib/auth";
+import { addPartitionedAttribute } from "./lib/partitionedCookies";
+import { captureOAuthPopupHandoff } from "./lib/oauthPopupHandoff";
 import { sessionMiddleware } from "./middleware";
 import { authRoutes } from "./routes/auth";
 import { assetRoutes } from "./routes/assets";
@@ -13,6 +15,7 @@ import { galleryPresetRoutes, publicGalleryPresetRoutes } from "./routes/gallery
 import { publicRuntimeAssetRoutes } from "./routes/runtimeAssets";
 import { profileRoutes } from "./routes/profile";
 import { oauthPopupRoutes } from "./routes/oauthPopup";
+import { oauthPopupExchangeRoutes } from "./routes/oauthPopupExchange";
 
 const app = new Hono<AppEnv>();
 
@@ -106,9 +109,37 @@ app.get("/api/me", (c) => c.json({ user: c.get("user"), sessionId: c.get("sessio
 
 // better-auth's own routes: sign-up/sign-in (email+password), Google OAuth,
 // session management. See src/lib/auth.ts for provider config.
-app.on(["POST", "GET"], "/api/auth/*", (c) => {
+app.on(["POST", "GET"], "/api/auth/*", async (c) => {
   const auth = createAuth(c.env);
-  return auth.handler(c.req.raw);
+  const response = await auth.handler(c.req.raw);
+  // The Google OAuth callback (`/api/auth/callback/google`) sets the real
+  // session cookie during the POPUP's own top-level navigation to this
+  // Worker's own domain (Google redirects the popup window itself here,
+  // see the "Google sign-in popup flow" section in this app's own
+  // CLAUDE.md) - CHIPS partitions a cookie by whichever top-level site is
+  // active when it's SET, which in that moment is this Worker's own
+  // domain, not the Webflow Designer page embedding the extension iframe
+  // that later has to read it back via `/api/me`. Partitioning it would
+  // permanently wall it off from that iframe's own partition - confirmed
+  // for real: this broke Google sign-in's post-login redirect (selecting a
+  // Google account never returned to the dashboard) the moment
+  // addPartitionedAttribute shipped unconditionally. Every other
+  // `/api/auth/*` endpoint is always called via a plain `fetch()` from
+  // code already running inside the extension iframe, so its top-level
+  // site is consistently the Webflow Designer page both when the cookie is
+  // set and later read - partitioning stays correct (and needed) there.
+  if (c.req.path.startsWith("/api/auth/callback/")) {
+    // Also captures better-auth's oauth-popup plugin's own completion-page
+    // payload server-side (see lib/oauthPopupHandoff.ts) - its own
+    // window.opener.postMessage relay never reaches the extension iframe
+    // for real (Google's own COOP severs window.opener mid-flow, confirmed
+    // via real testing), so routes/oauthPopupExchange.ts's poll endpoint is
+    // what actually delivers this. Reads a CLONE - the original response
+    // below is still returned to the popup completely unmodified.
+    await captureOAuthPopupHandoff(c.env, response.clone());
+    return response;
+  }
+  return addPartitionedAttribute(response);
 });
 
 // Webflow *app installation* OAuth (site access token), separate from the
@@ -126,5 +157,6 @@ app.route("/api/public/gallery-presets", publicGalleryPresetRoutes);
 app.route("/api/public/runtime", publicRuntimeAssetRoutes);
 app.route("/api/profile", profileRoutes);
 app.route("/oauth-popup-callback", oauthPopupRoutes);
+app.route("/api/oauth-popup-exchange", oauthPopupExchangeRoutes);
 
 export default app;

@@ -1,6 +1,6 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { emailOTP } from "better-auth/plugins";
+import { bearer, emailOTP, oauthPopup } from "better-auth/plugins";
 import { createDb } from "../db/client";
 import { ensureDestinationVerified } from "./emailRoutingGuard";
 import type { Bindings } from "../types/env";
@@ -19,6 +19,16 @@ export function createAuth(env: Bindings) {
     database: drizzleAdapter(db, { provider: "pg" }),
     emailAndPassword: {
       enabled: true,
+    },
+    // Explicit 48h, shorter than better-auth's own 7-day default - per
+    // explicit direction, not a fix for the "logs out on reload" bug (that
+    // was a third-party-cookie persistence issue, see
+    // lib/partitionedCookies.ts; the cookie's Max-Age was never the cause,
+    // 7 days already exceeded 48h). Session cookie's own `maxAge` mirrors
+    // this directly (better-auth/dist/cookies: `sessionToken` cookie ->
+    // `options.session?.expiresIn`).
+    session: {
+      expiresIn: 60 * 60 * 48,
     },
     // ManageProfileScreen's "Save" button (Designer Extension) hits this via
     // POST /api/auth/change-email. updateEmailWithoutVerification is what
@@ -143,6 +153,49 @@ export function createAuth(env: Bindings) {
           });
         },
       }),
+      // Real fix for Google sign-in's own popup-vs-embedded-iframe problem
+      // (see googleSignIn.ts's own comment): the Designer Extension iframe
+      // is a different origin from this Worker, so the session cookie the
+      // OAuth callback sets during the POPUP's own top-level navigation is
+      // never reliably readable back from inside the iframe - confirmed
+      // for real (Google sign-in stopped completing at all once third-party
+      // cookie blocking actually kicked in for this pairing). better-auth's
+      // own first-party `oauthPopup` plugin exists specifically for this:
+      // `/api/auth/oauth-popup/start` runs the whole provider round trip in
+      // the popup's own first-party context (validating `popupOrigin`
+      // against `trustedOrigins` below, with a signed marker cookie tying
+      // the callback back to it - not something hand-rolled here), then
+      // swaps the normal callback redirect for a small completion page
+      // carrying the session token.
+      //
+      // That page's OWN documented delivery mechanism - posting the token
+      // back to `window.opener` via `postMessage` - does NOT reach the
+      // extension iframe in practice: confirmed via real testing that
+      // accounts.google.com's own Cross-Origin-Opener-Policy: same-origin
+      // permanently severs `window.opener` the instant the popup navigates
+      // there mid-flow (the popup closes itself right on schedule per its
+      // own script, the opener just never hears about it). Real fallback:
+      // `lib/oauthPopupHandoff.ts` captures that same completion page's
+      // payload SERVER-SIDE (parsed out of a cloned response, keyed by the
+      // `nonce` the iframe already generated before ever opening the
+      // popup), and `routes/oauthPopupExchange.ts` is a plain poll endpoint
+      // the iframe hits with that nonce until the row lands - no
+      // window-reference or partitioned-storage channel involved at all.
+      // `bearer` is what lets that endpoint redeem the captured raw token
+      // for a real session server-side - required pairing per better-auth's
+      // own oauth-popup plugin doc comment.
+      //
+      // Deliberately NOT adopting better-auth's own suggested "keep the
+      // token in localStorage forever" pattern for the embedded case (its
+      // client plugin does this) - that would reopen the exact
+      // XSS-token-exposure trade-off already weighed and rejected for this
+      // app (see partitionedCookies.ts) for every Google session, not just
+      // the login instant. Instead the exchange endpoint mints a real,
+      // correctly `Partitioned` httpOnly cookie the moment the poll
+      // succeeds, and the raw token is never persisted anywhere longer than
+      // this table's own short TTL.
+      oauthPopup(),
+      bearer(),
     ],
     // better-auth's rate limiter defaults to an in-memory store and only
     // enables itself when it detects a "production" environment - neither

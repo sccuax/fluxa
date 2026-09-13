@@ -319,3 +319,30 @@ export const paymentRelations = relations(payments, ({ one }) => ({
     references: [subscriptions.id],
   }),
 }));
+
+// Bridges the Google sign-in popup back to the Designer Extension iframe -
+// see routes/oauthPopupExchange.ts for the full mechanism. Real, confirmed
+// necessity, not speculative: better-auth's own oauth-popup plugin's
+// postMessage relay (window.opener.postMessage) never arrives in practice,
+// because accounts.google.com sets its own Cross-Origin-Opener-Policy:
+// same-origin, which permanently severs window.opener the moment the popup
+// navigates there mid-flow - confirmed via real testing (the popup closes
+// itself right on schedule, but the opener never receives anything). This
+// table is the fallback: the iframe already knows a random `nonce` before
+// it ever opens the popup, so it can poll the server for that nonce's
+// outcome directly - no window-reference channel needed at all. One row
+// per in-flight attempt, single-use (deleted the moment it's read) and
+// short-lived (`createdAt`, filtered server-side to a few minutes - stale
+// rows are cleanup's problem, this table sees very low volume). `token` is
+// better-auth's own raw session-token cookie value (safe to store briefly -
+// it's already exactly what a real session cookie holds; this just isn't
+// persisted anywhere long-lived), `errorCode`/`redirectTo` carry a failed
+// attempt's outcome instead (see auth.ts's oauthPopup plugin comment for
+// what these two mean).
+export const oauthPopupHandoffs = pgTable("oauth_popup_handoffs", {
+  nonce: text("nonce").primaryKey(),
+  token: text("token"),
+  errorCode: text("error_code"),
+  redirectTo: text("redirect_to"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});

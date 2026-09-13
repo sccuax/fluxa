@@ -33,7 +33,9 @@ export type IconName =
   | "chain"
   | "stars"
   | "filterFunnel"
-  | "closeChip";
+  | "closeChip"
+  | "help"
+  | "chevronRight";
 
 // SVG markup lives inline here (not imported from an assets folder) so
 // adding a new icon is a one-file edit - see the paste.txt example this
@@ -489,6 +491,27 @@ const icons: Record<IconName, (props: SVGProps<SVGSVGElement>) => ReactElement> 
         strokeLinecap="round"
         strokeLinejoin="round"
       />
+    </svg>
+  ),
+  // AboutModal.tsx's own header icon (the "?" circle) - a Figma paste
+  // (copy-paste/paste.txt), stroke="currentColor" rather than its hardcoded
+  // "#20242D" for the same reason as filterFunnel above.
+  help: (props) => (
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+      <path
+        d="M5.53578 6.22201C6.02378 5.18645 7.34023 4.44423 8.88867 4.44423C10.8531 4.44423 12.4442 5.63801 12.4442 7.11089C12.4442 8.35534 11.3082 9.39978 9.77223 9.69489C9.29045 9.78734 8.88867 10.1749 8.88867 10.6664M8.88867 13.3331H8.89756M16.8887 8.88867C16.8887 9.93925 16.6817 10.9795 16.2797 11.9501C15.8777 12.9207 15.2884 13.8027 14.5455 14.5455C13.8027 15.2884 12.9207 15.8777 11.9501 16.2797C10.9795 16.6817 9.93925 16.8887 8.88867 16.8887C7.8381 16.8887 6.79781 16.6817 5.8272 16.2797C4.8566 15.8777 3.97469 15.2884 3.23182 14.5455C2.48895 13.8027 1.89967 12.9207 1.49764 11.9501C1.0956 10.9795 0.888672 9.93925 0.888672 8.88867C0.888672 6.76694 1.73153 4.73211 3.23182 3.23182C4.73211 1.73153 6.76694 0.888672 8.88867 0.888672C11.0104 0.888672 13.0452 1.73153 14.5455 3.23182C16.0458 4.73211 16.8887 6.76694 16.8887 8.88867Z"
+        stroke="currentColor"
+        strokeWidth="1.77778"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  ),
+  // AboutModal.tsx's row chevrons - a 90°-rotated chevronDown, since no
+  // chevron-right existed yet.
+  chevronRight: (props) => (
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+      <path d="M4.5 2.5L8 6L4.5 9.5" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   ),
 };
