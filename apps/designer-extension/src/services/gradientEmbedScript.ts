@@ -1,4 +1,5 @@
 import { getEffectiveGradientColors, type GradientConfig } from "@fluxa/gradient-core";
+import { buildAnalyticsBeaconSnippet } from "./embedAnalyticsBeacon";
 
 // Pinned to the exact versions installed locally (package.json / GradientCanvas.tsx's
 // working preview) so the published embed renders identically to what the panel already
@@ -35,7 +36,7 @@ export const GRADIENT_EMBED_MARKER = "<!-- fluxa-gradient -->";
 // @react-three/fiber@9.x (needs React 19) against our React 18, throwing `Cannot read
 // properties of undefined (reading 'S')` - see the comment on REACT_THREE_FIBER_VERSION
 // above.
-export function buildGradientEmbedCode(config: GradientConfig, rootId: string): string {
+export function buildGradientEmbedCode(config: GradientConfig, rootId: string, includeAnalytics: boolean): string {
   // colorCount is app-level only (see gradient-core's schema.ts) - resolved
   // to a plain color3 value here so the injected script itself stays a dumb
   // ShaderGradient prop dump, with no knowledge of the app's own "2 colors"
@@ -52,7 +53,7 @@ import { ShaderGradientCanvas, ShaderGradient } from "https://esm.sh/@shadergrad
 const config = ${configJson};
 const mount = document.getElementById("${rootId}");
 if (mount) {
-  // ShaderGradientCanvas's own pixelDensity prop is passed straight through as a
+${includeAnalytics ? buildAnalyticsBeaconSnippet("shaderGradient") : ""}  // ShaderGradientCanvas's own pixelDensity prop is passed straight through as a
   // fixed dpr to @react-three/fiber's <Canvas> - it never reads the visitor's real
   // devicePixelRatio, so the same preset renders (css width x css height x
   // pixelDensity^2) physical pixels regardless of screen density. On a real,

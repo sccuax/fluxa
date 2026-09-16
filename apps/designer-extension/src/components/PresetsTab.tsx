@@ -11,6 +11,7 @@ import { applyGradientToElement, canApplyPreset } from "../services/applyGradien
 import { applyGlassLiquidToElement } from "../services/applyGlassLiquid";
 import { applyRuidoEvolutivoToElement } from "../services/applyRuidoEvolutivo";
 import { getWebflowDesigner } from "../services/webflowDesigner";
+import { trackEvent } from "../services/analytics";
 
 function capitalize(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
@@ -85,6 +86,7 @@ export function PresetsTab() {
         await applyGradientToElement(element, preset.config);
       }
       getWebflowDesigner().notify({ type: "Success", message: "Preset applied!" });
+      trackEvent("apply_preset", preset.id);
     } catch (error) {
       getWebflowDesigner().notify({
         type: "Error",
@@ -151,13 +153,21 @@ export function PresetsTab() {
         <PresetSearchBar
           value={query}
           onChange={(value) => {
+            // Fires once per search, on the empty -> non-empty transition -
+            // not once per keystroke, which would be noisy and would leak a
+            // rough shape of what's being typed (length/timing) for no real
+            // benefit over a single "a search happened" event.
+            if (!query.trim() && value.trim()) trackEvent("search_presets");
             setQuery(value);
             setResultsDismissed(false);
           }}
         />
         <button
           type="button"
-          onClick={() => setFilterModalOpen(true)}
+          onClick={() => {
+            trackEvent("open_preset_filter_modal");
+            setFilterModalOpen(true);
+          }}
           aria-label="Filter presets"
           aria-pressed={filtersActive}
           className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-4 border ${
@@ -262,6 +272,7 @@ export function PresetsTab() {
           filters={filters}
           onClose={() => setFilterModalOpen(false)}
           onApply={(nextFilters) => {
+            trackEvent("filter_presets", `${nextFilters.license}|${nextFilters.colorTag ?? "none"}|${nextFilters.sort}`);
             setFilters(nextFilters);
             setFilterModalOpen(false);
           }}

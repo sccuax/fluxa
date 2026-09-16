@@ -2,6 +2,7 @@ import type { GlassLiquidConfig } from "@fluxa/gradient-core";
 import { getWebflowDesigner } from "./webflowDesigner";
 import { buildGlassLiquidEmbedCode } from "./glassLiquidEmbedScript";
 import { removeOtherFluxaEmbeds, type PresetTarget } from "./applyGradient";
+import { getCookiePreferences } from "./cookiePreferences";
 
 // Mirrors applyGradient.ts's own applyGradientToElement/marker/positioning-
 // context logic exactly, for the glassLiquid preset kind - see that file
@@ -76,7 +77,7 @@ async function findExistingGlassLiquidEmbed(target: PresetTarget): Promise<HtmlE
 export async function applyGlassLiquidToElement(target: PresetTarget, config: GlassLiquidConfig): Promise<void> {
   const webflowApi = getWebflowDesigner();
   const rootId = `fluxa-glass-liquid-${crypto.randomUUID().slice(0, 8)}`;
-  const code = buildGlassLiquidEmbedCode(config, rootId);
+  const code = buildGlassLiquidEmbedCode(config, rootId, getCookiePreferences().publishedSiteAnalytics);
 
   await removeOtherFluxaEmbeds(target, MARKER_ATTRIBUTE);
   const existing = await findExistingGlassLiquidEmbed(target);

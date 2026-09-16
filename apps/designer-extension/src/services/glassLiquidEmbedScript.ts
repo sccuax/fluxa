@@ -1,4 +1,5 @@
 import type { GlassLiquidConfig } from "@fluxa/gradient-core";
+import { buildAnalyticsBeaconSnippet } from "./embedAnalyticsBeacon";
 
 // Self-hosted from day one - unlike gradientEmbedScript.ts (which loads
 // React + @shadergradient/react from esm.sh at request time, a "real
@@ -40,7 +41,7 @@ export const GLASS_LIQUID_EMBED_MARKER = "<!-- fluxa-glass-liquid -->";
 // loads the self-hosted runtime via a plain <script src> tag, then calls
 // its exposed window.FluxaGlassLiquid.mount(canvas, config) directly - no
 // esm.sh, no ES module imports, no CDN dependency of any kind at runtime.
-export function buildGlassLiquidEmbedCode(config: GlassLiquidConfig, rootId: string): string {
+export function buildGlassLiquidEmbedCode(config: GlassLiquidConfig, rootId: string, includeAnalytics: boolean): string {
   const configJson = JSON.stringify(config);
 
   return `${GLASS_LIQUID_EMBED_MARKER}
@@ -52,7 +53,7 @@ export function buildGlassLiquidEmbedCode(config: GlassLiquidConfig, rootId: str
   s.onload = function () {
     var canvas = document.getElementById("${rootId}");
     if (canvas && window.FluxaGlassLiquid) {
-      var handle = window.FluxaGlassLiquid.mount(canvas, ${configJson});
+${includeAnalytics ? buildAnalyticsBeaconSnippet("glassLiquid") : ""}      var handle = window.FluxaGlassLiquid.mount(canvas, ${configJson});
       // Pauses the render loop entirely (no GPU/compositor cost at all,
       // not just reduced quality) while this shader is scrolled out of
       // view - matters when several shaders share one real page, since

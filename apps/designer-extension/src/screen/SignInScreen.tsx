@@ -11,6 +11,7 @@ import { GoogleAuthButton } from "../components/GoogleAuthButton";
 import { LegalFooterLinks } from "../components/LegalFooterLinks";
 import { openGoogleSignInPopup } from "../services/googleSignIn";
 import { DATA_CLIENT_URL } from "../services/apiClient";
+import { trackEvent } from "../services/analytics";
 
 interface SignInScreenProps {
   onCreateAccount: () => void;
@@ -37,6 +38,7 @@ export function SignInScreen({ onCreateAccount, onSignInSuccess, onForgotPasswor
         // look like testing against the real deployed Worker.
         console.error("Google sign-in error:", error);
       } else {
+        trackEvent("sign_in_completed", "google");
         onSignInSuccess();
       }
     } catch {
@@ -77,6 +79,7 @@ export function SignInScreen({ onCreateAccount, onSignInSuccess, onForgotPasswor
         setPasswordError("Invalid email or password");
         return;
       }
+      trackEvent("sign_in_completed", "email");
       onSignInSuccess();
     } catch {
       setPasswordError("Something went wrong. Please try again.");

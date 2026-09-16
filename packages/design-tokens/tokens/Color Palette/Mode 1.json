@@ -101,7 +101,15 @@
         "com.figma.scopes": [
           "ALL_SCOPES"
         ],
-        "com.figma.hiddenFromPublishing": false
+        "com.figma.hiddenFromPublishing": false,
+        "studio.tokens": {
+          "modify": {
+            "type": "alpha",
+            "value": "0.8",
+            "space": "srgb",
+            "format": "hex"
+          }
+        }
       },
       "$type": "color",
       "$value": "{Colors.Neutral.200}"

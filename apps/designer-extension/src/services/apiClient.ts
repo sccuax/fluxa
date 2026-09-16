@@ -8,6 +8,11 @@ export class ApiRequestError extends Error {
   constructor(
     public status: number,
     message: string,
+    // The raw machine code (e.g. "not_verified", "not_owner") for callers
+    // that need to branch on *which* failure this was, not just display
+    // `.message` - e.g. WebflowSolutionsScreen.tsx re-verifying on
+    // "not_verified" specifically rather than every failure.
+    public code?: string,
   ) {
     super(message);
     this.name = "ApiRequestError";
@@ -36,7 +41,8 @@ export async function apiFetch<T>(
     const body = (await response.json().catch(() => null)) as ApiError | null;
     throw new ApiRequestError(
       response.status,
-      body?.error ?? `Request to ${path} failed with ${response.status}`,
+      body?.message ?? body?.error ?? `Request to ${path} failed with ${response.status}`,
+      body?.error,
     );
   }
 

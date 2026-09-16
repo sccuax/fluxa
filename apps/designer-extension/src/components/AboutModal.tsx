@@ -26,8 +26,8 @@ const LINKS: Array<{ label: string; href?: string }> = [
 
 function AboutLinkRow({ label, href }: { label: string; href?: string }) {
   const content = (
-    <span className="flex w-full items-center justify-between py-3">
-      <span className="font-sans text-mobile-text-md-regular text-text-black">{label}</span>
+    <span className="flex w-full items-center justify-between pb-1">
+      <span className="font-sans text-text-sm-medium text-text-black">{label}</span>
       <Icon name="chevronRight" className="text-text-secondary" />
     </span>
   );
@@ -45,21 +45,21 @@ export function AboutModal({ onClose }: { onClose: () => void }) {
   return (
     <FullViewModal title="About" titleIcon={<Icon name="help" />} onClose={onClose}>
       <div className="flex h-full flex-col px-[20px]">
-        <div className="flex flex-col items-center gap-2 pb-6 pt-8">
+        <div className="flex flex-col items-center gap-3 pb-6 pt-8">
           <FluxaLogoLockup className="h-8 w-auto" />
           <span className="font-sans text-mobile-text-md-regular text-text-secondary">Version 1.0.0</span>
-          <p className="text-center font-sans text-mobile-text-md-regular text-text-secondary">
-            Designed visually for modern websites.
+          <p className="text-center font-sans text-mobile-text-md-regular text-text-secondary mt-1">
+            Designed visually for <br></br> modern websites.
           </p>
         </div>
 
-        <div className="flex flex-col">
+        <div className="flex flex-col gap-3 py-1">
           {LINKS.map((link) => (
             <AboutLinkRow key={link.label} {...link} />
           ))}
         </div>
 
-        <p className="mt-auto py-6 text-center font-sans text-mobile-text-sm-regular text-text-secondary">
+        <p className="mt-auto py-6 text-center font-sans text-mobile-text-md-regular text-text-secondary">
           © 2026 Fluxa. All rights reserved.
         </p>
       </div>

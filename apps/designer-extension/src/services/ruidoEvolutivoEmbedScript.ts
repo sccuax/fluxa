@@ -1,4 +1,5 @@
 import type { RuidoEvolutivoConfig } from "@fluxa/gradient-core";
+import { buildAnalyticsBeaconSnippet } from "./embedAnalyticsBeacon";
 
 // Self-hosted from day one, same reasoning as glassLiquidEmbedScript.ts -
 // packages/ruido-evolutivo-renderer is a hand-authored Three.js shader with
@@ -27,7 +28,7 @@ export const RUIDO_EVOLUTIVO_EMBED_MARKER = "<!-- fluxa-ruido-evolutivo -->";
 // via a plain <script src> tag, then calling its exposed
 // window.FluxaRuidoEvolutivo.mount(canvas, config) directly - no esm.sh, no
 // ES module imports, no CDN dependency of any kind at runtime.
-export function buildRuidoEvolutivoEmbedCode(config: RuidoEvolutivoConfig, rootId: string): string {
+export function buildRuidoEvolutivoEmbedCode(config: RuidoEvolutivoConfig, rootId: string, includeAnalytics: boolean): string {
   const configJson = JSON.stringify(config);
 
   return `${RUIDO_EVOLUTIVO_EMBED_MARKER}
@@ -39,7 +40,7 @@ export function buildRuidoEvolutivoEmbedCode(config: RuidoEvolutivoConfig, rootI
   s.onload = function () {
     var canvas = document.getElementById("${rootId}");
     if (canvas && window.FluxaRuidoEvolutivo) {
-      var handle = window.FluxaRuidoEvolutivo.mount(canvas, ${configJson});
+${includeAnalytics ? buildAnalyticsBeaconSnippet("ruidoEvolutivo") : ""}      var handle = window.FluxaRuidoEvolutivo.mount(canvas, ${configJson});
       // Pauses the render loop entirely (no GPU/compositor cost at all,
       // not just reduced quality) while this shader is scrolled out of
       // view - matters when several shaders share one real page, since

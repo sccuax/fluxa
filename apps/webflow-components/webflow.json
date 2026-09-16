@@ -1,0 +1,17 @@
+{
+  "library": {
+    "name": "Fluxa",
+    "id": "fluxa-components",
+    "description": "Fluxa's Webflow Code Components (Webflow Solutions).",
+    "components": [
+      "./src/**/*.webflow.@(js|jsx|mjs|ts|tsx)"
+    ]
+  },
+  "telemetry": {
+    "global": {
+      "allowTelemetry": true,
+      "lastPrompted": 1789450995161,
+      "version": "2.2.0"
+    }
+  }
+}

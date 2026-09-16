@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState, type CSSProperties } from "react";
+import { trackEvent } from "../services/analytics";
 import { Icon } from "./Icon";
 import { Tooltip } from "./Tooltip";
 import { FullViewModal } from "./FullViewModal";
@@ -317,6 +318,7 @@ function EyeDropperButton({ onPick }: { onPick: (hex: string) => void }) {
     if (!window.EyeDropper) return;
     try {
       const result = await new window.EyeDropper().open();
+      trackEvent("use_eyedropper");
       onPick(result.sRGBHex);
     } catch {
       // AbortError - user pressed Escape / clicked away to cancel. Not a failure.
@@ -402,7 +404,10 @@ export function ColorSwatchPicker({
       <button
         type="button"
         aria-label={label}
-        onClick={() => setOpen(true)}
+        onClick={() => {
+          trackEvent("open_color_picker");
+          setOpen(true);
+        }}
         className={className}
         style={swatchStyle(value, opacity)}
       />

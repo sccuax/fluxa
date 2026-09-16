@@ -3,6 +3,7 @@ import { useSelectedElement } from "../hooks/useSelectedElement";
 import { useGradientStore } from "../store/gradientStore";
 import { applyGradientToElement, canApplyPreset } from "../services/applyGradient";
 import { getWebflowDesigner } from "../services/webflowDesigner";
+import { trackEvent } from "../services/analytics";
 import { EditorEmptyState } from "./EditorEmptyState";
 import { SupportedElementsGuide } from "./SupportedElementsGuide";
 import { ControlPanel } from "./ControlPanel";
@@ -68,6 +69,7 @@ export function EditorTab({
     try {
       await applyGradientToElement(element, config);
       getWebflowDesigner().notify({type: "Success", message: "Gradient applied!"});
+      trackEvent("apply_gradient");
       setShowBetaFeedback(true);
     } catch (error) {
       getWebflowDesigner().notify({

@@ -35,7 +35,15 @@ export type IconName =
   | "filterFunnel"
   | "closeChip"
   | "help"
-  | "chevronRight";
+  | "chevronRight"
+  | "check"
+  | "documentation"
+  | "chat"
+  | "bug"
+  | "lightbulb"
+  | "mail"
+  | "supportHeader"
+  | "multiImage";
 
 // SVG markup lives inline here (not imported from an assets folder) so
 // adding a new icon is a one-file edit - see the paste.txt example this
@@ -77,11 +85,18 @@ const icons: Record<IconName, (props: SVGProps<SVGSVGElement>) => ReactElement> 
       <path d="M9.5 4.5L6 8L2.5 4.5" stroke="#858179" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   ),
+  // stroke is currentColor (was a hardcoded #ECE8E2, a near-but-not-exact
+  // match for the "text-white" token's real #d7dae2 - the same recurring
+  // hardcoded-icon-color bug this file's own HeaderAppMenu comment already
+  // warns about) so ServicesScreen.tsx can use this same icon on its own
+  // light header (dark text) instead of DashboardHeader's dark one (white
+  // text) - DashboardHeader's own call site now sets text-text-white
+  // explicitly to keep its rendered color effectively unchanged.
   threeDots: (props) => (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
       <path
         d="M5 12H5.01M12 12H12.01M19 12H19.01M6 12C6 12.2652 5.89464 12.5196 5.70711 12.7071C5.51957 12.8946 5.26522 13 5 13C4.73478 13 4.48043 12.8946 4.29289 12.7071C4.10536 12.5196 4 12.2652 4 12C4 11.7348 4.10536 11.4804 4.29289 11.2929C4.48043 11.1054 4.73478 11 5 11C5.26522 11 5.51957 11.1054 5.70711 11.2929C5.89464 11.4804 6 11.7348 6 12ZM13 12C13 12.2652 12.8946 12.5196 12.7071 12.7071C12.5196 12.8946 12.2652 13 12 13C11.7348 13 11.4804 12.8946 11.2929 12.7071C11.1054 12.5196 11 12.2652 11 12C11 11.7348 11.1054 11.4804 11.2929 11.2929C11.4804 11.1054 11.7348 11 12 11C12.2652 11 12.5196 11.1054 12.7071 11.2929C12.8946 11.4804 13 11.7348 13 12ZM20 12C20 12.2652 19.8946 12.5196 19.7071 12.7071C19.5196 12.8946 19.2652 13 19 13C18.7348 13 18.4804 12.8946 18.2929 12.7071C18.1054 12.5196 18 12.2652 18 12C18 11.7348 18.1054 11.4804 18.2929 11.2929C18.4804 11.1054 18.7348 11 19 11C19.2652 11 19.5196 11.1054 19.7071 11.2929C19.8946 11.4804 20 11.7348 20 12Z"
-        stroke="#ECE8E2"
+        stroke="currentColor"
         strokeWidth="2"
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -378,26 +393,18 @@ const icons: Record<IconName, (props: SVGProps<SVGSVGElement>) => ReactElement> 
     </svg>
   ),
 
-  // Hand-drawn (no Figma asset provided for this one) - a plain padlock,
-  // same 16x16/stroke-currentColor/1.33333 convention as every other icon
-  // here. PresetsTab's own coming-soon state.
+  // Real Figma Dev Mode asset (copy-paste/paste.txt), replacing the earlier
+  // hand-drawn placeholder - same reasoning the eyedropper icon's own
+  // comment documents for this pattern. stroke swapped from the pasted
+  // fixed #5C647A to currentColor (that hex is this app's own
+  // text-secondary token, so callers passing text-text-secondary render
+  // pixel-identical to the pasted asset). PresetsTab's coming-soon state,
+  // and PlanBillingModal.tsx's own locked-feature checklist rows.
   lock: (props) => (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
-      <rect
-        x="3.3335"
-        y="7.33333"
-        width="9.33333"
-        height="6.66667"
-        rx="1.33333"
-        stroke="currentColor"
-        strokeWidth="1.33333"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
+    <svg width="9" height="10" viewBox="0 0 9 10" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
       <path
-        d="M5.3335 7.33333V4.66667C5.3335 3.95942 5.61445 3.28115 6.11454 2.78105C6.61464 2.28095 7.29292 2 8.00016 2C8.7074 2 9.38568 2.28095 9.88578 2.78105C10.3859 3.28115 10.6668 3.95942 10.6668 4.66667V7.33333"
+        d="M4.5 6.5V7.5M1.5 9.5H7.5C7.76522 9.5 8.01957 9.39464 8.20711 9.20711C8.39464 9.01957 8.5 8.76522 8.5 8.5V5.5C8.5 5.23478 8.39464 4.98043 8.20711 4.79289C8.01957 4.60536 7.76522 4.5 7.5 4.5H1.5C1.23478 4.5 0.98043 4.60536 0.792893 4.79289C0.605357 4.98043 0.5 5.23478 0.5 5.5V8.5C0.5 8.76522 0.605357 9.01957 0.792893 9.20711C0.98043 9.39464 1.23478 9.5 1.5 9.5ZM6.5 4.5V2.5C6.5 1.96957 6.28929 1.46086 5.91421 1.08579C5.53914 0.710714 5.03043 0.5 4.5 0.5C3.96957 0.5 3.46086 0.710714 3.08579 1.08579C2.71071 1.46086 2.5 1.96957 2.5 2.5V4.5H6.5Z"
         stroke="currentColor"
-        strokeWidth="1.33333"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
@@ -512,6 +519,88 @@ const icons: Record<IconName, (props: SVGProps<SVGSVGElement>) => ReactElement> 
   chevronRight: (props) => (
     <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
       <path d="M4.5 2.5L8 6L4.5 9.5" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  ),
+  // Hand-drawn (no Figma asset provided for this one) - PlanBillingModal.tsx's
+  // own checklist rows for the two included free-plan features.
+  check: (props) => (
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+      <path d="M2.5 6.3L4.7 8.5L9.5 3.5" stroke="currentColor" strokeWidth="1.33333" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  ),
+  // Hand-drawn (no Figma asset provided for either of these four) - same
+  // 16x16/stroke-currentColor/1.33333 convention as every other icon here.
+  // SupportModal.tsx's own link rows.
+  documentation: (props) => (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+<path d="M8 4.16834V12.835M8 12.835C8.77867 12.3177 9.836 11.9997 11 11.9997C12.1647 11.9997 13.2213 12.3177 14 12.835V4.16834C13.2213 3.65101 12.1647 3.33301 11 3.33301C9.836 3.33301 8.77867 3.65101 8 4.16834C7.22133 3.65101 6.164 3.33301 5 3.33301C3.836 3.33301 2.77867 3.65101 2 4.16834V12.835C2.77867 12.3177 3.836 11.9997 5 11.9997C6.164 11.9997 7.22133 12.3177 8 12.835Z" stroke="#20242D" stroke-width="1.33333" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
+
+  ),
+  chat: (props) => (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+<path d="M5.33333 8.00033H5.34M8 8.00033H8.00667M10.6667 8.00033H10.6733M14 8.00033C14 10.9457 11.3133 13.3337 8 13.3337C7.01909 13.337 6.04986 13.1208 5.16333 12.701L2 13.3337L2.93 10.8537C2.34133 10.0283 2 9.04966 2 8.00033C2 5.05499 4.68667 2.66699 8 2.66699C11.3133 2.66699 14 5.05499 14 8.00033Z" stroke="#20242D" stroke-width="1.33333" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
+
+  ),
+  bug: (props) => (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+<path d="M9.33366 6.66667L8.00033 7.33333M8.00033 7.33333L6.66699 6.66667M8.00033 7.33333V9M13.3337 4.66667L12.0003 5.33333M13.3337 6.33333V4.66667L12.0003 4M9.33366 2.66667L8.00033 2L6.66699 2.66667M2.66699 6.33333V4.66667L4.00033 4M2.66699 4.66667L4.00033 5.33333M9.33366 13.3333L8.00033 14L6.66699 13.3333M8.00033 14V12.3333M4.00033 12L2.66699 11.3333V9.66667M12.0003 12L13.3337 11.3333V9.66667" stroke="#20242D" stroke-width="1.33333" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
+
+  ),
+  lightbulb: (props) => (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+<path d="M6.442 11.3333H9.55733M8 2V2.66667M12.2427 3.75733L11.7713 4.22867M14 8H13.3333M2.66667 8H2M4.22867 4.22867L3.75733 3.75733M5.64267 10.3573C5.17658 9.89112 4.8592 9.29718 4.73065 8.6506C4.60211 8.00402 4.66817 7.33384 4.92049 6.72481C5.1728 6.11577 5.60005 5.59523 6.14819 5.229C6.69634 4.86276 7.34077 4.66729 8 4.66729C8.65923 4.66729 9.30366 4.86276 9.85181 5.229C10.4 5.59523 10.8272 6.11577 11.0795 6.72481C11.3318 7.33384 11.3979 8.00402 11.2693 8.6506C11.1408 9.29718 10.8234 9.89112 10.3573 10.3573L9.992 10.722C9.78314 10.9309 9.61747 11.1789 9.50446 11.4518C9.39144 11.7247 9.33329 12.0173 9.33333 12.3127V12.6667C9.33333 13.0203 9.19286 13.3594 8.94281 13.6095C8.69276 13.8595 8.35362 14 8 14C7.64638 14 7.30724 13.8595 7.05719 13.6095C6.80714 13.3594 6.66667 13.0203 6.66667 12.6667V12.3127C6.66667 11.716 6.42933 11.1433 6.008 10.722L5.64267 10.3573Z" stroke="currentColor" stroke-width="1.33333" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
+
+  ),
+  // SupportModal.tsx's own "Email support" card - a plain envelope, own
+  // 20x20 viewBox (the card's icon renders larger than a normal 16x16 row
+  // icon per the reference screenshot).
+  mail: (props) => (
+    <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+<path d="M4 10.667L14.52 17.6803C14.9582 17.9727 15.4732 18.1287 16 18.1287C16.5268 18.1287 17.0418 17.9727 17.48 17.6803L28 10.667M6.66667 25.3337H25.3333C26.0406 25.3337 26.7189 25.0527 27.219 24.5526C27.719 24.0525 28 23.3742 28 22.667V9.33366C28 8.62641 27.719 7.94814 27.219 7.44804C26.7189 6.94794 26.0406 6.66699 25.3333 6.66699H6.66667C5.95942 6.66699 5.28115 6.94794 4.78105 7.44804C4.28095 7.94814 4 8.62641 4 9.33366V22.667C4 23.3742 4.28095 24.0525 4.78105 24.5526C5.28115 25.0527 5.95942 25.3337 6.66667 25.3337Z" stroke="#20242D" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
+
+  ),
+  // Real Figma Dev Mode asset (copy-paste/paste.txt) - SupportModal.tsx's
+  // own header icon, a distinct asset from the smaller "support" icon
+  // LinksCard's own row uses to open this modal (same pattern AboutModal's
+  // own "help" titleIcon already established: a modal's header icon is its
+  // own asset, not just its opening row's icon reused). stroke swapped from
+  // the pasted fixed #0B0D12 to currentColor, same reasoning as every other
+  // icon in this file.
+  supportHeader: (props) => (
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+      <path
+        d="M15.3033 4.69667L12.3567 7.64333M15.3033 4.69667C13.8968 3.29014 11.9891 2.5 10 2.5C8.01088 2.5 6.10319 3.29014 4.69667 4.69667M15.3033 4.69667C16.7099 6.10319 17.5 8.01088 17.5 10C17.5 10.9849 17.306 11.9602 16.9291 12.8701C16.5522 13.7801 15.9998 14.6069 15.3033 15.3033M12.3567 7.64333C11.7315 7.01821 10.8841 6.66667 10 6.66667C9.11595 6.66667 8.26845 7.01821 7.64333 7.64333M12.3567 7.64333C12.9818 8.26845 13.3333 9.11595 13.3333 10C13.3333 10.8841 12.9818 11.7315 12.3567 12.3567M12.3567 12.3567L15.3033 15.3033M12.3567 12.3567C11.7315 12.9818 10.8841 13.3333 10 13.3333C9.11595 13.3333 8.26845 12.9818 7.64333 12.3567M15.3033 15.3033C14.6069 15.9998 13.7801 16.5522 12.8701 16.9291C11.9602 17.306 10.9849 17.5 10 17.5C9.01509 17.5 8.03982 17.306 7.12987 16.9291C6.21993 16.5522 5.39311 15.9998 4.69667 15.3033M7.64333 7.64333L4.69667 4.69667M7.64333 7.64333C7.01821 8.26845 6.66667 9.11595 6.66667 10C6.66667 10.8841 7.01821 11.7315 7.64333 12.3567M4.69667 4.69667C3.29014 6.10319 2.5 8.01088 2.5 10C2.5 10.9849 2.69399 11.9602 3.0709 12.8701C3.44781 13.7801 4.00023 14.6069 4.69667 15.3033M7.64333 12.3567L4.69667 15.3033"
+        stroke="currentColor"
+        strokeWidth="1.66667"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  ),
+  // Real Figma Dev Mode asset (copy-paste/paste.txt) - Webflow's own CMS
+  // multi-image field-type glyph, used to make WebflowSolutionsScreen.tsx's
+  // field picker visually match Webflow's own Settings-panel field list
+  // (confirmed against Webflow's own developer docs and Trademark Usage
+  // Policy first - matching their native colors/icon style inside a
+  // Designer Extension is explicitly sanctioned, not just tolerated: their
+  // own docs point developers at an official "Webflow Apps Figma UI kit" to
+  // do exactly this, and the trademark policy only restricts the Webflow
+  // name/logo/wordmark itself, not in-app UI iconography). Fill swapped
+  // from the pasted fixed "black" to currentColor, same reasoning every
+  // other icon in this file already documents for hardcoded colors.
+  multiImage: (props) => (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+      <path
+        fillRule="evenodd"
+        clipRule="evenodd"
+        d="M4.5752 2.79515C5.47691 2.2942 6.68875 2 8 2C9.31125 2 10.5231 2.2942 11.4248 2.79515C12.3096 3.2867 13 4.04561 13 5V11C13 11.9544 12.3096 12.7133 11.4248 13.2048C10.5231 13.7058 9.31125 14 8 14C6.68875 14 5.47691 13.7058 4.5752 13.2048C3.69042 12.7133 3 11.9544 3 11V5C3 4.04561 3.69042 3.2867 4.5752 2.79515ZM4 9.82287V11C4 11.4263 4.31694 11.9174 5.06084 12.3307C5.7878 12.7346 6.82597 13 8 13C9.17403 13 10.2122 12.7346 10.9392 12.3307C11.6831 11.9174 12 11.4263 12 11V9.82287C11.8227 9.96383 11.6289 10.0915 11.4248 10.2048C10.5231 10.7058 9.31125 11 8 11C6.68875 11 5.47691 10.7058 4.5752 10.2048C4.37109 10.0915 4.17733 9.96383 4 9.82287ZM12 8C12 8.42632 11.6831 8.91741 10.9392 9.33069C10.2122 9.73456 9.17403 10 8 10C6.82597 10 5.7878 9.73456 5.06084 9.33069C4.31694 8.91741 4 8.42632 4 8V6.82287C4.17733 6.96383 4.37109 7.09145 4.5752 7.20485C5.47691 7.7058 6.68875 8 8 8C9.31125 8 10.5231 7.7058 11.4248 7.20485C11.6289 7.09145 11.8227 6.96383 12 6.82287V8ZM10.9392 3.66931C11.6831 4.08259 12 4.57368 12 5C12 5.42632 11.6831 5.91741 10.9392 6.33069C10.2122 6.73456 9.17403 7 8 7C6.82597 7 5.7878 6.73456 5.06084 6.33069C4.31694 5.91741 4 5.42632 4 5C4 4.57368 4.31694 4.08259 5.06084 3.66931C5.7878 3.26544 6.82597 3 8 3C9.17403 3 10.2122 3.26544 10.9392 3.66931Z"
+        fill="currentColor"
+      />
     </svg>
   ),
 };

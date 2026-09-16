@@ -26,6 +26,11 @@ CLOUDFLARE_ACCOUNT_ID = "2137e37d161abba0e634109cfde544f1"
 #   wrangler secret put CLOUDFLARE_API_TOKEN   (scoped to Account > Email
 #                                                Routing Addresses > Edit only
 #                                                - see emailRoutingGuard.ts)
+#   wrangler secret put CLOUDFLARE_ANALYTICS_API_TOKEN
+#                                               (Cloudflare Account API token,
+#                                                scoped to "Account Analytics
+#                                                Read" only - routes/
+#                                                adminAnalytics.ts)
 
 # R2 bucket for user-uploaded avatars (routes/profile.ts). Requires R2 to be
 # enabled on this Cloudflare account first (Dashboard > R2 - a one-time
@@ -56,6 +61,20 @@ bucket_name = "fluxa-preset-thumbnails"
 [[r2_buckets]]
 binding = "RUNTIME_ASSETS"
 bucket_name = "fluxa-runtime-assets"
+
+# Workers Analytics Engine dataset for custom product events
+# (routes/analytics.ts) - Designer Extension usage events and published-site
+# embed impressions, NOT the built-in per-request HTTP analytics Cloudflare
+# already collects for this Worker's own zone automatically. Free-plan-
+# compatible (100k writes/day, 10k reads/day on Workers Free - confirmed
+# against current Cloudflare docs before relying on it, since this account
+# is deliberately staying on Workers Free for now, see CLAUDE.md's Email
+# Service section). The dataset is created automatically on the first
+# writeDataPoint() call - unlike the R2 buckets below, there is no separate
+# `wrangler ... create` provisioning step.
+[[analytics_engine_datasets]]
+binding = "ANALYTICS"
+dataset = "fluxa_events"
 
 # Cloudflare Email Service binding - used by lib/auth.ts's emailOTP plugin to
 # send the password-reset code. fluxa.agency must be onboarded first via

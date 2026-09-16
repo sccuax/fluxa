@@ -1,5 +1,8 @@
+import { useState } from "react";
 import { Icon, type IconName } from "./Icon";
-import { Tooltip } from "./Tooltip";
+import { PlanBillingModal } from "./PlanBillingModal";
+import { SupportModal } from "./SupportModal";
+import { trackEvent } from "../services/analytics";
 
 // Preferences/Plan & billing/Support, each a full-width row (logo + label on
 // the left via its own gap-2 div, a right-pointing chevron on the right -
@@ -15,21 +18,37 @@ const LINK_ITEMS: Array<{ label: string; icon: IconName }> = [
   { label: "Support", icon: "support" },
 ];
 
+// The Tooltip "Locked. Will be available soon." hint every row used to
+// carry was removed (2026-09-14, per explicit direction) - same stance
+// HeaderAppMenu.tsx's own menu already took on this exact pattern. Plan &
+// billing and Support now open real modals (mirrors HeaderAppMenu's own
+// About/Cookies rows: local open-state booleans + rendering the modal
+// alongside this card rather than inside it). Preferences still has no
+// destination screen (same as HeaderAppMenu's own Preferences row) - stays
+// a no-op click, per explicit direction not to fake a modal for it yet.
 export function LinksCard() {
+  const [planBillingOpen, setPlanBillingOpen] = useState(false);
+  const [supportOpen, setSupportOpen] = useState(false);
+
+  function handleRowClick(label: string) {
+    if (label === "Plan & billing") {
+      trackEvent("open_plan_billing_modal");
+      setPlanBillingOpen(true);
+    }
+    if (label === "Support") {
+      trackEvent("open_support_modal");
+      setSupportOpen(true);
+    }
+  }
+
   return (
-    <div className="flex flex-col justify-start gap-3 rounded-4 border border-border-border p-3">
-      {LINK_ITEMS.map(({ label, icon }, index) => (
-        // Wraps the whole row (icon + label + chevron), not just the icon -
-        // hover anywhere on the row shows the hint, not just its 16px icon.
-        // side="top" (not "left"/"right") since this row spans nearly the
-        // full card width - a bubble opening off either horizontal edge
-        // would get silently clipped by AccountTab's own scrolling
-        // `overflow-y-auto` ancestor (see Tooltip.tsx's own comment on why
-        // that clips X too, not just Y). fullWidth so this wrapper doesn't
-        // shrink the row back down to content width and break its own
-        // justify-between layout.
-        <Tooltip key={label} text="Locked. Will be available soon." side="top" fullWidth>
-          <div
+    <>
+      <div className="flex flex-col justify-start gap-3 rounded-4 border border-border-border p-3">
+        {LINK_ITEMS.map(({ label, icon }, index) => (
+          <button
+            key={label}
+            type="button"
+            onClick={() => handleRowClick(label)}
             className={`flex w-full items-center justify-between ${
               index < LINK_ITEMS.length - 1 ? "border-b border-border-border pb-3" : ""
             }`}
@@ -39,9 +58,11 @@ export function LinksCard() {
               <span className="font-sans text-mobile-text-md-medium text-text-black">{label}</span>
             </div>
             <Icon name="chevronDown" className="-rotate-90 cursor-pointer" />
-          </div>
-        </Tooltip>
-      ))}
-    </div>
+          </button>
+        ))}
+      </div>
+      {planBillingOpen && <PlanBillingModal onClose={() => setPlanBillingOpen(false)} />}
+      {supportOpen && <SupportModal onClose={() => setSupportOpen(false)} />}
+    </>
   );
 }

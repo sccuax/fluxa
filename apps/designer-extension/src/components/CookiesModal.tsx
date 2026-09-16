@@ -3,38 +3,7 @@ import { FullViewModal } from "./FullViewModal";
 import { Icon } from "./Icon";
 import { Tooltip } from "./Tooltip";
 import { getCookiePreferences, setCookiePreferences, type CookiePreferences } from "../services/cookiePreferences";
-
-// Small local toggle switch - no other screen in this app needs one yet,
-// so it stays inline here rather than a shared component (same reasoning
-// AboutModal.tsx's own local AboutLinkRow uses).
-//
-// Real bug, fixed: the thumb's "off" position relied on an absolutely
-// positioned element's implicit static position (no explicit `left`) plus
-// a small translate - that implicit position isn't reliably the track's
-// own left edge, so the "on" state's translate distance (measured from
-// x=0) overshot the track's real right edge and rendered past it. Fixed by
-// giving the thumb an explicit `left-0.5` base position and only
-// translating the OFF-TO-ON delta (track width 44px - thumb width 20px -
-// 2*2px inset = 20px) from there, rather than an absolute pixel guess.
-function ToggleSwitch({ checked, onChange }: { checked: boolean; onChange: (checked: boolean) => void }) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      onClick={() => onChange(!checked)}
-      className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${
-        checked ? "bg-gradient-gradient" : "bg-border-border"
-      }`}
-    >
-      <span
-        className={`absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-background-white transition-transform ${
-          checked ? "translate-x-5" : "translate-x-0"
-        }`}
-      />
-    </button>
-  );
-}
+import { ToggleSwitch } from "./ToggleSwitch";
 
 interface CategoryRowProps {
   title: string;
@@ -65,9 +34,9 @@ interface CategoryRowProps {
 // the row's own roomy interior, never past either edge.
 function EssentialRow({ title, description }: CategoryRowProps) {
   return (
-    <div className="flex items-start justify-between gap-3 border-b border-border-border py-4">
+    <div className="flex items-start justify-between gap-3 border-b border-border-border pt-3 pb-2">
       <div className="flex flex-col gap-1">
-        <span className="font-display text-mobile-header-h2 text-text-black">{title}</span>
+        <span className="font-display text-text-sm-medium text-text-black">{title}</span>
         <span className="font-sans text-mobile-text-sm-regular text-text-secondary">{description}</span>
       </div>
       <Tooltip text="Essential cookies are required and cannot be disabled." side="left">
@@ -85,9 +54,9 @@ function ToggleRow({
   last = false,
 }: CategoryRowProps & { checked: boolean; onChange: (checked: boolean) => void; last?: boolean }) {
   return (
-    <div className={`flex items-start justify-between gap-3 py-4 ${last ? "" : "border-b border-border-border"}`}>
+    <div className={`flex items-start justify-between gap-3 pt-3 pb-2 ${last ? "" : "border-b border-border-border"}`}>
       <div className="flex flex-col gap-1">
-        <span className="font-display text-mobile-header-h2 text-text-black">{title}</span>
+        <span className="font-display text-text-sm-medium text-text-black">{title}</span>
         <span className="font-sans text-mobile-text-sm-regular text-text-secondary">{description}</span>
       </div>
       <ToggleSwitch checked={checked} onChange={onChange} />
@@ -106,41 +75,44 @@ export function CookiesModal({ onClose }: { onClose: () => void }) {
 
   return (
     <FullViewModal title="Cookies" titleIcon={<Icon name="cookies" className="h-[18px] w-[18px]" />} onClose={onClose}>
-      <div className="flex flex-col gap-6 px-[20px] pb-8 pt-6">
-        <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-4 px-[20px] pb-8 pt-8">
+        <div className="flex flex-col gap-3">
           <h2 className="font-display text-mobile-display-d1 text-text-black">Cookies policy</h2>
           <p className="font-sans text-mobile-text-md-regular text-text-secondary">
-            Fluxa uses cookies and similar technologies to improve your experience, analyze usage, and deliver
-            personalized content. You can control your preferences at any time.
+            Fluxa uses cookies and similar technologies to keep you signed in and, if you allow it, to understand
+            how the product is used. You can control your preferences at any time.
           </p>
         </div>
 
         <div className="flex flex-col gap-2">
-          <h3 className="font-display text-mobile-header-h1 text-text-black">How we use cookies</h3>
+          <h3 className="font-display text-text-sm-medium text-text-black">How we use cookies</h3>
           <p className="font-sans text-mobile-text-md-regular text-text-secondary">
             We use cookies for the following purposes:
           </p>
         </div>
 
-        <div className="rounded-8 border border-border-border px-4">
+        {/* 2026-09-14: rebuilt from the original 3-toggle shape (Analytics/
+            Marketing/Preference) to these 2, once analytics actually
+            shipped for real - see cookiePreferences.ts's own top comment
+            for the full reasoning. Marketing/Preference each gated
+            literally nothing (grepped to confirm, not assumed) - kept as
+            named categories, they'd be exactly the kind of "toggle that
+            does nothing" this reorganization exists to remove. Every row
+            below now corresponds to one real, distinct thing this app
+            actually does. */}
+        <div className="rounded-4 border border-border-border px-3 pb-3">
           <EssentialRow title="Essential cookies" description="Required for Fluxa to work properly." />
           <ToggleRow
-            title="Analytics cookies"
-            description="Help us understand how Fluxa is used so we can improve."
-            checked={preferences.analytics}
-            onChange={(value) => updatePreference("analytics", value)}
+            title="Product analytics"
+            description="Help us understand how you use the Fluxa extension so we can improve it. Only anonymous, aggregate usage counts - never tied to your account or identity."
+            checked={preferences.productAnalytics}
+            onChange={(value) => updatePreference("productAnalytics", value)}
           />
           <ToggleRow
-            title="Marketing cookies"
-            description="Used to deliver relevant content and updates."
-            checked={preferences.marketing}
-            onChange={(value) => updatePreference("marketing", value)}
-          />
-          <ToggleRow
-            title="Preference cookies"
-            description="Remember your settings and preferences."
-            checked={preferences.preferences}
-            onChange={(value) => updatePreference("preferences", value)}
+            title="Published shader analytics"
+            description="When you apply a gradient or preset, include an anonymous view counter on your published site so we can see how often it renders. No cookies or visitor data are collected - this only affects sites you apply a shader to after changing this."
+            checked={preferences.publishedSiteAnalytics}
+            onChange={(value) => updatePreference("publishedSiteAnalytics", value)}
             last
           />
         </div>

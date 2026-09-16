@@ -19,7 +19,7 @@ const DROPDOWN_ANIMATION_MS = 200;
 // - the box's own position/animation classes
 // Content is entirely up to the caller via `children` - this component has
 // no opinion on what a dropdown's rows look like.
-export function Dropdown({ open, onCloseRequest, triggerRef, offsetPx, scrollable = true, children }: {
+export function Dropdown({ open, onCloseRequest, triggerRef, offsetPx, scrollable = true, variant = "dark", children }: {
   open: boolean;
   onCloseRequest: () => void;
   // The button that opens this dropdown - excluded from the outside-click
@@ -59,6 +59,13 @@ export function Dropdown({ open, onCloseRequest, triggerRef, offsetPx, scrollabl
   // at its actual source instead of fighting it with more positioning
   // variants.
   scrollable?: boolean;
+  // "dark" (default) is DashboardHeader's own two menus, both anchored
+  // below its dark header bar. "light" is for a caller anchored inside a
+  // light-themed panel (e.g. a wizard step's own card) - WebflowSolutionsScreen's
+  // field picker is the first one, styled to read as a native Webflow
+  // dropdown (light surface, subtle border/shadow, hover tint) rather than
+  // this shell's original dark-header look.
+  variant?: "dark" | "light";
   children: ReactNode;
 }) {
   // Stays true through the exit animation even after `open` goes false -
@@ -106,9 +113,11 @@ export function Dropdown({ open, onCloseRequest, triggerRef, offsetPx, scrollabl
     <div
       ref={containerRef}
       style={{ right: offsetPx }}
-      className={`absolute top-full z-30 flex flex-col gap-2 rounded-b-4 bg-background-dark p-3 ${
-        scrollable ? "max-h-[240px] overflow-y-auto" : ""
-      } ${
+      className={`absolute top-full z-30 flex flex-col gap-1 ${
+        variant === "light"
+          ? "mt-1 rounded-4 border border-border-border bg-background-white p-1.5 shadow-[0_4px_12px_0_rgba(0,0,0,0.08)]"
+          : "rounded-b-4 bg-background-dark p-3"
+      } ${scrollable ? "max-h-[240px] overflow-y-auto" : ""} ${
         open ? "animate-dropdown-fade-in" : "animate-dropdown-fade-out"
       }`}
     >

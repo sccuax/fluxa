@@ -4,6 +4,7 @@ import { Icon } from "./Icon";
 import { ACTIVE_FILL_GRADIENT } from "./RangeSlider";
 import { apiFetch } from "../services/apiClient";
 import { getWebflowDesigner } from "../services/webflowDesigner";
+import { trackEvent } from "../services/analytics";
 
 // Free plan's preset ceiling - not read from any backend "plans" row (that
 // table exists but has no routes yet, see CLAUDE.md's Database section), so
@@ -42,26 +43,44 @@ function usePresetUsage() {
   return count;
 }
 
-// Plan/usage row - built with real data (usePresetUsage above), but shown
-// disabled (opacity + pointer-events-none, plus the button's own `disabled`)
-// per explicit direction: upgrading isn't actually offered during this beta
-// pass, so the section reads as informational-only rather than interactive.
-export function PlanCard() {
+// Plan/usage row - built with real data (usePresetUsage above). Used both
+// inline in AccountTab and as PlanBillingModal.tsx's own top "Free plan"
+// box - a single shared component so both places always show identical
+// usage/progress data and stay in sync automatically, never two copies
+// drifting apart.
+//
+// No longer shown disabled (2026-09-14, per explicit direction) - the
+// opacity/pointer-events-none/aria-disabled wrapper and the button's own
+// `disabled` are gone. "Upgrade to Pro" has no real Stripe wiring behind it
+// yet (see root CLAUDE.md's Database section - plans/subscriptions/payments
+// tables exist with no routes), so the button is visually active but has no
+// onClick - clicking it is a harmless no-op until that's built, rather than
+// staying greyed out during this beta pass.
+//
+// `showUpgradeButton` (default true, matches AccountTab's own inline use)
+// defaults to hidden only for PlanBillingModal.tsx's own copy - per the
+// reference screenshot, that modal's own "Upgrade to Pro" button sits
+// BELOW the "What's included" checklist, not inside this box, so that
+// caller renders its own button separately after the checklist rather than
+// this one.
+export function PlanCard({ showUpgradeButton = true }: { showUpgradeButton?: boolean }) {
   const usedPresets = usePresetUsage();
   const percent = Math.min(100, (usedPresets / FREE_PLAN_PRESET_LIMIT) * 100);
 
   return (
-    <div className="flex border-border-border border rounded-8 flex-col gap-3 p-3 opacity-50" aria-disabled="true" style={{ pointerEvents: "none" }}>
-      <span className="font-sans text-sm-medium text-text-black">Free plan</span>
+    <div className="flex border-border-border border rounded-8 flex-col gap-3 p-3">
+      <span className="font-sans text-text-sm-medium text-text-black">Free plan</span>
       <span className="font-sans text-mobile-text-md-regular text-text-secondary">
         {usedPresets} of {FREE_PLAN_PRESET_LIMIT} presets used
       </span>
       <div className="h-1 w-full overflow-hidden rounded-[4px] bg-border-border">
         <div className="h-full rounded-[4px]" style={{ width: `${percent}%`, background: ACTIVE_FILL_GRADIENT }} />
       </div>
-      <ButtonPrimary disabled icon={<Icon name="sparkle" />}>
-        Upgrade to Pro
-      </ButtonPrimary>
+      {showUpgradeButton && (
+        <ButtonPrimary icon={<Icon name="sparkle" />} onClick={() => trackEvent("click_upgrade_to_pro")}>
+          Upgrade to Pro
+        </ButtonPrimary>
+      )}
     </div>
   );
 }

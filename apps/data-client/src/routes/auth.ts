@@ -1,9 +1,15 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { getCookie, setCookie, deleteCookie } from "hono/cookie";
+import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
 import type { AppEnv } from "../types";
-import { buildAuthorizeUrl, exchangeCodeForToken, listAuthorizedSites } from "../lib/webflowApi";
+import {
+  buildAuthorizeUrl,
+  exchangeCodeForToken,
+  listAuthorizedSites,
+  resolveIdToken,
+} from "../lib/webflowApi";
 import { createDb } from "../db/client";
 import { installations } from "../db/schema";
 import { requireAuth } from "../middleware/requireAuth";
@@ -18,6 +24,21 @@ import { onValidationError } from "../lib/validation";
 // custom_code:write are for the not-yet-built "Apply gradient" -> Custom
 // Code injection flow (see CLAUDE.md's "Important product correction") -
 // requested now so enabling scopes in the dashboard only has to happen once.
+// cms:read is for the "Webflow Solutions" CMS-gallery feature
+// (routes/cmsGallery.ts) - listing a site's collections/fields and reading
+// live item data. An installation created before this scope was added still
+// only has the older token; that install needs a fresh /auth/install run
+// before routes/cmsGallery.ts's calls will succeed against it (Webflow 403s
+// a request for a scope the token wasn't actually granted, it doesn't
+// silently allow it).
+//
+// authorized_user:read is for POST /auth/link-installation below - calling
+// Webflow's own "Resolve ID Token" endpoint (POST /beta/token/resolve)
+// requires a bearer token from THIS registered app carrying this scope,
+// regardless of which site that particular token was originally issued for
+// (confirmed against https://developers.webflow.com/data/v2.0.0-beta/reference/token/resolve -
+// it's described as an app-level capability, "a bearer token from a Data
+// Client App", not tied to the specific site the id token names).
 const SCOPES = [
   "sites:read",
   "sites:write",
@@ -25,6 +46,8 @@ const SCOPES = [
   "assets:write",
   "custom_code:read",
   "custom_code:write",
+  "cms:read",
+  "authorized_user:read",
 ];
 
 const OAUTH_COOKIE_OPTS = {
@@ -152,7 +175,30 @@ authRoutes.get(
       }
 
       const db = createDb(c.env.DATABASE_URL);
-      await db.insert(installations).values({ accessToken, userId, siteId });
+      // Upsert on siteId (app-schema.ts's unique index), not a blind insert -
+      // reinstalling an already-linked site (e.g. after SCOPES changes, like
+      // adding cms:read) must replace that site's row so ownsSite() picks up
+      // the fresh token, not add a second row for the same site. Real bug,
+      // found and fixed 2026-09-14 - see that index's own comment for the
+      // exact failure this caused. A null siteId (unresolved above) is never
+      // deduplicated by this, since Postgres treats every NULL as distinct
+      // under a unique index - each unresolved install still gets its own row.
+      //
+      // userId is COALESCEd, never blindly overwritten with this request's
+      // own value: a Webflow-initiated reinstall of an ALREADY-linked site
+      // (e.g. an existing customer re-authorizing from their site's Apps
+      // panel, not via /auth/install) resolves userId to null here - a plain
+      // overwrite would silently unlink that site from its owner's account.
+      await db
+        .insert(installations)
+        .values({ accessToken, userId, siteId })
+        .onConflictDoUpdate({
+          target: installations.siteId,
+          set: {
+            accessToken,
+            userId: sql`COALESCE(${sql.raw(`excluded.${installations.userId.name}`)}, ${installations.userId})`,
+          },
+        });
 
       return c.html(INSTALL_SUCCESS_HTML);
     } catch (err) {
@@ -165,5 +211,131 @@ authRoutes.get(
         500,
       );
     }
+  },
+);
+
+const linkInstallationSchema = z.object({
+  // webflow.getIdToken() (Designer API) - never a client-submitted siteId,
+  // see this route's own comment for why that distinction is the whole
+  // point of this endpoint.
+  idToken: z.string().min(1),
+});
+
+// Fase 2 of the "Beta-tester + production install flow" plan (data-client
+// CLAUDE.md) - finally implemented. Fixes a real, general gap this session
+// found the hard way: a site can end up genuinely installed (a real
+// `installations` row with a real access token) with NO Fluxa userId at
+// all, whenever the OAuth flow was started from Webflow's own side (the
+// Apps panel, or an Authorization URL) rather than Fluxa's own
+// /auth/install - Fase 1 already accepts that install rather than
+// rejecting it, but nothing ever came back later to claim it. This is that
+// "come back later and claim it" step, called by the Designer Extension
+// once it has both a signed-in Fluxa session and a running Designer
+// connection (see services/linkInstallation.ts).
+//
+// Security: the caller CANNOT claim an arbitrary siteId by just naming one
+// in the request body - that would let any signed-in Fluxa user steal
+// another customer's installation (and its sites:write/custom_code:write
+// site token) by guessing/knowing a siteId, which isn't secret. Instead,
+// the only siteId ever trusted here is whatever Webflow's OWN "Resolve ID
+// token" endpoint returns for the caller's real, freshly-minted idToken -
+// proof the caller is genuinely looking at that exact site's Designer right
+// now, not a claim they typed in.
+authRoutes.post(
+  "/link-installation",
+  requireAuth,
+  zValidator("json", linkInstallationSchema, onValidationError),
+  async (c) => {
+    const { idToken } = c.req.valid("json");
+    const userId = c.get("user")!.id;
+    const db = createDb(c.env.DATABASE_URL);
+
+    // Resolving an id token needs *a* bearer token from this app with
+    // authorized_user:read (see SCOPES's own comment) - not necessarily one
+    // for the site the id token names, so any installation on file works as
+    // the calling credential, IN THEORY. Real bug, found 2026-09-15: picking
+    // just the single most-recently-created one (the original approach
+    // here) isn't safe - a stale install from before `authorized_user:read`
+    // was added to SCOPES (or a Webflow-side install nobody ever finished
+    // linking, `userId` still null) fails this call with a real Webflow 403
+    // ("Webflow id token resolve failed: 403"), and there was no fallback,
+    // so `link-installation` broke entirely as soon as any such row existed
+    // and happened to be the newest. Now tries every installation as a
+    // candidate credential, most-recently-linked-by-a-real-user first (far
+    // more likely to have been through /auth/install with the CURRENT full
+    // SCOPES list than an old unclaimed Webflow-side install), falling
+    // through to the next on a 403/401 specifically - not on a different
+    // failure (network error, 5xx), which still aborts immediately.
+    const candidates = await db
+      .select({ accessToken: installations.accessToken })
+      .from(installations)
+      .orderBy(sql`${installations.userId} IS NULL`, desc(installations.createdAt))
+      .limit(10);
+    if (candidates.length === 0) {
+      return c.json(
+        { error: "no_installation_available", message: "No Webflow installation exists yet to verify against." },
+        503,
+      );
+    }
+
+    let resolved: Awaited<ReturnType<typeof resolveIdToken>> | undefined;
+    let lastErr: unknown;
+    for (const candidate of candidates) {
+      try {
+        resolved = await resolveIdToken({ accessToken: candidate.accessToken, idToken });
+        break;
+      } catch (err) {
+        lastErr = err;
+        const message = err instanceof Error ? err.message : "";
+        // Only a scope/auth rejection from Webflow itself is worth trying
+        // the next candidate for - any other failure (network error, a
+        // genuine 5xx) means retrying with a different token wouldn't help.
+        if (!/resolve failed: 40[13]/.test(message)) break;
+      }
+    }
+    if (!resolved) {
+      console.error("POST /link-installation: resolveIdToken failed for every candidate", lastErr);
+      return c.json({ error: "webflow_api_error" }, 502);
+    }
+
+    // Only ever claims a row that's currently unowned (userId IS NULL) -
+    // mirrors the exact WHERE clause the original Fase 2 plan specified.
+    // Never reassigns an already-linked site to a different Fluxa user here
+    // (that would silently steal it from whoever installed it) - an
+    // already-linked row just responds `linked: false, alreadyOwned`. Site
+    // access itself no longer depends on this at all - any authenticated
+    // Fluxa account with a site's siteId can already use its installation
+    // (routes/cmsGallery.ts's own getSiteInstallation) - this endpoint's
+    // only remaining job is the original Fase 2 one: claim a genuinely
+    // unowned row (a Webflow-initiated install nobody ever linked) for
+    // whoever's currently signed in.
+    const [claimed] = await db
+      .update(installations)
+      .set({ userId })
+      .where(and(eq(installations.siteId, resolved.siteId), isNull(installations.userId)))
+      .returning({ id: installations.id });
+
+    if (claimed) {
+      return c.json({ linked: true, siteId: resolved.siteId });
+    }
+
+    const [existing] = await db
+      .select({ id: installations.id, userId: installations.userId })
+      .from(installations)
+      .where(eq(installations.siteId, resolved.siteId))
+      .limit(1);
+
+    if (!existing) {
+      return c.json(
+        { error: "not_installed", message: "This site isn't installed yet - authorize Fluxa for it first." },
+        404,
+      );
+    }
+
+    return c.json({
+      linked: false,
+      alreadyOwned: existing.userId === userId,
+      siteId: resolved.siteId,
+    });
   },
 );

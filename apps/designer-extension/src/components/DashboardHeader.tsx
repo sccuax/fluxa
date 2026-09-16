@@ -72,9 +72,8 @@ export function DashboardHeader() {
           type="button"
           onClick={() => setAppMenuOpen((current) => !current)}
           aria-label="Open menu"
-          className="text-text-white"
         >
-          <Icon name="threeDots" />
+          <Icon name="threeDots" className="text-text-white" />
         </button>
       </div>
 

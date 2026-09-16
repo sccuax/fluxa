@@ -12,6 +12,10 @@ import { authRoutes } from "./routes/auth";
 import { assetRoutes } from "./routes/assets";
 import { presetRoutes } from "./routes/presets";
 import { galleryPresetRoutes, publicGalleryPresetRoutes } from "./routes/galleryPresets";
+import { analyticsRoutes, publicAnalyticsRoutes } from "./routes/analytics";
+import { adminAnalyticsRoutes } from "./routes/adminAnalytics";
+import { cmsGalleryRoutes } from "./routes/cmsGallery";
+import { publicCmsGalleryRoutes } from "./routes/publicCmsGallery";
 import { publicRuntimeAssetRoutes } from "./routes/runtimeAssets";
 import { profileRoutes } from "./routes/profile";
 import { oauthPopupRoutes } from "./routes/oauthPopup";
@@ -148,6 +152,13 @@ app.route("/auth", authRoutes);
 app.route("/api/assets", assetRoutes);
 app.route("/api/presets", presetRoutes);
 app.route("/api/gallery-presets", galleryPresetRoutes);
+app.route("/api/admin/analytics", adminAnalyticsRoutes);
+app.route("/api/cms-gallery", cmsGalleryRoutes);
+// Distinct prefix from "/api/cms-gallery" above, not a sub-path under it -
+// same reason publicGalleryPresetRoutes is its own prefix in galleryPresets.ts
+// (mounting two sub-apps at the same prefix doesn't isolate their
+// middleware - confirmed there by testing, applies identically here).
+app.route("/api/public/cms-gallery", publicCmsGalleryRoutes);
 // A genuinely different prefix from "/api/gallery-presets" above, not just
 // a different sub-path under it - see routes/galleryPresets.ts's own
 // comment on publicGalleryPresetRoutes for why that distinction matters
@@ -155,6 +166,8 @@ app.route("/api/gallery-presets", galleryPresetRoutes);
 // middleware from each other).
 app.route("/api/public/gallery-presets", publicGalleryPresetRoutes);
 app.route("/api/public/runtime", publicRuntimeAssetRoutes);
+app.route("/api/analytics", analyticsRoutes);
+app.route("/api/public/analytics", publicAnalyticsRoutes);
 app.route("/api/profile", profileRoutes);
 app.route("/oauth-popup-callback", oauthPopupRoutes);
 app.route("/api/oauth-popup-exchange", oauthPopupExchangeRoutes);

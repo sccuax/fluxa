@@ -6,9 +6,22 @@ import { ForgotPasswordScreen } from "./screen/ForgotPasswordScreen";
 import { ResetCodeScreen } from "./screen/ResetCodeScreen";
 import { ResetPasswordScreen } from "./screen/ResetPasswordScreen";
 import { DashboardScreen } from "./screen/DashboardScreen";
+import { ServicesScreen } from "./screen/ServicesScreen";
+import { WebflowSolutionsScreen } from "./screen/WebflowSolutionsScreen";
 import { apiFetch } from "./services/apiClient";
+import { linkCurrentInstallation } from "./services/linkInstallation";
+import { getWebflowDesigner } from "./services/webflowDesigner";
 
-type Screen = "welcome" | "signin" | "signup" | "forgotpassword" | "resetcode" | "resetpassword" | "dashboard";
+type Screen =
+  | "welcome"
+  | "signin"
+  | "signup"
+  | "forgotpassword"
+  | "resetcode"
+  | "resetpassword"
+  | "services"
+  | "dashboard"
+  | "webflowSolutions";
 
 // Matches the welcome intro's 3s animation timeline (see WelcomeScreen.tsx)
 // plus a short hold so the finished state is visible before moving on.
@@ -62,14 +75,37 @@ export default function App() {
 
   useEffect(() => {
     if (!welcomeElapsed || hasSession === null) return;
-    setScreen(hasSession ? "dashboard" : "signin");
+    // "services" (not "dashboard" directly) - a session, restored on load
+    // or freshly signed into, now always lands on the service picker first.
+    // See ServicesScreen.tsx's own comment for why there's no way back to
+    // it yet from either destination.
+    setScreen(hasSession ? "services" : "signin");
   }, [welcomeElapsed, hasSession]);
+
+  // Fire-and-forget: claims this site's installation for whoever just
+  // signed in, if it isn't linked to anyone yet (services/linkInstallation.ts).
+  // Runs once per real signed-in session (session restore or a fresh sign-in
+  // both flip hasSession to true) - a no-op most of the time, but this is
+  // what makes an install started from Webflow's own side (rather than
+  // Fluxa's own /auth/install) actually usable without a manual fix.
+  useEffect(() => {
+    if (hasSession !== true) return;
+    linkCurrentInstallation().then((result) => {
+      if (result?.linked) {
+        try {
+          getWebflowDesigner().notify({ type: "Success", message: "Site connected to your Fluxa account." });
+        } catch {
+          // Not inside the real Designer - nothing to notify.
+        }
+      }
+    });
+  }, [hasSession]);
 
   if (screen === "signin") {
     return (
       <SignInScreen
         onCreateAccount={() => setScreen("signup")}
-        onSignInSuccess={() => setScreen("dashboard")}
+        onSignInSuccess={() => setScreen("services")}
         onForgotPassword={() => setScreen("forgotpassword")}
       />
     );
@@ -103,6 +139,15 @@ export default function App() {
       <ResetPasswordScreen email={resetEmail} otp={resetOtp} onBackToSignIn={() => setScreen("signin")} />
     );
   }
+  if (screen === "services") {
+    return (
+      <ServicesScreen
+        onSelectShaders={() => setScreen("dashboard")}
+        onSelectWebflowSolutions={() => setScreen("webflowSolutions")}
+      />
+    );
+  }
   if (screen === "dashboard") return <DashboardScreen onSignOut={() => setScreen("signin")} />;
+  if (screen === "webflowSolutions") return <WebflowSolutionsScreen onBack={() => setScreen("services")} />;
   return <WelcomeScreen />;
 }

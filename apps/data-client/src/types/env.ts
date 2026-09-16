@@ -34,4 +34,22 @@ export interface Bindings {
   // is only ever meant to run on an admin's own machine for now - revisit if
   // this ever needs multiple distinct admin identities or audit trails.
   ADMIN_API_TOKEN: string;
+  // Workers Analytics Engine dataset (routes/analytics.ts) - custom product
+  // events this app defines itself (Designer Extension usage, published-
+  // site embed impressions), distinct from the built-in per-request HTTP/
+  // Workers analytics Cloudflare already collects for this zone
+  // automatically. Free-plan-compatible (confirmed against current
+  // Cloudflare docs, not assumed): 100k writes/day, 10k reads/day on
+  // Workers Free, no Workers Paid requirement. Dataset is created
+  // automatically on the first writeDataPoint() call - no separate
+  // provisioning step, unlike the R2 buckets above.
+  ANALYTICS: AnalyticsEngineDataset;
+  // Cloudflare Account API token, scoped to "Account Analytics Read" only -
+  // used exclusively by routes/adminAnalytics.ts to query the Analytics
+  // Engine SQL API server-side for apps/preset-admin's own "Analytics" tab.
+  // A real account-wide credential (not scoped to just this app's data like
+  // ADMIN_API_TOKEN is), so it must only ever live as a Worker secret
+  // (`wrangler secret put CLOUDFLARE_ANALYTICS_API_TOKEN`) - never in
+  // wrangler.toml, never sent to the browser.
+  CLOUDFLARE_ANALYTICS_API_TOKEN: string;
 }

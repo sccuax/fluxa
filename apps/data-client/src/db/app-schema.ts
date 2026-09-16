@@ -8,6 +8,7 @@ import {
   integer,
   index,
   pgEnum,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { user } from "./auth-schema";
 
@@ -27,7 +28,23 @@ export const installations = pgTable(
     }),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
-  (table) => [index("installations_userId_idx").on(table.userId)],
+  (table) => [
+    index("installations_userId_idx").on(table.userId),
+    // A resolved siteId must be unique - routes/auth.ts's callback upserts
+    // on this so reinstalling a site (e.g. after a SCOPES change) replaces
+    // that site's row instead of adding a second one. Real bug, found and
+    // fixed 2026-09-14: before this constraint existed, a Webflow-initiated
+    // reinstall of an already-linked site (unlinked userId) left two rows
+    // for the same siteId - harmless as long as at most one of them ever
+    // matched an ownsSite() query's (siteId, userId) pair, but the very next
+    // Fluxa-initiated reinstall (matching BOTH siteId and userId) would have
+    // created a second row that also matched, leaving `.limit(1)` to pick
+    // between an old- and new-scope token with no defined order. Postgres
+    // treats every NULL as distinct under a unique index, so unresolved
+    // installs (siteId still null) are correctly never deduplicated against
+    // each other by this.
+    uniqueIndex("installations_siteId_idx").on(table.siteId),
+  ],
 );
 
 export const installationRelations = relations(installations, ({ one }) => ({
@@ -36,6 +53,44 @@ export const installationRelations = relations(installations, ({ one }) => ({
     references: [user.id],
   }),
 }));
+
+// Session-scoped site access proof - added 2026-09-16 to close a real gap:
+// once cms-gallery access dropped per-account collaborator verification
+// (settled the same day, see routes/cmsGallery.ts's own getSiteInstallation
+// comment), any signed-in Fluxa account presenting a valid siteId could act
+// on that site, whether or not they ever had real Designer access to it -
+// fine for the "any teammate can use it" goal, but not for a `siteId` that
+// leaked outside the Designer entirely (pasted somewhere, screenshotted).
+// One row per (siteId, userId) that's currently verified - checked on every
+// cms-gallery request (routes/cmsGallery.ts's own requireVerifiedSite),
+// upserted by `POST /:siteId/verify` after a real, fresh
+// webflow.getIdToken() resolves (server-side, against Webflow itself) to
+// this exact siteId. Deliberately a DB row with an expiry, not a signed
+// token (JWT-style) - this app has no other hand-rolled signing/verification
+// code anywhere, and a plain table+expiry check reuses a pattern already
+// proven correct here (same shape as cmsGalleryItemOverrides) rather than
+// introducing a new crypto-shaped bug surface right after two real bugs in
+// this exact area. Short-lived on purpose (15 min - see EXPIRY_MS in that
+// route) so the one genuinely expensive part (the real network round-trip
+// to Webflow's own "Resolve ID token" endpoint, ~400-700ms observed) is
+// paid once per Designer session opened, not once per click.
+export const siteVerifications = pgTable(
+  "site_verifications",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    siteId: text("site_id").notNull(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    expiresAt: timestamp("expires_at").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("site_verifications_site_user_idx").on(table.siteId, table.userId),
+  ],
+);
 
 export const presets = pgTable(
   "presets",
@@ -346,3 +401,99 @@ export const oauthPopupHandoffs = pgTable("oauth_popup_handoffs", {
   redirectTo: text("redirect_to"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
+
+// "Webflow Solutions" feature #1: multi-image CMS fields inside a Collection
+// List (Webflow has no native way to bind a multi-image field to anything -
+// not even a Code Component prop, see routes/cmsGallery.ts's own comment).
+// One row per collection+field a customer has configured through Fluxa's
+// panel - routes/publicCmsGallery.ts's public, unauthenticated route reads
+// this by `id` (never by raw collectionId/fieldSlug, which the published
+// site never sees) to know which installation's access token and which
+// field to resolve for a given item slug. Keyed on `fieldSlug`, not a
+// Data-API field id: the Designer Extension's own panel discovers multi-image
+// fields via the Designer API's `DynamoWrapperElement.searchAvailableFields()`
+// (CollectionListAvailableField), which only ever exposes a field's `slug` -
+// and `slug` is also exactly what indexes a live item's `fieldData` object
+// (see getLiveCollectionItemBySlug's caller in publicCmsGallery.ts), so
+// there's no second identifier worth also tracking.
+export const cmsGalleryConfigs = pgTable(
+  "cms_gallery_configs",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    siteId: text("site_id").notNull(),
+    collectionId: text("collection_id").notNull(),
+    fieldSlug: text("field_slug").notNull(),
+    // Which Fluxa account created this specific gallery - added 2026-09-15.
+    // Any authenticated Fluxa account with access to this site can
+    // list/create galleries (see routes/cmsGallery.ts's own
+    // getSiteInstallation comment), but only this config's own creator can
+    // edit/delete it (that router's own isConfigOwner) - the Designer
+    // Extension shows it as disabled, not hidden, to everyone else.
+    // Nullable for the same reason installations.userId is - rows created
+    // before this column existed have no recorded creator, treated as
+    // editable by anyone rather than locking out whoever's already been
+    // managing it.
+    createdByUserId: text("created_by_user_id").references(() => user.id, { onDelete: "set null" }),
+    // Carousel display settings - read live by routes/publicCmsGallery.ts on
+    // every request (not baked into the embed script at install time), so a
+    // customer tweaking these in the wizard takes effect on next page load
+    // with no need to re-run "Install gallery script". `objectFit` is plain
+    // text (not a pgEnum) validated at the zod layer (schema/cmsGallery.ts)
+    // instead - matches fieldSlug's own precedent above of not reaching for
+    // a DB-level type for a small fixed set of values.
+    showArrows: boolean("show_arrows").default(true).notNull(),
+    showDots: boolean("show_dots").default(true).notNull(),
+    autoplay: boolean("autoplay").default(true).notNull(),
+    autoplayIntervalMs: integer("autoplay_interval_ms").default(5000).notNull(),
+    objectFit: text("object_fit").default("cover").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("cms_gallery_configs_siteId_idx").on(table.siteId),
+    // Per explicit direction ("evitar duplicados") - re-submitting the same
+    // collection+field for a site updates nothing new, it's the same
+    // gallery config already registered.
+    uniqueIndex("cms_gallery_configs_site_collection_field_idx").on(
+      table.siteId,
+      table.collectionId,
+      table.fieldSlug,
+    ),
+  ],
+);
+
+// Per-item image visibility, added 2026-09-15 for the "which images/items
+// actually show in the carousel" picker (routes/cmsGalleryItems.ts). One row
+// per (config, item) that has ANY override - no row at all means "show
+// everything", the default. Keyed by itemSlug, not the item's Webflow id -
+// same reasoning cmsGalleryConfigs' own fieldSlug-not-fieldId comment gives:
+// slug is what routes/publicCmsGallery.ts already resolves a rendered page's
+// item by, so it's the one identifier both sides already share. Individual
+// hidden images are keyed by their Webflow Asset fileId (stable across a
+// re-order/re-caption, unlike array index) - hiddenImageIds is a plain
+// jsonb string array rather than a child table since it's always read/written
+// as one whole set per item (the picker's own "select which of these N
+// images are hidden" UI has no per-image row of its own metadata to store).
+export const cmsGalleryItemOverrides = pgTable(
+  "cms_gallery_item_overrides",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    configId: text("config_id")
+      .notNull()
+      .references(() => cmsGalleryConfigs.id, { onDelete: "cascade" }),
+    itemSlug: text("item_slug").notNull(),
+    // Hides the item's entire gallery (the carousel renders empty/"no
+    // images" for it) - independent of hiddenImageIds, which only makes
+    // sense when this is false.
+    hidden: boolean("hidden").default(false).notNull(),
+    hiddenImageIds: jsonb("hidden_image_ids").$type<string[]>().default([]).notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("cms_gallery_item_overrides_configId_idx").on(table.configId),
+    uniqueIndex("cms_gallery_item_overrides_config_item_idx").on(table.configId, table.itemSlug),
+  ],
+);

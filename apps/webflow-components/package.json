@@ -1,0 +1,21 @@
+{
+  "name": "@fluxa/webflow-components",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "bundle": "webflow devlink bundle --manifest .",
+    "import": "webflow devlink import --manifest ."
+  },
+  "dependencies": {
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.5",
+    "@types/react-dom": "^19.2.3",
+    "@webflow/data-types": "^2.3.0",
+    "@webflow/react": "^2.3.0",
+    "typescript": "~5.9.3"
+  }
+}

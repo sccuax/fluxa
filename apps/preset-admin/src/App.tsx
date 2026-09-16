@@ -13,6 +13,9 @@ import { apiFetch, ApiRequestError } from "./services/apiClient";
 import { captureThumbnail } from "./services/captureThumbnail";
 import { GalleryPresetList } from "./components/GalleryPresetList";
 import { FloatingPanel } from "./components/FloatingPanel";
+import { AnalyticsPanel } from "./components/AnalyticsPanel";
+
+type StudioTab = "presets" | "analytics";
 
 type License = "free" | "pro";
 
@@ -52,6 +55,10 @@ export default function App() {
   const config = useGradientStore((state) => state.config);
   const reset = useGradientStore((state) => state.reset);
   const setConfig = useGradientStore((state) => state.setConfig);
+
+  // Not persisted - always lands back on "presets" on a fresh load, same as
+  // every other piece of local UI state in this app (editingId, kind, etc.)
+  const [tab, setTab] = useState<StudioTab>("presets");
 
   const [theme, setTheme] = useState<Theme>(readInitialTheme);
   useEffect(() => {
@@ -246,6 +253,25 @@ export default function App() {
         </button>
       </div>
 
+      <div className="inline-flex w-fit rounded-[6px] border border-border-border p-0.5">
+        {(["presets", "analytics"] as const).map((value) => (
+          <button
+            key={value}
+            type="button"
+            onClick={() => setTab(value)}
+            className={`whitespace-nowrap rounded-[4px] px-3 py-1.5 font-sans text-mobile-text-sm-regular capitalize transition-colors ${
+              tab === value ? "bg-accent-500 text-white" : "text-text-secondary hover:text-text-black"
+            }`}
+          >
+            {value}
+          </button>
+        ))}
+      </div>
+
+      {tab === "analytics" ? (
+        <AnalyticsPanel />
+      ) : (
+        <>
       {/* Only *choosable* for a brand-new, unsaved preset - a preset's kind
           is fixed forever once it exists as a real row. When editing an
           existing row the picker is replaced by a read-only label so it's
@@ -404,6 +430,8 @@ export default function App() {
           onDelete={handleDelete}
         />
       </div>
+        </>
+      )}
     </div>
   );
 }

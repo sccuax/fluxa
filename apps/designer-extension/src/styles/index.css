@@ -216,6 +216,30 @@
     0 0 14px 1px color-mix(in srgb, var(--colors-accent-500) 25%, transparent);
 }
 
+/* ServicesScreen.tsx's "Shader gradients" card - its brand-gradient border
+   continuously rotates on its own (a deliberate departure from
+   PresetSearchResultRow's own cursor-tracking border above: this one moves
+   by itself, regardless of the cursor - per explicit direction). @property
+   registers --services-border-angle as a real interpolatable <angle>,
+   which is what makes it animatable via a plain @keyframes at all - an
+   unregistered custom property is just an opaque string to the browser, it
+   has no idea it should tween through intermediate angle values. */
+@property --services-border-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+@keyframes services-border-rotate {
+  to {
+    --services-border-angle: 360deg;
+  }
+}
+
+.service-card-rotating-border {
+  animation: services-border-rotate 6s linear infinite;
+}
+
 *::-webkit-scrollbar-button:vertical:end:increment {
   height: 8px;
   background: var(--colors-neutral-400)

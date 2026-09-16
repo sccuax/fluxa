@@ -8,6 +8,7 @@ import { LogoutButton } from "../components/LogoutButton";
 import { LegalFooterLinks } from "../components/LegalFooterLinks";
 import { useAccountUser } from "../hooks/useAccountUser";
 import { ManageProfileScreen, MANAGE_PROFILE_SIZE } from "./ManageProfileScreen";
+import { trackEvent } from "../services/analytics";
 
 // Matches DashboardScreen's own DASHBOARD_SIZE value - redefined here
 // (rather than imported from there) since this is the size *this tab*
@@ -75,7 +76,10 @@ export function AccountTab({ onSignOut }: { onSignOut: () => void }) {
         <ProfileCard
           user={user}
           onAvatarUploaded={handleAvatarUploaded}
-          onManageProfile={() => setShowManageProfile(true)}
+          onManageProfile={() => {
+            trackEvent("open_manage_profile");
+            setShowManageProfile(true);
+          }}
         />
         <PlanCard />
         <LinksCard />

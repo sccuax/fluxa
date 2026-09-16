@@ -2,6 +2,7 @@ import type { GradientConfig } from "@fluxa/gradient-core";
 import { getWebflowDesigner } from "./webflowDesigner";
 import { buildGradientEmbedCode } from "./gradientEmbedScript";
 import { resolveLabel } from "../hooks/useSelectedElement";
+import { getCookiePreferences } from "./cookiePreferences";
 
 // Elements a preset embed (gradient OR glass-liquid, see applyGlassLiquid.ts)
 // can be applied to - anything with both Children (so we can prepend the
@@ -192,7 +193,10 @@ export async function applyGradientToElement(
 ): Promise<void> {
   const webflowApi = getWebflowDesigner();
   const rootId = `fluxa-gradient-${crypto.randomUUID().slice(0, 8)}`;
-  const code = buildGradientEmbedCode(config, rootId);
+  // Baked in at generation time, not checked by the embed itself at
+  // runtime - see cookiePreferences.ts's own publishedSiteAnalytics
+  // comment for why the embed has no way to do that anyway.
+  const code = buildGradientEmbedCode(config, rootId, getCookiePreferences().publishedSiteAnalytics);
 
   await removeOtherFluxaEmbeds(target, MARKER_ATTRIBUTE);
   const existing = await findExistingGradientEmbed(target);

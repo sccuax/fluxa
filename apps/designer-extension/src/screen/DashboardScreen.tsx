@@ -5,6 +5,7 @@ import { DashboardNav, type DashboardTab } from "../components/DashboardNav";
 import { EditorTab } from "../components/EditorTab";
 import { PresetsTab } from "../components/PresetsTab";
 import { AccountTab } from "./AccountTab";
+import { trackEvent } from "../services/analytics";
 
 // Height is a functional estimate (no full Figma spec yet, same approach as
 // ForgotPasswordScreen/ResetCodeScreen) - width is the fixed 320px every
@@ -52,7 +53,13 @@ export function DashboardScreen({ onSignOut }: { onSignOut: () => void }) {
         {activeTab === "presets" && <PresetsTab />}
         {activeTab === "account" && <AccountTab onSignOut={onSignOut} />}
       </div>
-      <DashboardNav activeTab={activeTab} onTabChange={setActiveTab} />
+      <DashboardNav
+        activeTab={activeTab}
+        onTabChange={(tab) => {
+          setActiveTab(tab);
+          trackEvent("switch_tab", tab);
+        }}
+      />
     </div>
   );
 }

@@ -12,6 +12,7 @@ import { GoogleAuthButton } from "../components/GoogleAuthButton";
 import { LegalFooterLinks } from "../components/LegalFooterLinks";
 import { openGoogleSignInPopup } from "../services/googleSignIn";
 import { DATA_CLIENT_URL } from "../services/apiClient";
+import { trackEvent } from "../services/analytics";
 
 interface SignUpScreenProps {
   onBackToSignIn: () => void;
@@ -106,6 +107,7 @@ export function SignUpScreen({ onBackToSignIn }: SignUpScreenProps) {
         // look like testing against the real deployed Worker.
         console.error("Google sign-up error:", error);
       } else {
+        trackEvent("sign_up_completed", "google");
         setShowAccountCreatedModal(true);
       }
     } catch {
@@ -168,6 +170,7 @@ export function SignUpScreen({ onBackToSignIn }: SignUpScreenProps) {
         }
         return;
       }
+      trackEvent("sign_up_completed", "email");
       setShowAccountCreatedModal(true);
     } catch {
       setPasswordError("Something went wrong. Please try again.");

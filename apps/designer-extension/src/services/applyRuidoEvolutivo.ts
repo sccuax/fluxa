@@ -2,6 +2,7 @@ import type { RuidoEvolutivoConfig } from "@fluxa/gradient-core";
 import { getWebflowDesigner } from "./webflowDesigner";
 import { buildRuidoEvolutivoEmbedCode } from "./ruidoEvolutivoEmbedScript";
 import { removeOtherFluxaEmbeds, type PresetTarget } from "./applyGradient";
+import { getCookiePreferences } from "./cookiePreferences";
 
 // Mirrors applyGlassLiquid.ts's own applyGlassLiquidToElement/marker/
 // positioning-context logic exactly (which itself mirrors applyGradient.ts -
@@ -76,7 +77,7 @@ async function findExistingRuidoEvolutivoEmbed(target: PresetTarget): Promise<Ht
 export async function applyRuidoEvolutivoToElement(target: PresetTarget, config: RuidoEvolutivoConfig): Promise<void> {
   const webflowApi = getWebflowDesigner();
   const rootId = `fluxa-ruido-evolutivo-${crypto.randomUUID().slice(0, 8)}`;
-  const code = buildRuidoEvolutivoEmbedCode(config, rootId);
+  const code = buildRuidoEvolutivoEmbedCode(config, rootId, getCookiePreferences().publishedSiteAnalytics);
 
   await removeOtherFluxaEmbeds(target, MARKER_ATTRIBUTE);
   const existing = await findExistingRuidoEvolutivoEmbed(target);
