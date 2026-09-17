@@ -217,6 +217,9 @@ export function WebflowSolutionsScreen({ onBack }: { onBack: () => void }) {
   const [siteError, setSiteError] = useState<string | null>(null);
   const [configs, setConfigs] = useState<CmsGalleryConfig[] | null>(null);
   const [configsError, setConfigsError] = useState<string | null>(null);
+  // Diagnostic-only, surfaced alongside configsError - see verifyThisSite's
+  // own comment below for why this exists.
+  const [verifyError, setVerifyError] = useState<string | null>(null);
 
   const [wizardOpen, setWizardOpen] = useState(false);
   const [step, setStep] = useState<WizardStep>("collection");
@@ -283,9 +286,24 @@ export function WebflowSolutionsScreen({ onBack }: { onBack: () => void }) {
     try {
       const idToken = await getWebflowDesigner().getIdToken();
       await verifySiteAccess(forSiteId, idToken);
-    } catch {
-      // Sandbox/no-Designer context, or a real verify failure - either way
-      // loadConfigs() below still runs and reports the real backend state.
+      setVerifyError(null);
+    } catch (error) {
+      // Real bug, found 2026-09-16: this used to be a bare `catch {}` - a
+      // real failure here (getIdToken() itself rejecting, or
+      // verifySiteAccess() 403ing on site_mismatch/webflow_api_error) left
+      // ZERO trace anywhere, client or server, while loadConfigs() below
+      // still ran and surfaced the backend's own generic "not_verified"
+      // message - completely indistinguishable from "verify never even
+      // attempted" vs "verify attempted and was rejected for a real
+      // reason". A second site collaborator hit exactly this with no way to
+      // self-diagnose. Only surface it inside a real Designer (`webflow`
+      // defined) - the sandbox/plain-browser dev case throws here on every
+      // mount by design (no Designer connection at all) and isn't a bug.
+      if (typeof webflow !== "undefined") {
+        const detail = error instanceof Error ? error.message : String(error);
+        console.error("verifyThisSite failed", error);
+        setVerifyError(detail);
+      }
     }
   }
 
@@ -526,6 +544,11 @@ export function WebflowSolutionsScreen({ onBack }: { onBack: () => void }) {
               </h3>
               {configsError && (
                 <p className="font-sans text-mobile-text-sm-regular text-error-500">{configsError}</p>
+              )}
+              {configsError && verifyError && (
+                <p className="font-sans text-mobile-text-sm-regular text-error-500">
+                  Verification detail: {verifyError}
+                </p>
               )}
               {configs === null && !configsError && (
                 <p className="font-sans text-mobile-text-sm-regular text-text-secondary">Loading...</p>
