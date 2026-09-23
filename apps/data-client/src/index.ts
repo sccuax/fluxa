@@ -17,6 +17,9 @@ import { adminPresenceRoutes } from "./routes/adminPresence";
 import { adminAnalyticsRoutes } from "./routes/adminAnalytics";
 import { cmsGalleryRoutes } from "./routes/cmsGallery";
 import { publicCmsGalleryRoutes } from "./routes/publicCmsGallery";
+import { cmsImagesRoutes } from "./routes/cmsImages";
+import { blogStagingRoutes } from "./routes/blogStaging";
+import { publicBlogStagingRoutes } from "./routes/publicBlogStaging";
 import { publicRuntimeAssetRoutes } from "./routes/runtimeAssets";
 import { profileRoutes } from "./routes/profile";
 import { oauthPopupRoutes } from "./routes/oauthPopup";
@@ -163,6 +166,17 @@ app.route("/api/cms-gallery", cmsGalleryRoutes);
 // (mounting two sub-apps at the same prefix doesn't isolate their
 // middleware - confirmed there by testing, applies identically here).
 app.route("/api/public/cms-gallery", publicCmsGalleryRoutes);
+// "CMS images" (Webflow Solutions feature #3) - see routes/cmsImages.ts's
+// own top comment for why this has no public counterpart at all (no
+// published-site runtime, ImageElement.setAsset() does the real work
+// directly from the Designer Extension).
+app.route("/api/cms-images", cmsImagesRoutes);
+// "Blog to staging" (Webflow Solutions feature #4) - the authenticated
+// panel-side router plus its own genuinely separate, permissively-CORS'd
+// public counterpart (routes/publicBlogStaging.ts's own comment has the
+// full reasoning, same shape as publicCmsGalleryRoutes above).
+app.route("/api/blog-staging", blogStagingRoutes);
+app.route("/api/public/blog-staging", publicBlogStagingRoutes);
 // A genuinely different prefix from "/api/gallery-presets" above, not just
 // a different sub-path under it - see routes/galleryPresets.ts's own
 // comment on publicGalleryPresetRoutes for why that distinction matters

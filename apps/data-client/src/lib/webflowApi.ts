@@ -256,3 +256,176 @@ export async function createAssetUpload(params: {
     uploadDetails: Record<string, string>;
   }>;
 }
+
+// "Blog to staging" (routes/blogStaging.ts) - the STAGED items list (all
+// items, drafts included), deliberately NOT listLiveCollectionItems above
+// (that one only ever returns items already live - a genuine, never-
+// published draft wouldn't appear there at all, and this feature's whole
+// point is surfacing drafts so "Publish your draft post" has something to
+// act on). `isDraft`/`lastPublished` are real, documented fields at the
+// item level (developers.webflow.com/data/reference/cms/collection-items/
+// staged-items/list-items, confirmed directly, not assumed).
+export interface WebflowStagedItem extends WebflowCollectionItem {
+  isDraft?: boolean;
+  isArchived?: boolean;
+  lastPublished?: string | null;
+}
+
+export async function listCollectionItems(params: {
+  accessToken: string;
+  collectionId: string;
+  limit: number;
+  offset: number;
+}): Promise<{ items: WebflowStagedItem[]; pagination: { limit: number; offset: number; total: number } }> {
+  const url = new URL(`${WEBFLOW_API_BASE}/collections/${params.collectionId}/items`);
+  url.searchParams.set("limit", String(params.limit));
+  url.searchParams.set("offset", String(params.offset));
+
+  const response = await fetch(url, {
+    headers: { Authorization: `Bearer ${params.accessToken}` },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Webflow items list failed: ${response.status}`);
+  }
+
+  return response.json() as Promise<{
+    items: WebflowStagedItem[];
+    pagination: { limit: number; offset: number; total: number };
+  }>;
+}
+
+// Real, direct Webflow CMS API - "Publish your draft post." toggle
+// (BlogToStagingScreen.tsx). Publishing a draft item automatically sets its
+// own `isDraft` to false (confirmed in the endpoint's own docs) - no
+// separate draft-flag update needed first. Requires `cms:write`.
+export async function publishCollectionItems(params: {
+  accessToken: string;
+  collectionId: string;
+  itemIds: string[];
+}): Promise<{ publishedItemIds: string[]; errors?: string[] }> {
+  const response = await fetch(`${WEBFLOW_API_BASE}/collections/${params.collectionId}/items/publish`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${params.accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ itemIds: params.itemIds }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Webflow publish items failed: ${response.status}`);
+  }
+
+  return response.json() as Promise<{ publishedItemIds: string[]; errors?: string[] }>;
+}
+
+// The reverse of publishCollectionItems - removes item(s) from the live
+// site and sets isDraft back to true (per the endpoint's own docs). 204 No
+// Content on success, so there's no body to parse.
+export async function unpublishCollectionItems(params: {
+  accessToken: string;
+  collectionId: string;
+  itemIds: string[];
+}): Promise<void> {
+  const response = await fetch(`${WEBFLOW_API_BASE}/collections/${params.collectionId}/items/live`, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${params.accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ items: params.itemIds.map((id) => ({ id })) }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Webflow unpublish items failed: ${response.status}`);
+  }
+}
+
+// "Blog to staging"'s own site-wide runtime script (routes/blogStaging.ts's
+// ensureBlogStagingScriptInstalled) - the three real Custom Code API calls,
+// each confirmed directly against developers.webflow.com/data/reference/
+// custom-code before writing (not assumed): register once (scripts are
+// IMMUTABLE per version - a real code change means a NEW version, never
+// overwriting an existing one, same versioned-filename discipline this
+// project already uses for its self-hosted glassLiquid/ruidoEvolutivo
+// runtime bundles), read the site's current script list, then upsert the
+// FULL list back (omitting an existing script from this call REMOVES it
+// from the site, per the endpoint's own docs - callers must always include
+// every script they want kept, not just the one being added).
+export interface RegisteredScript {
+  id: string;
+  displayName: string;
+  version: string;
+}
+
+export async function registerInlineScript(params: {
+  accessToken: string;
+  siteId: string;
+  sourceCode: string;
+  displayName: string;
+  version: string;
+}): Promise<RegisteredScript> {
+  const response = await fetch(`${WEBFLOW_API_BASE}/sites/${params.siteId}/registered_scripts/inline`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${params.accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      sourceCode: params.sourceCode,
+      version: params.version,
+      displayName: params.displayName,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Webflow register script failed: ${response.status}`);
+  }
+
+  return response.json() as Promise<RegisteredScript>;
+}
+
+export interface SiteCustomCodeScript {
+  id: string;
+  location: "header" | "footer";
+  version: string;
+}
+
+export async function getSiteCustomCode(params: {
+  accessToken: string;
+  siteId: string;
+}): Promise<{ scripts: SiteCustomCodeScript[] }> {
+  const response = await fetch(`${WEBFLOW_API_BASE}/sites/${params.siteId}/custom_code`, {
+    headers: { Authorization: `Bearer ${params.accessToken}` },
+  });
+
+  // A site with no custom code registered yet 404s here rather than
+  // returning an empty list (confirmed empirically against a real fresh
+  // site) - treated the same as "no scripts" rather than a real failure.
+  if (response.status === 404) return { scripts: [] };
+  if (!response.ok) {
+    throw new Error(`Webflow get site custom code failed: ${response.status}`);
+  }
+
+  return response.json() as Promise<{ scripts: SiteCustomCodeScript[] }>;
+}
+
+export async function applySiteCustomCode(params: {
+  accessToken: string;
+  siteId: string;
+  scripts: SiteCustomCodeScript[];
+}): Promise<void> {
+  const response = await fetch(`${WEBFLOW_API_BASE}/sites/${params.siteId}/custom_code`, {
+    method: "PUT",
+    headers: {
+      Authorization: `Bearer ${params.accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ scripts: params.scripts }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Webflow apply site custom code failed: ${response.status}`);
+  }
+}

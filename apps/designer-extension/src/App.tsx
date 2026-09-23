@@ -147,7 +147,16 @@ export default function App() {
       />
     );
   }
-  if (screen === "dashboard") return <DashboardScreen onSignOut={() => setScreen("signin")} />;
-  if (screen === "webflowSolutions") return <WebflowSolutionsScreen onBack={() => setScreen("services")} />;
+  if (screen === "dashboard") {
+    return (
+      <DashboardScreen
+        onSignOut={() => setScreen("signin")}
+        onSwitchToWebflowSolutions={() => setScreen("webflowSolutions")}
+      />
+    );
+  }
+  if (screen === "webflowSolutions") {
+    return <WebflowSolutionsScreen onSwitchToShaders={() => setScreen("dashboard")} />;
+  }
   return <WelcomeScreen />;
 }

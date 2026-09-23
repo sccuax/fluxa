@@ -497,3 +497,193 @@ export const cmsGalleryItemOverrides = pgTable(
     uniqueIndex("cms_gallery_item_overrides_config_item_idx").on(table.configId, table.itemSlug),
   ],
 );
+
+// Per-post visibility, independent of any gallery config - powers "Handle
+// CMS visibility" (WebflowSolutionsScreen.tsx's own CmsVisibilityScreen),
+// which hides/shows a Collection Item on ANY collection discovered on the
+// current Designer page, whether or not a Fluxa gallery is even configured
+// for it. Deliberately a separate table from cmsGalleryItemOverrides above
+// (not a repurposing of it) - that one is scoped to one specific
+// `configId`, so two different galleries configured against the SAME
+// collection would each need their own independent hidden-state under that
+// model, which isn't what this feature is: hiding a post here is a property
+// of the (site, collection, item) itself, so it's keyed directly on that
+// triple instead. One row per item that has ANY override - no row means
+// "visible" (the default), same "no row = show everything" convention
+// cmsGalleryItemOverrides already set. routes/publicCmsGallery.ts's own
+// per-item lookup also checks this table (in addition to any gallery-
+// specific override) so hiding a post here is honored by an already-
+// configured gallery for that same collection too - see that route's own
+// comment for the one real limitation this doesn't cover (a collection with
+// no gallery/embed installed at all has nothing on the published site to
+// actually enforce this against yet).
+export const cmsItemVisibility = pgTable(
+  "cms_item_visibility",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    siteId: text("site_id").notNull(),
+    collectionId: text("collection_id").notNull(),
+    itemSlug: text("item_slug").notNull(),
+    hidden: boolean("hidden").default(false).notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("cms_item_visibility_site_collection_idx").on(table.siteId, table.collectionId),
+    uniqueIndex("cms_item_visibility_site_collection_item_idx").on(
+      table.siteId,
+      table.collectionId,
+      table.itemSlug,
+    ),
+  ],
+);
+
+// The "Hide all posts?" master switch at the top of CmsVisibilityScreen.tsx
+// - deliberately its own tiny site-scoped settings row, not a column bolted
+// onto cmsGalleryConfigs (scoped per gallery, not per site) or a special
+// sentinel row inside cmsItemVisibility above (that table is per-ITEM, this
+// is a blanket override with no item of its own). When true, EVERY post
+// across EVERY collection on this site reads as hidden regardless of its
+// own individual cmsItemVisibility/cmsGalleryItemOverrides row -
+// routes/publicCmsGallery.ts checks it as one more OR term alongside those
+// two. Matches the screen's own subtitle wording exactly ("Override
+// individual post settings") - turning this on doesn't erase or change any
+// individual post's own stored hidden state, it just overrides what's
+// actually shown while it's on; turning it back off reverts to each post's
+// own setting with nothing to restore.
+export const cmsSiteVisibilitySettings = pgTable("cms_site_visibility_settings", {
+  siteId: text("site_id").primaryKey(),
+  hideAllPosts: boolean("hide_all_posts").default(false).notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// "CMS images" (WebflowSolutionsScreen.tsx's third Webflow Solutions
+// feature, its own CmsImagesScreen) - lets a customer put a single CMS
+// image (any `Image`-type field, not just `MultiImage`) onto any real
+// Webflow `Image` element anywhere in the project, with none of the
+// multi-image gallery's own machinery: `ImageElement.setAsset()` +
+// `webflow.getAssetById()` are both real Designer API calls (confirmed
+// against the installed @webflow/designer-extension-typings package, not
+// assumed) that set a NATIVE image binding directly - no HTML Embed, no
+// runtime script, no public route, nothing for a published site to load at
+// all. This table is pure bookkeeping for the "Reused images" list
+// (WebflowSolutionsScreen.tsx's screenshot reference calls it "Your
+// galeries", renamed - these aren't galleries, nothing here plays a
+// carousel) - the real image binding lives entirely inside Webflow's own
+// page data once applied, this row just remembers which CMS image was
+// last pushed to which target so the customer has something to review/
+// change/remove later.
+//
+// `itemName` is a denormalized SNAPSHOT of the source post's name at the
+// moment this was created/last changed, not a live value - re-fetching it
+// live on every list render would mean one Webflow API round trip per row
+// just to paint a list, for a label that's already right the overwhelming
+// majority of the time. Genuinely goes stale only if that CMS item is
+// later renamed, which is an acceptable, low-stakes trade-off for a purely
+// informational subtitle. `assetId` is the Webflow Asset id actually
+// applied (same id `webflow.getAssetById()` needs, and the same stable
+// identifier the multi-image gallery's own `fileId` already uses) -
+// captured at apply time so "Manage" (re-picking a different image for the
+// same target) has something concrete to diff against, and so a future
+// "which image is this" thumbnail doesn't need a fresh CMS read either.
+//
+// No `elementId` column - a raw Designer element id isn't a reliable
+// enough handle to persist (see the designer-extension CLAUDE.md's own
+// AppliedGradientsMenu section on why this app already avoids that
+// anywhere else). The real target is instead found the same way
+// AppliedGradientsMenu already finds its own applied-gradient elements: a
+// plain HTML marker attribute (`data-fluxa-cms-image-config`, this row's
+// own `id`) set directly on the target Image element, discovered by
+// scanning `webflow.getAllElements()` on whichever page is currently open -
+// same real, already-documented, accepted "current page only" limitation
+// that scan already has elsewhere in this app.
+export const cmsImageReuses = pgTable(
+  "cms_image_reuses",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    siteId: text("site_id").notNull(),
+    collectionId: text("collection_id").notNull(),
+    itemSlug: text("item_slug").notNull(),
+    itemName: text("item_name").notNull(),
+    fieldSlug: text("field_slug").notNull(),
+    assetId: text("asset_id").notNull(),
+    // Same authorship convention as cmsGalleryConfigs.createdByUserId -
+    // any site collaborator can see every reuse, only its own creator can
+    // Manage/Delete it (routes/cmsImages.ts's own isReuseOwner).
+    createdByUserId: text("created_by_user_id").references(() => user.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [index("cms_image_reuses_siteId_idx").on(table.siteId)],
+);
+
+// "Blog to staging" (routes/blogStaging.ts, BlogToStagingScreen.tsx) - lets
+// a customer mark a Collection Item as "staging only": visible when the
+// visitor is on the site's own staging (`*.webflow.io`) domain, hidden when
+// they're on the live/custom domain - something Webflow's own publish
+// system genuinely cannot do per item (confirmed against Webflow's own
+// docs: publishing to staging-only vs. production-only domains is a
+// SITE-WIDE choice in the Publish modal, not a per-CMS-item one; a
+// Draft/unpublished item doesn't render on ANY published domain, staging
+// included, so there's no native "visible on staging, hidden on live"
+// state at all). Enforced by a small site-wide script
+// (ensureBlogStagingScriptInstalled, routes/blogStaging.ts) that compares
+// the visitor's own hostname against the item's stored flag here via
+// routes/publicBlogStaging.ts - this table is what that public route reads.
+//
+// Keyed by (siteId, itemSlug) only, NOT (siteId, collectionId, itemSlug)
+// like cmsItemVisibility/cmsGalleryItemOverrides - a real, deliberate,
+// documented trade-off: the runtime script only ever has the current
+// page's own URL slug to go on (there's no marker-attribute mechanism here
+// the way the multi-image gallery has, since this needs to work site-wide
+// with zero manual per-item marking step), so the public lookup can only
+// ever be by slug within a site, not scoped further to which collection
+// that slug's item belongs to. Two DIFFERENT collections on the same site
+// sharing an identical item slug would collide here (whichever was set
+// last wins) - accepted as a rare, low-stakes edge case rather than adding
+// real complexity to solve it.
+//
+// The "All posts to staging?" master toggle (BlogToStagingScreen.tsx) is
+// NOT a separate override table the way CmsVisibilityScreen's own
+// "Hide all posts?" is - it's a real bulk WRITE across every currently-
+// loaded item's own row here instead (see routes/blogStaging.ts's own
+// staging-all route), specifically because a non-destructive derived
+// override (computed at read time) would need to know every item's own
+// collection scope to apply "all posts in the collection I'm looking at"
+// correctly, which - per the same reasoning above - this table's own
+// slug-only keying can't cleanly express as a separate layer.
+export const blogStagingItems = pgTable(
+  "blog_staging_items",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    siteId: text("site_id").notNull(),
+    collectionId: text("collection_id").notNull(),
+    itemSlug: text("item_slug").notNull(),
+    stagingOnly: boolean("staging_only").default(false).notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("blog_staging_items_siteId_idx").on(table.siteId),
+    uniqueIndex("blog_staging_items_site_slug_idx").on(table.siteId, table.itemSlug),
+  ],
+);
+
+// Tracks whether the site-wide enforcement script (above) has already been
+// registered + applied to this site, so a second toggle doesn't try to
+// re-register it (Custom Code script VERSIONS are immutable by design, per
+// Webflow's own docs - re-registering the same version would fail) or
+// re-PUT the site's custom-code list needlessly. One row per site;
+// `scriptVersion` is what to bump (registering a genuinely new version) if
+// this script's own source ever needs a real fix - never edit
+// `BLOG_STAGING_SCRIPT_VERSION` in place and expect an existing site's
+// already-applied version to update itself.
+export const blogStagingSiteSettings = pgTable("blog_staging_site_settings", {
+  siteId: text("site_id").primaryKey(),
+  scriptId: text("script_id"),
+  scriptVersion: text("script_version"),
+  installedAt: timestamp("installed_at"),
+});

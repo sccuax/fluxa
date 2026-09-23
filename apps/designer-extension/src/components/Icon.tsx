@@ -43,7 +43,13 @@ export type IconName =
   | "lightbulb"
   | "mail"
   | "supportHeader"
-  | "multiImage";
+  | "multiImage"
+  | "tabMultiImage"
+  | "tabCmsImages"
+  | "tabBlogStaging"
+  | "edit"
+  | "magnifyingGlass"
+  | "collection";
 
 // SVG markup lives inline here (not imported from an assets folder) so
 // adding a new icon is a one-file edit - see the paste.txt example this
@@ -601,6 +607,94 @@ const icons: Record<IconName, (props: SVGProps<SVGSVGElement>) => ReactElement> 
         d="M4.5752 2.79515C5.47691 2.2942 6.68875 2 8 2C9.31125 2 10.5231 2.2942 11.4248 2.79515C12.3096 3.2867 13 4.04561 13 5V11C13 11.9544 12.3096 12.7133 11.4248 13.2048C10.5231 13.7058 9.31125 14 8 14C6.68875 14 5.47691 13.7058 4.5752 13.2048C3.69042 12.7133 3 11.9544 3 11V5C3 4.04561 3.69042 3.2867 4.5752 2.79515ZM4 9.82287V11C4 11.4263 4.31694 11.9174 5.06084 12.3307C5.7878 12.7346 6.82597 13 8 13C9.17403 13 10.2122 12.7346 10.9392 12.3307C11.6831 11.9174 12 11.4263 12 11V9.82287C11.8227 9.96383 11.6289 10.0915 11.4248 10.2048C10.5231 10.7058 9.31125 11 8 11C6.68875 11 5.47691 10.7058 4.5752 10.2048C4.37109 10.0915 4.17733 9.96383 4 9.82287ZM12 8C12 8.42632 11.6831 8.91741 10.9392 9.33069C10.2122 9.73456 9.17403 10 8 10C6.82597 10 5.7878 9.73456 5.06084 9.33069C4.31694 8.91741 4 8.42632 4 8V6.82287C4.17733 6.96383 4.37109 7.09145 4.5752 7.20485C5.47691 7.7058 6.68875 8 8 8C9.31125 8 10.5231 7.7058 11.4248 7.20485C11.6289 7.09145 11.8227 6.96383 12 6.82287V8ZM10.9392 3.66931C11.6831 4.08259 12 4.57368 12 5C12 5.42632 11.6831 5.91741 10.9392 6.33069C10.2122 6.73456 9.17403 7 8 7C6.82597 7 5.7878 6.73456 5.06084 6.33069C4.31694 5.91741 4 5.42632 4 5C4 4.57368 4.31694 4.08259 5.06084 3.66931C5.7878 3.26544 6.82597 3 8 3C9.17403 3 10.2122 3.26544 10.9392 3.66931Z"
         fill="currentColor"
       />
+    </svg>
+  ),
+  // Three new nav-tab icons for WebflowSolutionsScreen's own bottom nav
+  // (see DashboardNav.tsx's new generic tabs prop) - real Figma paste,
+  // stroke recolored to currentColor (was a hardcoded #E23F8C/#5C647A) so
+  // DashboardNav's own active/inactive text-color classes drive them, the
+  // same convention every other dynamically-colored icon here already
+  // follows.
+  tabMultiImage: (props) => (
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+      <path
+        d="M4.16667 9.16667C3.72464 9.16667 3.30072 9.34226 2.98816 9.65482C2.67559 9.96738 2.5 10.3913 2.5 10.8333V15.8333C2.5 16.2754 2.67559 16.6993 2.98816 17.0118C3.30072 17.3244 3.72464 17.5 4.16667 17.5H15.8333C16.2754 17.5 16.6993 17.3244 17.0118 17.0118C17.3244 16.6993 17.5 16.2754 17.5 15.8333V10.8333C17.5 10.3913 17.3244 9.96738 17.0118 9.65482C16.6993 9.34226 16.2754 9.16667 15.8333 9.16667H4.16667ZM15.8333 9.16667V7.5C15.8333 7.05797 15.6577 6.63405 15.3452 6.32149C15.0326 6.00893 14.6087 5.83333 14.1667 5.83333M4.16667 9.16667V7.5C4.16667 7.05797 4.34226 6.63405 4.65482 6.32149C4.96738 6.00893 5.39131 5.83333 5.83333 5.83333M14.1667 5.83333V4.16667C14.1667 3.72464 13.9911 3.30072 13.6785 2.98816C13.366 2.67559 12.942 2.5 12.5 2.5H7.5C7.05797 2.5 6.63405 2.67559 6.32149 2.98816C6.00893 3.30072 5.83333 3.72464 5.83333 4.16667V5.83333M14.1667 5.83333H5.83333"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  ),
+  tabCmsImages: (props) => (
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+      <path
+        d="M3.33203 13.332L7.1537 9.51036C7.46624 9.19791 7.89009 9.02239 8.33203 9.02239C8.77397 9.02239 9.19782 9.19791 9.51036 9.51036L13.332 13.332M11.6654 11.6654L12.987 10.3437C13.2996 10.0312 13.7234 9.85572 14.1654 9.85572C14.6073 9.85572 15.0312 10.0312 15.3437 10.3437L16.6654 11.6654M11.6654 6.66536H11.6737M4.9987 16.6654H14.9987C15.4407 16.6654 15.8646 16.4898 16.1772 16.1772C16.4898 15.8646 16.6654 15.4407 16.6654 14.9987V4.9987C16.6654 4.55667 16.4898 4.13275 16.1772 3.82019C15.8646 3.50763 15.4407 3.33203 14.9987 3.33203H4.9987C4.55667 3.33203 4.13275 3.50763 3.82019 3.82019C3.50763 4.13275 3.33203 4.55667 3.33203 4.9987V14.9987C3.33203 15.4407 3.50763 15.8646 3.82019 16.1772C4.13275 16.4898 4.55667 16.6654 4.9987 16.6654Z"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  ),
+  tabBlogStaging: (props) => (
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+      <path
+        d="M5.83333 6.66536H14.1667M5.83333 9.9987H9.16667M10 16.6654L6.66667 13.332H4.16667C3.72464 13.332 3.30072 13.1564 2.98816 12.8439C2.67559 12.5313 2.5 12.1074 2.5 11.6654V4.9987C2.5 4.55667 2.67559 4.13275 2.98816 3.82019C3.30072 3.50763 3.72464 3.33203 4.16667 3.33203H15.8333C16.2754 3.33203 16.6993 3.50763 17.0118 3.82019C17.3244 4.13275 17.5 4.55667 17.5 4.9987V11.6654C17.5 12.1074 17.3244 12.5313 17.0118 12.8439C16.6993 13.1564 16.2754 13.332 15.8333 13.332H13.3333L10 16.6654Z"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  ),
+  // Hand-drawn (no Figma asset provided) - a plain pencil, for the gallery
+  // row menu's second "Customize" action (WebflowSolutionsScreen.tsx).
+  edit: (props) => (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+      <path
+        d="M11.3333 2.00004C11.5083 1.82494 11.7162 1.68605 11.9451 1.59129C12.174 1.49653 12.4193 1.44775 12.6667 1.44775C12.914 1.44775 13.1593 1.49653 13.3882 1.59129C13.6171 1.68605 13.825 1.82494 14 2.00004C14.1751 2.17513 14.314 2.383 14.4087 2.61191C14.5035 2.84083 14.5523 3.08611 14.5523 3.33337C14.5523 3.58064 14.5035 3.82592 14.4087 4.05484C14.314 4.28375 14.1751 4.49161 14 4.66671L4.66667 14L1.33333 14.6667L2 11.3334L11.3333 2.00004Z"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  ),
+  // WebflowSolutionsScreen's "Detect Collection List" button icon
+  // (copy-paste reference) - a real Figma export, distinct geometry from
+  // the "search" icon above (smaller circle, shorter connecting line), not
+  // a duplicate. stroke="currentColor" instead of the pasted asset's own
+  // hardcoded "#D7DAE2" - same recurring fix as every other pasted Figma
+  // icon in this file (see HeaderAppMenu's own icons) - so it inherits
+  // ButtonPrimary's white label color for free instead of always rendering
+  // one fixed gray regardless of context.
+  magnifyingGlass: (props) => (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+      <path
+        d="M14 14L10 10M11.3333 6.66667C11.3333 7.2795 11.2126 7.88634 10.9781 8.45252C10.7436 9.01871 10.3998 9.53316 9.9665 9.9665C9.53316 10.3998 9.01871 10.7436 8.45252 10.9781C7.88634 11.2126 7.2795 11.3333 6.66667 11.3333C6.05383 11.3333 5.447 11.2126 4.88081 10.9781C4.31462 10.7436 3.80018 10.3998 3.36683 9.9665C2.93349 9.53316 2.58975 9.01871 2.35523 8.45252C2.12071 7.88634 2 7.2795 2 6.66667C2 5.42899 2.49167 4.242 3.36683 3.36683C4.242 2.49167 5.42899 2 6.66667 2C7.90434 2 9.09133 2.49167 9.9665 3.36683C10.8417 4.242 11.3333 5.42899 11.3333 6.66667Z"
+        stroke="currentColor"
+        strokeWidth="1.33333"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  ),
+  // A "database/collection" glyph - Webflow's own real Collection List/Item
+  // icon is a stacked-cylinder shape; this reproduces that same silhouette
+  // (a top ellipse + two side walls + one middle band). Extracted from
+  // NavigatorMarkGuide.tsx's own private CollectionGlyph once
+  // CmsImagesScreen.tsx's collection-picker dropdown needed the identical
+  // glyph as a real, currentColor-driven Icon.tsx entry rather than a second
+  // hand-rolled copy - that file now imports this instead of defining its
+  // own. Native art is a 12x12 viewBox; rendered at the same 16x16 box every
+  // other Icon.tsx entry uses so it drops into an existing dropdown row
+  // without a one-off size.
+  collection: (props) => (
+    <svg width="16" height="16" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+      <ellipse cx="6" cy="2.75" rx="4" ry="1.5" stroke="currentColor" strokeWidth="1" />
+      <path
+        d="M2 2.75V9.25C2 10.0784 3.79086 10.75 6 10.75C8.20914 10.75 10 10.0784 10 9.25V2.75"
+        stroke="currentColor"
+        strokeWidth="1"
+      />
+      <path d="M2 6C2 6.82843 3.79086 7.5 6 7.5C8.20914 7.5 10 6.82843 10 6" stroke="currentColor" strokeWidth="1" />
     </svg>
   ),
 };

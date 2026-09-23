@@ -39,11 +39,11 @@ const GRADIENT_BORDER_STYLE = {
 function PresetSearchResultRow({
   preset,
   clickable,
-  onApply,
+  onSelect,
 }: {
   preset: GalleryPresetDisplay;
   clickable: boolean;
-  onApply: (preset: GalleryPresetDisplay) => void;
+  onSelect: (preset: GalleryPresetDisplay) => void;
 }) {
   const [color1, color2, color3] = preset.previewColors;
   // Plain useState (not CSS :hover) - an inline `style` background can't
@@ -88,13 +88,13 @@ function PresetSearchResultRow({
     <div
       role={clickable ? "button" : undefined}
       tabIndex={clickable ? 0 : undefined}
-      onClick={clickable ? () => onApply(preset) : undefined}
+      onClick={clickable ? () => onSelect(preset) : undefined}
       onKeyDown={
         clickable
           ? (event) => {
               if (event.key === "Enter" || event.key === " ") {
                 event.preventDefault();
-                onApply(preset);
+                onSelect(preset);
               }
             }
           : undefined
@@ -102,7 +102,7 @@ function PresetSearchResultRow({
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       onMouseMove={clickable ? handlePointerMove : undefined}
-      className={`relative flex items-center gap-3 rounded-4 border p-3 ${clickable ? "cursor-pointer" : ""} ${
+      className={`relative flex items-center gap-3 rounded-4 border p-2 ${clickable ? "cursor-pointer" : ""} ${
         showGradientBorder ? "border-transparent" : "border-border-border"
       }`}
       style={
@@ -130,7 +130,7 @@ function PresetSearchResultRow({
         />
       )}
       {preset.thumbnailUrl ? (
-        <img src={preset.thumbnailUrl} alt="" className="h-10 w-10 shrink-0 rounded-[4px] object-cover" />
+        <img src={preset.thumbnailUrl} alt="" className="h-10 w-10 shrink-0 rounded-[2px] object-cover" />
       ) : (
         <div
           className="h-10 w-10 shrink-0 rounded-[4px]"
@@ -174,14 +174,14 @@ export function PresetSearchResults({
   query,
   results,
   clickable,
-  onApply,
+  onSelect,
   onDismiss,
   anchorRef,
 }: {
   query: string;
   results: GalleryPresetDisplay[];
   clickable: boolean;
-  onApply: (preset: GalleryPresetDisplay) => void;
+  onSelect: (preset: GalleryPresetDisplay) => void;
   onDismiss: () => void;
   // The search/filter row this panel opens under (PresetsTab.tsx) - measured
   // for its own real bottom edge below, so `top` is exact regardless of that
@@ -240,7 +240,7 @@ export function PresetSearchResults({
         {results.length > 0 ? (
           <div className="flex flex-col gap-2">
             {results.map((preset) => (
-              <PresetSearchResultRow key={preset.id} preset={preset} clickable={clickable} onApply={onApply} />
+              <PresetSearchResultRow key={preset.id} preset={preset} clickable={clickable} onSelect={onSelect} />
             ))}
           </div>
         ) : (

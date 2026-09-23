@@ -14,14 +14,28 @@
 // there's no top/bottom inset - `top-0`, not `top-0.5`) - keep the
 // translate distance (track width 32px - thumb width 16px = 16px =
 // translate-x-4) in sync if either size changes again.
-export function ToggleSwitch({ checked, onChange }: { checked: boolean; onChange: (checked: boolean) => void }) {
+export function ToggleSwitch({
+  checked,
+  onChange,
+  disabled,
+}: {
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  // Added for CmsVisibilityScreen.tsx, whose toggle auto-saves on every
+  // flip (no separate Save button like ManageGalleryImagesScreen.tsx's own
+  // hidden toggle has) - disables the switch itself while that save is in
+  // flight, so a rapid double-click can't fire two overlapping PUTs.
+  // Optional and unused by every existing caller, so nothing else changes.
+  disabled?: boolean;
+}) {
   return (
     <button
       type="button"
       role="switch"
       aria-checked={checked}
+      disabled={disabled}
       onClick={() => onChange(!checked)}
-      className={`relative h-4 w-8 shrink-0 rounded-full transition-colors shadow-[inset_0_0.706px_4.706px_0_rgba(0,0,0,0.15)] ${
+      className={`relative h-4 w-8 shrink-0 rounded-full transition-colors shadow-[inset_0_0.706px_4.706px_0_rgba(0,0,0,0.15)] disabled:opacity-50 ${
         checked ? "bg-gradient-gradient" : "bg-background-white-2"
       }`}
     >

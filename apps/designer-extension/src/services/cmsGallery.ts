@@ -62,6 +62,29 @@ export async function getMultiImageFields(
     .map((field) => ({ slug: field.slug, displayName: field.displayName }));
 }
 
+// CmsImagesScreen.tsx's own step 1 - unlike the multi-image wizard above
+// (which needs a real placed Collection List to discover a collection+its
+// fields via the Designer API with zero backend round trip), "CMS images"
+// has to work with NO Collection List anywhere involved at all ("cualquier
+// parte del proyecto sin necesidad de instalar una collection list", per
+// explicit direction) - there's nothing to select, so this goes through
+// the real Webflow Data API instead (routes/cmsGallery.ts's own
+// `GET /:siteId/collections`, built earlier but originally unused - this
+// is what it was for). Real backend round trip, not instant like the
+// Designer-API calls above.
+export interface CmsSiteCollection {
+  id: string;
+  displayName: string;
+  slug: string;
+}
+
+export async function fetchSiteCollections(siteId: string): Promise<CmsSiteCollection[]> {
+  const { collections } = await apiFetch<{ collections: CmsSiteCollection[] }>(
+    `/api/cms-gallery/${siteId}/collections`,
+  );
+  return collections;
+}
+
 export async function markGallerySlugElement(element: AttributeCapableElement): Promise<void> {
   await element.setAttribute(GALLERY_SLUG_ATTRIBUTE, MARKER_VALUE);
 }
@@ -123,6 +146,13 @@ export interface CmsGalleryConfig extends CmsGallerySettings {
   // Every site collaborator sees every config; this is what drives
   // WebflowSolutionsScreen.tsx's disabled state for one that isn't theirs.
   isOwner: boolean;
+  // Computed server-side (routes/cmsGallery.ts's own countGalleryImages) -
+  // the real total image count across every live item's multi-image field,
+  // summed via a paginated Webflow read. null only when that aggregation
+  // itself failed (a real Webflow API error) - the list itself still
+  // renders, WebflowSolutionsScreen.tsx just shows "-" for that one row's
+  // count rather than blocking the whole list.
+  imageCount: number | null;
 }
 
 // Proves this session's own Designer really is looking at `siteId` right
@@ -222,4 +252,100 @@ export function saveGalleryItemOverride(
     `/api/cms-gallery/${siteId}/gallery-configs/${configId}/items/${encodeURIComponent(itemSlug)}/override`,
     { method: "PUT", body: JSON.stringify(override) },
   );
+}
+
+// "Handle CMS visibility" (WebflowSolutionsScreen.tsx's "Handle CMS
+// visibility" row -> CmsVisibilityScreen.tsx) - lets a customer hide/show a
+// Collection Item on ANY collection placed on the current Designer page,
+// whether or not a Fluxa gallery is even configured for it. Same
+// zero-backend-round-trip discovery pattern as isCollectionList/
+// getCollectionId above: `webflow.getAllElements()` is already page-scoped
+// (same documented, accepted limitation AppliedGradientsMenu's own
+// findAppliedGradients() has - a component only entered via
+// webflow.enterComponent() wouldn't be reached either), and
+// searchAvailableSources() (any DynamoWrapperElement, not just this one's
+// own connected source) is what actually resolves a collectionId to a real,
+// human display name with no backend call.
+export interface CmsCollectionSummary {
+  collectionId: string;
+  displayName: string;
+}
+
+export async function discoverPageCollections(): Promise<CmsCollectionSummary[]> {
+  const elements = await webflow.getAllElements();
+  const collectionLists = elements.filter(isCollectionList);
+  if (collectionLists.length === 0) return [];
+
+  const ids = await Promise.all(collectionLists.map((el) => getCollectionId(el)));
+  const uniqueIds = Array.from(new Set(ids.filter((id): id is string => id !== null)));
+  if (uniqueIds.length === 0) return [];
+
+  // Any one Collection List's own searchAvailableSources() already lists
+  // every collection in the site (not just the ones this element/page
+  // happens to use) - only need to call it once, on whichever element was
+  // found first.
+  const sources = await collectionLists[0].searchAvailableSources();
+  const nameById = new Map(sources.map((source) => [source.collectionId, source.displayName]));
+
+  return uniqueIds.map((collectionId) => ({
+    collectionId,
+    // Falls back to the raw id rather than dropping the collection entirely
+    // - searchAvailableSources() not listing a collectionId that a real,
+    // connected Collection List on the page reports would be unexpected,
+    // but showing *something* beats silently hiding a real collection.
+    displayName: nameById.get(collectionId) ?? collectionId,
+  }));
+}
+
+export interface CmsVisibilityItem {
+  id: string;
+  slug: string;
+  name: string;
+  hidden: boolean;
+}
+
+export interface CmsVisibilityPage {
+  items: CmsVisibilityItem[];
+  pagination: { limit: number; offset: number; total: number };
+}
+
+export function fetchCollectionVisibilityItems(
+  siteId: string,
+  collectionId: string,
+  params: { limit: number; offset: number },
+): Promise<CmsVisibilityPage> {
+  const query = new URLSearchParams({ limit: String(params.limit), offset: String(params.offset) });
+  return apiFetch<CmsVisibilityPage>(
+    `/api/cms-gallery/${siteId}/collections/${collectionId}/items?${query.toString()}`,
+  );
+}
+
+export function saveCollectionItemVisibility(
+  siteId: string,
+  collectionId: string,
+  itemSlug: string,
+  hidden: boolean,
+): Promise<{ hidden: boolean }> {
+  return apiFetch(
+    `/api/cms-gallery/${siteId}/collections/${collectionId}/items/${encodeURIComponent(itemSlug)}/visibility`,
+    { method: "PUT", body: JSON.stringify({ hidden }) },
+  );
+}
+
+// The "Hide all posts?" master switch at the top of CmsVisibilityScreen.tsx -
+// see data-client's db/app-schema.ts's cmsSiteVisibilitySettings comment for
+// the override semantics (it forces every post hidden without touching any
+// individual post's own stored state).
+export function fetchCmsVisibilitySettings(siteId: string): Promise<{ hideAllPosts: boolean }> {
+  return apiFetch(`/api/cms-gallery/${siteId}/visibility-settings`);
+}
+
+export function saveCmsVisibilitySettings(
+  siteId: string,
+  hideAllPosts: boolean,
+): Promise<{ hideAllPosts: boolean }> {
+  return apiFetch(`/api/cms-gallery/${siteId}/visibility-settings`, {
+    method: "PUT",
+    body: JSON.stringify({ hideAllPosts }),
+  });
 }

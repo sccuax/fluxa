@@ -5,7 +5,13 @@ import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import type { AppEnv } from "../types";
 import { createDb } from "../db/client";
-import { installations, cmsGalleryConfigs, cmsGalleryItemOverrides } from "../db/schema";
+import {
+  installations,
+  cmsGalleryConfigs,
+  cmsGalleryItemOverrides,
+  cmsItemVisibility,
+  cmsSiteVisibilitySettings,
+} from "../db/schema";
 import { onValidationError } from "../lib/validation";
 import { getLiveCollectionItemBySlug } from "../lib/webflowApi";
 
@@ -84,7 +90,44 @@ publicCmsGalleryRoutes.get(
         )
         .limit(1);
 
-      const hidden = override?.hidden ?? false;
+      // "Handle CMS visibility" (WebflowSolutionsScreen.tsx's own
+      // CmsVisibilityScreen) writes a SEPARATE, gallery-independent hidden
+      // flag for the same (site, collection, item) - db/app-schema.ts's own
+      // cmsItemVisibility comment explains why it isn't just a second write
+      // into cmsGalleryItemOverrides. Checking it here too means hiding a
+      // post from that screen also hides it from an already-configured
+      // gallery for this same collection, rather than the two hide toggles
+      // silently disagreeing with each other. Real, known limitation this
+      // does NOT cover: a collection with no gallery/embed installed at all
+      // has no published-site script reading this route in the first place,
+      // so hiding a post there has no live effect yet - only visible in the
+      // "Handle CMS visibility" panel itself until that collection gets a
+      // real embed of its own.
+      const [generalOverride] = await db
+        .select({ hidden: cmsItemVisibility.hidden })
+        .from(cmsItemVisibility)
+        .where(
+          and(
+            eq(cmsItemVisibility.siteId, config.siteId),
+            eq(cmsItemVisibility.collectionId, config.collectionId),
+            eq(cmsItemVisibility.itemSlug, slug),
+          ),
+        )
+        .limit(1);
+
+      // The "Hide all posts?" master switch (CmsVisibilityScreen.tsx) -
+      // db/app-schema.ts's cmsSiteVisibilitySettings comment has the full
+      // override semantics. A third, independent OR term alongside the two
+      // above - it deliberately doesn't change or clear either of them, it
+      // just forces `hidden` true while it's on.
+      const [siteSettings] = await db
+        .select({ hideAllPosts: cmsSiteVisibilitySettings.hideAllPosts })
+        .from(cmsSiteVisibilitySettings)
+        .where(eq(cmsSiteVisibilitySettings.siteId, config.siteId))
+        .limit(1);
+
+      const hidden =
+        (override?.hidden ?? false) || (generalOverride?.hidden ?? false) || (siteSettings?.hideAllPosts ?? false);
       const rawImages = hidden ? [] : item.fieldData[config.fieldSlug];
       const hiddenImageIds = new Set(override?.hiddenImageIds ?? []);
       const images = (Array.isArray(rawImages) ? rawImages.map(toGalleryImage) : [])

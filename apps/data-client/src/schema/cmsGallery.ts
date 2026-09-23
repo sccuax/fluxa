@@ -41,3 +41,19 @@ export const setCmsGalleryItemOverrideSchema = z.object({
 export const verifySiteSchema = z.object({
   idToken: z.string().min(1),
 });
+
+// "Handle CMS visibility" (routes/cmsGallery.ts's own
+// /:siteId/collections/:collectionId/items/:itemSlug/visibility) - a single
+// boolean, no `hiddenImageIds` sibling like setCmsGalleryItemOverrideSchema
+// has, since this feature only ever hides/shows a whole post, never
+// individual images within one.
+export const setCmsItemVisibilitySchema = z.object({
+  hidden: z.boolean(),
+});
+
+// The "Hide all posts?" master switch (routes/cmsGallery.ts's own
+// /:siteId/visibility-settings) - see db/app-schema.ts's
+// cmsSiteVisibilitySettings comment for the full override semantics.
+export const setCmsSiteVisibilitySettingsSchema = z.object({
+  hideAllPosts: z.boolean(),
+});

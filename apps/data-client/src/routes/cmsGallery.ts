@@ -5,12 +5,21 @@ import { z } from "zod";
 import type { AppEnv } from "../types";
 import type { Database } from "../db/client";
 import { createDb } from "../db/client";
-import { installations, siteVerifications, cmsGalleryConfigs, cmsGalleryItemOverrides } from "../db/schema";
+import {
+  installations,
+  siteVerifications,
+  cmsGalleryConfigs,
+  cmsGalleryItemOverrides,
+  cmsItemVisibility,
+  cmsSiteVisibilitySettings,
+} from "../db/schema";
 import {
   createCmsGalleryConfigSchema,
   updateCmsGalleryConfigSettingsSchema,
   cmsGallerySettingsSchema,
   setCmsGalleryItemOverrideSchema,
+  setCmsItemVisibilitySchema,
+  setCmsSiteVisibilitySettingsSchema,
   verifySiteSchema,
 } from "../schema";
 import { requireAuth } from "../middleware/requireAuth";
@@ -37,11 +46,11 @@ export const cmsGalleryRoutes = new Hono<AppEnv>();
 
 cmsGalleryRoutes.use(requireAuth);
 
-const siteIdParamSchema = z.object({
+export const siteIdParamSchema = z.object({
   siteId: z.string().min(1).max(255),
 });
 
-const collectionIdParamSchema = siteIdParamSchema.extend({
+export const collectionIdParamSchema = siteIdParamSchema.extend({
   collectionId: z.string().min(1).max(255),
 });
 
@@ -55,7 +64,7 @@ const collectionIdParamSchema = siteIdParamSchema.extend({
 // against Webflow itself on every call (that round trip - observed
 // ~400-700ms - is only worth paying once per Designer session, not once per
 // click).
-type VerifiedInstallation =
+export type VerifiedInstallation =
   | { status: "ok"; accessToken: string }
   // Genuinely never installed at all - distinct from "not_verified" so the
   // Designer Extension can tell "there's nothing here" apart from "you just
@@ -64,7 +73,7 @@ type VerifiedInstallation =
   | { status: "not_installed" }
   | { status: "not_verified" };
 
-async function getVerifiedInstallation(
+export async function getVerifiedInstallation(
   db: Database,
   siteId: string,
   userId: string,
@@ -95,7 +104,7 @@ async function getVerifiedInstallation(
 // Small shared responder for the 8 call sites below - every one of them
 // needs the exact same "translate a non-ok VerifiedInstallation into the
 // right error response" branch, only the success path differs per route.
-function verifiedInstallationError(access: Exclude<VerifiedInstallation, { status: "ok" }>) {
+export function verifiedInstallationError(access: Exclude<VerifiedInstallation, { status: "ok" }>) {
   if (access.status === "not_installed") {
     return {
       error: "forbidden" as const,
@@ -108,6 +117,47 @@ function verifiedInstallationError(access: Exclude<VerifiedInstallation, { statu
   };
 }
 
+// Sums the multi-image field's real image count across every LIVE item in
+// the config's own collection - powers the "Your galleries" list's own
+// per-gallery image total (WebflowSolutionsScreen.tsx). Paginates
+// listLiveCollectionItems at Webflow's own 100-per-page cap rather than one
+// unbounded request; MAX_PAGES bounds worst-case latency/rate-limit
+// exposure for a pathologically large collection (2000 items is far beyond
+// any real "blog"-shaped use case for this feature) rather than looping
+// until Webflow's own `pagination.total` is exhausted no matter how large.
+const IMAGE_COUNT_PAGE_SIZE = 100;
+const IMAGE_COUNT_MAX_PAGES = 20;
+
+async function countGalleryImages(
+  accessToken: string,
+  collectionId: string,
+  fieldSlug: string,
+): Promise<number | null> {
+  try {
+    let total = 0;
+    for (let page = 0; page < IMAGE_COUNT_MAX_PAGES; page++) {
+      const { items, pagination } = await listLiveCollectionItems({
+        accessToken,
+        collectionId,
+        limit: IMAGE_COUNT_PAGE_SIZE,
+        offset: page * IMAGE_COUNT_PAGE_SIZE,
+      });
+      for (const item of items) {
+        const rawImages = item.fieldData[fieldSlug];
+        if (Array.isArray(rawImages)) total += rawImages.length;
+      }
+      const fetched = (page + 1) * IMAGE_COUNT_PAGE_SIZE;
+      if (fetched >= pagination.total || items.length === 0) break;
+    }
+    return total;
+  } catch (err) {
+    // Never fail the whole gallery list over one config's count - null
+    // renders as "-" client-side rather than blocking the list.
+    console.error("countGalleryImages failed", err);
+    return null;
+  }
+}
+
 // A gallery config's own creator (createdByUserId) is the only one who can
 // edit/delete it - every OTHER site collaborator can still see it (a real
 // team needs to know what's already configured) but the Designer
@@ -116,7 +166,7 @@ function verifiedInstallationError(access: Exclude<VerifiedInstallation, { statu
 // is treated as editable by anyone, same "don't lock out whoever's already
 // managing it" reasoning cmsGalleryConfigs.createdByUserId's own comment
 // gives.
-function isConfigOwner(config: { createdByUserId: string | null }, userId: string): boolean {
+export function isConfigOwner(config: { createdByUserId: string | null }, userId: string): boolean {
   return config.createdByUserId === null || config.createdByUserId === userId;
 }
 
@@ -191,6 +241,60 @@ cmsGalleryRoutes.post(
   },
 );
 
+// The "Hide all posts?" master switch (CmsVisibilityScreen.tsx, above its
+// own search bar) - see db/app-schema.ts's cmsSiteVisibilitySettings
+// comment for the override semantics. No row yet means "off" (the default,
+// same "no row = default" convention this whole feature already uses).
+cmsGalleryRoutes.get(
+  "/:siteId/visibility-settings",
+  zValidator("param", siteIdParamSchema, onValidationError),
+  async (c) => {
+    const { siteId } = c.req.valid("param");
+    const userId = c.get("user")!.id;
+    const db = createDb(c.env.DATABASE_URL);
+
+    const access = await getVerifiedInstallation(db, siteId, userId);
+    if (access.status !== "ok") {
+      return c.json(verifiedInstallationError(access), 403);
+    }
+
+    const [row] = await db
+      .select({ hideAllPosts: cmsSiteVisibilitySettings.hideAllPosts })
+      .from(cmsSiteVisibilitySettings)
+      .where(eq(cmsSiteVisibilitySettings.siteId, siteId))
+      .limit(1);
+
+    return c.json({ hideAllPosts: row?.hideAllPosts ?? false });
+  },
+);
+
+cmsGalleryRoutes.put(
+  "/:siteId/visibility-settings",
+  zValidator("param", siteIdParamSchema, onValidationError),
+  async (c) => {
+    const { siteId } = c.req.valid("param");
+    const userId = c.get("user")!.id;
+    const db = createDb(c.env.DATABASE_URL);
+
+    const access = await getVerifiedInstallation(db, siteId, userId);
+    if (access.status !== "ok") {
+      return c.json(verifiedInstallationError(access), 403);
+    }
+
+    const { hideAllPosts } = setCmsSiteVisibilitySettingsSchema.parse(await c.req.json());
+
+    await db
+      .insert(cmsSiteVisibilitySettings)
+      .values({ siteId, hideAllPosts })
+      .onConflictDoUpdate({
+        target: cmsSiteVisibilitySettings.siteId,
+        set: { hideAllPosts, updatedAt: new Date() },
+      });
+
+    return c.json({ hideAllPosts });
+  },
+);
+
 // Lets the Designer Extension's panel show the customer a dropdown of their
 // site's actual Collections (by name) instead of requiring them to know a
 // raw collectionId, or Fluxa trying to infer "which collection is this
@@ -253,6 +357,127 @@ cmsGalleryRoutes.get(
   },
 );
 
+// Shared by this route and /:siteId/gallery-configs/:id/items below - both
+// are a "Load more" picker over Webflow's own live-item pagination, not a
+// single giant request.
+const listItemsQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(100).default(24),
+  offset: z.coerce.number().int().min(0).default(0),
+});
+
+// Backs "Handle CMS visibility" (WebflowSolutionsScreen.tsx's own
+// CmsVisibilityScreen) - a plain per-collection item list (name + hidden
+// flag only, no images) for a collection the Designer discovered on the
+// current page, whether or not a gallery is configured for it at all. Same
+// live-item + limit/offset-pagination shape as
+// /:siteId/gallery-configs/:id/items below (`listLiveCollectionItems`), just
+// keyed directly by `collectionId` rather than needing a config row to
+// resolve one from.
+cmsGalleryRoutes.get(
+  "/:siteId/collections/:collectionId/items",
+  zValidator("param", collectionIdParamSchema, onValidationError),
+  zValidator("query", listItemsQuerySchema, onValidationError),
+  async (c) => {
+    const { siteId, collectionId } = c.req.valid("param");
+    const { limit, offset } = c.req.valid("query");
+    const userId = c.get("user")!.id;
+    const db = createDb(c.env.DATABASE_URL);
+
+    const access = await getVerifiedInstallation(db, siteId, userId);
+    if (access.status !== "ok") {
+      return c.json(verifiedInstallationError(access), 403);
+    }
+
+    try {
+      const { items, pagination } = await listLiveCollectionItems({
+        accessToken: access.accessToken,
+        collectionId,
+        limit,
+        offset,
+      });
+
+      const pageItems = items.map((item) => {
+        const slug = typeof item.fieldData.slug === "string" ? item.fieldData.slug : "";
+        const name = typeof item.fieldData.name === "string" ? item.fieldData.name : slug;
+        return { id: item.id, slug, name };
+      });
+
+      const slugs = pageItems.map((item) => item.slug).filter((slug) => slug.length > 0);
+      const overrides = slugs.length
+        ? await db
+            .select()
+            .from(cmsItemVisibility)
+            .where(
+              and(
+                eq(cmsItemVisibility.siteId, siteId),
+                eq(cmsItemVisibility.collectionId, collectionId),
+                inArray(cmsItemVisibility.itemSlug, slugs),
+              ),
+            )
+        : [];
+      const hiddenBySlug = new Map(overrides.map((row) => [row.itemSlug, row.hidden]));
+
+      const itemsWithVisibility = pageItems.map((item) => ({
+        ...item,
+        hidden: hiddenBySlug.get(item.slug) ?? false,
+      }));
+
+      return c.json({ items: itemsWithVisibility, pagination });
+    } catch (err) {
+      console.error("GET /:siteId/collections/:collectionId/items failed", err);
+      return c.json({ error: "webflow_api_error" }, 502);
+    }
+  },
+);
+
+// Deletes the row instead of writing a no-op "visible" one when unhiding -
+// same "no row = default" convention cmsGalleryItemOverrides' own PUT uses,
+// so the lookup above (and publicCmsGallery.ts's own) stays a plain
+// optional-row check with nothing stale left behind.
+cmsGalleryRoutes.put(
+  "/:siteId/collections/:collectionId/items/:itemSlug/visibility",
+  zValidator(
+    "param",
+    collectionIdParamSchema.extend({ itemSlug: z.string().min(1) }),
+    onValidationError,
+  ),
+  async (c) => {
+    const { siteId, collectionId, itemSlug } = c.req.valid("param");
+    const userId = c.get("user")!.id;
+    const db = createDb(c.env.DATABASE_URL);
+
+    const access = await getVerifiedInstallation(db, siteId, userId);
+    if (access.status !== "ok") {
+      return c.json(verifiedInstallationError(access), 403);
+    }
+
+    const { hidden } = setCmsItemVisibilitySchema.parse(await c.req.json());
+
+    if (!hidden) {
+      await db
+        .delete(cmsItemVisibility)
+        .where(
+          and(
+            eq(cmsItemVisibility.siteId, siteId),
+            eq(cmsItemVisibility.collectionId, collectionId),
+            eq(cmsItemVisibility.itemSlug, itemSlug),
+          ),
+        );
+      return c.json({ siteId, collectionId, itemSlug, hidden: false });
+    }
+
+    await db
+      .insert(cmsItemVisibility)
+      .values({ siteId, collectionId, itemSlug, hidden: true })
+      .onConflictDoUpdate({
+        target: [cmsItemVisibility.siteId, cmsItemVisibility.collectionId, cmsItemVisibility.itemSlug],
+        set: { hidden: true, updatedAt: new Date() },
+      });
+
+    return c.json({ siteId, collectionId, itemSlug, hidden: true });
+  },
+);
+
 cmsGalleryRoutes.get(
   "/:siteId/gallery-configs",
   zValidator("param", siteIdParamSchema, onValidationError),
@@ -271,11 +496,20 @@ cmsGalleryRoutes.get(
       .from(cmsGalleryConfigs)
       .where(eq(cmsGalleryConfigs.siteId, siteId));
 
+    // One real Webflow round trip (paginated) per config, in parallel -
+    // acceptable for the small number of galleries a single site actually
+    // has (see countGalleryImages's own comment for the pagination bound).
+    const imageCounts = await Promise.all(
+      results.map((row) => countGalleryImages(access.accessToken, row.collectionId, row.fieldSlug)),
+    );
+
     // Every site collaborator sees every config (a real team needs to know
     // what's already there) - `isOwner` is what the Designer Extension uses
     // to show Customize/Images/Remove as disabled for a config this caller
     // didn't create (see isConfigOwner's own comment).
-    return c.json(results.map((row) => ({ ...row, isOwner: isConfigOwner(row, userId) })));
+    return c.json(
+      results.map((row, i) => ({ ...row, isOwner: isConfigOwner(row, userId), imageCount: imageCounts[i] })),
+    );
   },
 );
 
@@ -392,11 +626,6 @@ function toAdminGalleryImage(raw: unknown): AdminGalleryImage | null {
     fileId: typeof fileId === "string" ? fileId : null,
   };
 }
-
-const listItemsQuerySchema = z.object({
-  limit: z.coerce.number().int().min(1).max(100).default(24),
-  offset: z.coerce.number().int().min(0).default(0),
-});
 
 // Powers the "Manage images" picker - one page of the config's real
 // Collection items (live, same data source publicCmsGallery.ts itself

@@ -4,6 +4,7 @@ import { PanelHeader } from "./PanelHeader";
 import { PresetSearchBar } from "./PresetSearchBar";
 import { PresetSearchResults } from "./PresetSearchResults";
 import { PresetCard } from "./PresetCard";
+import { PresetPreviewModal } from "./PresetPreviewModal";
 import { PresetFilterModal, DEFAULT_PRESET_FILTERS, hasActivePresetFilters, type PresetFilters } from "./PresetFilterModal";
 import { fetchPublishedPresets, PRESET_COLOR_TAGS, type GalleryPresetDisplay } from "../types/presetGallery";
 import { useSelectedElement } from "../hooks/useSelectedElement";
@@ -64,11 +65,20 @@ export function PresetsTab() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
 
+  // The preset currently shown in PresetPreviewModal, or null when it's
+  // closed - per explicit direction/reference screenshot, selecting a
+  // preset now opens a preview (its own real live shader + an "Apply
+  // gradient" button) instead of applying it immediately on click.
+  const [previewPreset, setPreviewPreset] = useState<GalleryPresetDisplay | null>(null);
+
   // Every preset kind is clickable here now (see PresetCard.tsx's own
   // comment) - this hook is the same one EditorTab.tsx already polls for
   // its own "Apply gradient" button's gating.
   const { element } = useSelectedElement();
 
+  // The real apply - now only ever called from inside PresetPreviewModal's
+  // own "Apply gradient" button, not directly from a card/search-result
+  // click (see PresetCard.tsx's own comment on the onSelect rename).
   async function handleApply(preset: GalleryPresetDisplay) {
     if (!canApplyPreset(element)) {
       getWebflowDesigner().notify({
@@ -189,7 +199,7 @@ export function PresetsTab() {
             query={query.trim()}
             results={presets}
             clickable={canApplyPreset(element)}
-            onApply={handleApply}
+            onSelect={setPreviewPreset}
             onDismiss={() => setResultsDismissed(true)}
             anchorRef={searchRowRef}
           />
@@ -257,7 +267,7 @@ export function PresetsTab() {
         ) : presets.length > 0 ? (
           <div className="grid grid-cols-2 gap-3">
             {presets.map((preset) => (
-              <PresetCard key={preset.id} preset={preset} canApply={canApplyPreset(element)} onApply={handleApply} />
+              <PresetCard key={preset.id} preset={preset} canApply={canApplyPreset(element)} onSelect={setPreviewPreset} />
             ))}
           </div>
         ) : (
@@ -276,6 +286,14 @@ export function PresetsTab() {
             setFilters(nextFilters);
             setFilterModalOpen(false);
           }}
+        />
+      )}
+
+      {previewPreset && (
+        <PresetPreviewModal
+          preset={previewPreset}
+          onClose={() => setPreviewPreset(null)}
+          onApply={handleApply}
         />
       )}
     </div>

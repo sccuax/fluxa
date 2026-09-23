@@ -47,6 +47,19 @@ const SCOPES = [
   "custom_code:read",
   "custom_code:write",
   "cms:read",
+  // Added for "Blog to staging" (routes/blogStaging.ts): cms:write for the
+  // real publish/unpublish-item calls, pages:read/pages:write because
+  // Webflow's own Custom Code API docs list them as required for the
+  // site-wide script registration this feature also needs (confirmed
+  // against developers.webflow.com, not assumed) even though this feature
+  // never touches a Page resource directly. Per this file's own established
+  // rule: the Webflow App dashboard's own scope list must be updated to
+  // match BEFORE any install attempt works, and any installation
+  // authorized before this change needs a fresh re-authorize to pick these
+  // up - existing installations do NOT get these retroactively.
+  "cms:write",
+  "pages:read",
+  "pages:write",
   "authorized_user:read",
 ];
 

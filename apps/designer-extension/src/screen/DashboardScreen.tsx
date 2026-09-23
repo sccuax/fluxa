@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useExtensionSize } from "../hooks/useExtensionSize";
 import { DashboardHeader } from "../components/DashboardHeader";
-import { DashboardNav, type DashboardTab } from "../components/DashboardNav";
+import { DashboardNav, DASHBOARD_TABS, type DashboardTab } from "../components/DashboardNav";
 import { EditorTab } from "../components/EditorTab";
 import { PresetsTab } from "../components/PresetsTab";
 import { AccountTab } from "./AccountTab";
@@ -20,7 +20,13 @@ const DASHBOARD_SIZE = { width: 320, height: 540 };
 // two rows of the Account tab (profile card, plan/usage card - more rows to
 // come, see that file's own comment). The Presets tab is just a "Locked"
 // coming-soon placeholder (PresetsTab.tsx) - not real content yet.
-export function DashboardScreen({ onSignOut }: { onSignOut: () => void }) {
+export function DashboardScreen({
+  onSignOut,
+  onSwitchToWebflowSolutions,
+}: {
+  onSignOut: () => void;
+  onSwitchToWebflowSolutions: () => void;
+}) {
   useExtensionSize(DASHBOARD_SIZE);
 
   // Owned here (not by DashboardNav) since header and center content will
@@ -36,7 +42,11 @@ export function DashboardScreen({ onSignOut }: { onSignOut: () => void }) {
 
   return (
     <div className="flex h-screen w-full flex-col bg-white">
-      <DashboardHeader />
+      <DashboardHeader
+        activeService="shaders"
+        onSelectShaders={() => {}}
+        onSelectWebflowSolutions={onSwitchToWebflowSolutions}
+      />
       {/* flex-1 (not h-full - see CLAUDE.md's SignIn/SignUp layout gotchas
           for the same class of bug) so this takes exactly the remaining
           space between header and nav. overflow-hidden (not overflow-y-auto
@@ -54,6 +64,7 @@ export function DashboardScreen({ onSignOut }: { onSignOut: () => void }) {
         {activeTab === "account" && <AccountTab onSignOut={onSignOut} />}
       </div>
       <DashboardNav
+        tabs={DASHBOARD_TABS}
         activeTab={activeTab}
         onTabChange={(tab) => {
           setActiveTab(tab);

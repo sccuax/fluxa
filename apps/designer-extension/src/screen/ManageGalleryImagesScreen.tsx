@@ -4,6 +4,8 @@ import { ButtonPrimary } from "../components/ButtonPrimary";
 import { ButtonSecondary } from "../components/ButtonSecondary";
 import { Icon } from "../components/Icon";
 import { ToggleSwitch } from "../components/ToggleSwitch";
+import { ExpandableItemRow } from "../components/ExpandableItemRow";
+import { SearchInput } from "../components/SearchInput";
 import { useExtensionSize } from "../hooks/useExtensionSize";
 import {
   fetchGalleryItems,
@@ -22,8 +24,9 @@ const PAGE_SIZE = 24;
 
 // One item's locally-edited override state, diffed against the server's
 // own last-known value (draftFrom(item)) to know whether there's anything
-// unsaved - drives the per-item Save button's disabled state, since saving
-// happens per item, not as one bulk submit for the whole picker.
+// unsaved - drives the single bottom "Save changes" button's disabled
+// state (see handleSaveAll below - saving is one bulk submit for every
+// dirty item at once now, not a Save button per item).
 interface ItemDraft {
   hidden: boolean;
   hiddenImageIds: Set<string>;
@@ -51,6 +54,16 @@ function draftsEqual(a: ItemDraft, b: ItemDraft): boolean {
 // pages already loaded (client-side substring match) - Webflow's own List
 // Items API only supports an exact-name filter, not substring, so a real
 // search-as-you-type isn't possible without loading further pages first.
+//
+// One bottom "Save changes" button commits every dirty item at once
+// (handleSaveAll) - per explicit direction/reference screenshot
+// (copy-paste/Screenshot 2026-09-21 183903.png), replacing an earlier
+// per-item Save button inside each row's own expanded panel. A single
+// fixed footer (same pattern as WebflowSolutionsScreen.tsx's own wizard
+// footer / EditorTab.tsx's "Apply gradient") is both more scalable (works
+// the same whether one or fifty items are dirty at once) and reads as one
+// deliberate save action rather than N small ones scattered through a
+// scrolling list.
 export function ManageGalleryImagesScreen({ siteId, config, onBack }: {
   siteId: string;
   config: CmsGalleryConfig;
@@ -66,7 +79,7 @@ export function ManageGalleryImagesScreen({ siteId, config, onBack }: {
   const [total, setTotal] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [savingSlug, setSavingSlug] = useState<string | null>(null);
+  const [savingAll, setSavingAll] = useState(false);
 
   async function loadPage(nextOffset: number) {
     setLoading(true);
@@ -110,37 +123,61 @@ export function ManageGalleryImagesScreen({ siteId, config, onBack }: {
     });
   }
 
-  async function handleSave(item: GalleryPickerItem) {
+  // Saves one item's draft and folds the result back into `items` on
+  // success - returns whether it succeeded rather than throwing, so
+  // handleSaveAll below can run every dirty item in parallel and still
+  // report one clean aggregate outcome instead of an unhandled rejection
+  // from whichever one happens to fail first.
+  async function saveOne(item: GalleryPickerItem): Promise<boolean> {
     const draft = drafts[item.slug];
-    if (!draft) return;
-    setSavingSlug(item.slug);
-    setError(null);
+    if (!draft) return true;
     try {
       const hiddenImageIds = Array.from(draft.hiddenImageIds);
       await saveGalleryItemOverride(siteId, config.id, item.slug, { hidden: draft.hidden, hiddenImageIds });
       setItems((prev) =>
         prev.map((it) => (it.slug === item.slug ? { ...it, hidden: draft.hidden, hiddenImageIds } : it)),
       );
-    } catch (err) {
-      setError(err instanceof ApiRequestError ? err.message : "Failed to save this post.");
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  const dirtyItems = items.filter((item) => !draftsEqual(drafts[item.slug] ?? draftFrom(item), draftFrom(item)));
+
+  async function handleSaveAll() {
+    if (dirtyItems.length === 0) return;
+    setSavingAll(true);
+    setError(null);
+    try {
+      const results = await Promise.all(dirtyItems.map(saveOne));
+      const failedCount = results.filter((ok) => !ok).length;
+      if (failedCount > 0) {
+        setError(
+          `Failed to save ${failedCount} post${failedCount === 1 ? "" : "s"} - check your connection and try again.`,
+        );
+      }
     } finally {
-      setSavingSlug(null);
+      setSavingAll(false);
     }
   }
 
   const hasMore = total !== null && offset < total;
 
   return (
-    <div className="flex h-full min-h-0 w-full flex-col">
+    // h-screen (100vh), not h-full (100%) - same real bug this app has hit
+    // repeatedly elsewhere (ServicesScreen.tsx, DashboardScreen.tsx,
+    // SignInScreen.tsx, ...): h-full needs a definite-height ancestor chain
+    // all the way up, which isn't guaranteed for a screen reached via a
+    // plain early return like this one - it silently collapsed to this
+    // screen's own CONTENT height instead of the real panel height, which
+    // is exactly why the bottom "Save changes" footer below wasn't staying
+    // anchored to the panel's true bottom edge. h-screen reads the iframe's
+    // own viewport height directly regardless of that chain.
+    <div className="flex h-screen min-h-0 w-full flex-col">
       <PanelHeader title="Manage images" onClose={onBack} />
       <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto bg-background-white px-5 pb-6 pt-4">
-        <input
-          type="text"
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-          placeholder="Search loaded posts..."
-          className="w-full rounded-4 border border-border-border bg-background-white px-3 py-2 font-sans text-mobile-text-sm-regular text-text-black outline-none focus:border-accent-500"
-        />
+        <SearchInput value={search} onChange={setSearch} />
 
         {error && <p className="font-sans text-mobile-text-sm-regular text-error-500">{error}</p>}
 
@@ -153,83 +190,77 @@ export function ManageGalleryImagesScreen({ siteId, config, onBack }: {
 
         {filtered.map((item) => {
           const draft = drafts[item.slug] ?? draftFrom(item);
-          const dirty = !draftsEqual(draft, draftFrom(item));
           const expanded = expandedSlug === item.slug;
+          // Flags a post's own row the moment it (or any one of its images)
+          // is hidden - reads off the live draft, not the last-saved
+          // `item`, so toggling inside the expanded panel below updates
+          // this immediately rather than only after a Save.
+          const hasHiddenContent = draft.hidden || draft.hiddenImageIds.size > 0;
           return (
-            <div
+            <ExpandableItemRow
               key={item.id}
-              className="flex flex-col gap-2 rounded-4 border border-border-border bg-background-white-2 px-3 py-2"
-            >
-              <button
-                type="button"
-                onClick={() => setExpandedSlug(expanded ? null : item.slug)}
-                className="flex items-center justify-between gap-2 text-left"
-              >
-                <span className="min-w-0 truncate font-sans text-mobile-text-sm-regular text-text-black">
+              title={
+                <>
                   {item.name}
                   {draft.hidden && " (hidden)"}
+                </>
+              }
+              meta={`${item.images.length} image${item.images.length === 1 ? "" : "s"}`}
+              expanded={expanded}
+              onToggle={() => setExpandedSlug(expanded ? null : item.slug)}
+              // Inverted per explicit direction: a VISIBLE post is the one
+              // that reads as "active" (the soft `#CABEF4`/50 this app uses
+              // for an active/highlighted row elsewhere -
+              // WebflowSolutionsScreen.tsx's own gallery-card menu-open
+              // state), while a hidden one falls back to the plain neutral
+              // background - the opposite of this row's own original
+              // "flag what's hidden" convention.
+              highlighted={!hasHiddenContent}
+            >
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-sans text-mobile-text-sm-regular text-text-black">
+                  Hide this post&apos;s gallery entirely
                 </span>
-                <span className="flex shrink-0 items-center gap-2 font-sans text-mobile-text-sm-regular text-text-secondary">
-                  {item.images.length} image{item.images.length === 1 ? "" : "s"}
-                  <Icon
-                    name="chevronDown"
-                    className={`shrink-0 transition-transform ${expanded ? "rotate-180" : ""}`}
-                  />
-                </span>
-              </button>
+                <ToggleSwitch
+                  checked={draft.hidden}
+                  onChange={(hidden) => updateDraft(item.slug, (d) => ({ ...d, hidden }))}
+                />
+              </div>
 
-              {expanded && (
-                <div className="flex flex-col gap-3 border-t border-border-border pt-2">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="font-sans text-mobile-text-sm-regular text-text-black">
-                      Hide this post&apos;s gallery entirely
-                    </span>
-                    <ToggleSwitch
-                      checked={draft.hidden}
-                      onChange={(hidden) => updateDraft(item.slug, (d) => ({ ...d, hidden }))}
-                    />
-                  </div>
-
-                  {!draft.hidden && item.images.length > 0 && (
-                    <div className="grid grid-cols-3 gap-2">
-                      {item.images.map((image, index) => {
-                        const key = image.fileId ?? `${item.slug}-${index}`;
-                        const isHidden = image.fileId !== null && draft.hiddenImageIds.has(image.fileId);
-                        return (
-                          <button
-                            key={key}
-                            type="button"
-                            disabled={image.fileId === null}
-                            title={image.fileId === null ? "Can't be hidden individually" : undefined}
-                            onClick={() =>
-                              updateDraft(item.slug, (d) => {
-                                if (image.fileId === null) return d;
-                                const next = new Set(d.hiddenImageIds);
-                                if (next.has(image.fileId)) next.delete(image.fileId);
-                                else next.add(image.fileId);
-                                return { ...d, hiddenImageIds: next };
-                              })
-                            }
-                            className="relative aspect-square overflow-hidden rounded-4 border border-border-border disabled:opacity-50"
-                          >
-                            <img src={image.url} alt={image.alt ?? ""} className="h-full w-full object-cover" />
-                            {isHidden && (
-                              <div className="absolute inset-0 flex items-center justify-center bg-black/60">
-                                <Icon name="eyeOff" className="text-text-white" />
-                              </div>
-                            )}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-
-                  <ButtonPrimary onClick={() => handleSave(item)} disabled={!dirty || savingSlug === item.slug}>
-                    {savingSlug === item.slug ? "Saving..." : "Save"}
-                  </ButtonPrimary>
+              {!draft.hidden && item.images.length > 0 && (
+                <div className="grid grid-cols-3 gap-2">
+                  {item.images.map((image, index) => {
+                    const key = image.fileId ?? `${item.slug}-${index}`;
+                    const isHidden = image.fileId !== null && draft.hiddenImageIds.has(image.fileId);
+                    return (
+                      <button
+                        key={key}
+                        type="button"
+                        disabled={image.fileId === null}
+                        title={image.fileId === null ? "Can't be hidden individually" : undefined}
+                        onClick={() =>
+                          updateDraft(item.slug, (d) => {
+                            if (image.fileId === null) return d;
+                            const next = new Set(d.hiddenImageIds);
+                            if (next.has(image.fileId)) next.delete(image.fileId);
+                            else next.add(image.fileId);
+                            return { ...d, hiddenImageIds: next };
+                          })
+                        }
+                        className="relative aspect-square overflow-hidden rounded-4 border border-border-border disabled:opacity-50"
+                      >
+                        <img src={image.url} alt={image.alt ?? ""} className="h-full w-full object-cover" />
+                        {isHidden && (
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/60">
+                            <Icon name="eyeOff" className="text-text-white" />
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
               )}
-            </div>
+            </ExpandableItemRow>
           );
         })}
 
@@ -238,6 +269,20 @@ export function ManageGalleryImagesScreen({ siteId, config, onBack }: {
             {loading ? "Loading..." : "Load more"}
           </ButtonSecondary>
         )}
+      </div>
+
+      {/* One fixed footer for the whole picker, same shrink-0/border-t
+          pattern as WebflowSolutionsScreen.tsx's own wizard footer /
+          EditorTab.tsx's "Apply gradient" - replaces the old per-item Save
+          button that used to live inside each row's own expanded panel
+          (see handleSaveAll's own comment for why). Disabled whenever
+          there's nothing dirty across ANY loaded item, not just the
+          currently search-filtered ones - search is a display filter here,
+          not a save scope. */}
+      <div className="w-full shrink-0 border-t border-border-border bg-background-white px-5 py-3">
+        <ButtonPrimary onClick={handleSaveAll} disabled={dirtyItems.length === 0 || savingAll}>
+          {savingAll ? "Saving..." : "Save changes"}
+        </ButtonPrimary>
       </div>
     </div>
   );

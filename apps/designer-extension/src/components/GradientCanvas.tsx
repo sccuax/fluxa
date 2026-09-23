@@ -1,6 +1,6 @@
 import { useRef } from "react";
 import { ShaderGradientCanvas, ShaderGradient } from "@shadergradient/react";
-import { getEffectiveGradientColors } from "@fluxa/gradient-core";
+import { getEffectiveGradientColors, type GradientConfig } from "@fluxa/gradient-core";
 import { useGradientStore } from "../store/gradientStore";
 import { useAdaptivePixelDensity } from "../hooks/useAdaptivePixelDensity";
 
@@ -17,8 +17,18 @@ import { useAdaptivePixelDensity } from "../hooks/useAdaptivePixelDensity";
 // assumption that doesn't hold here). This component is already only
 // mounted when it should be visible (EditorTab's selection-state swap), so
 // the internal lazy-loading is redundant here anyway.
-export function GradientCanvas({ preserveDrawingBuffer }: { preserveDrawingBuffer?: boolean } = {}) {
-  const config = useGradientStore((state) => state.config);
+// `config` (optional): overrides the live-editing store entirely when
+// passed - added for PresetPreviewModal.tsx, which shows a READ-ONLY preview
+// of a gallery preset's own static config and must never read from (or
+// clobber) EditorTab's own in-progress gradientStore. Every existing caller
+// (EditorTab.tsx, apps/preset-admin) omits this prop and keeps reading the
+// store exactly as before.
+export function GradientCanvas({
+  preserveDrawingBuffer,
+  config: configProp,
+}: { preserveDrawingBuffer?: boolean; config?: GradientConfig } = {}) {
+  const storeConfig = useGradientStore((state) => state.config);
+  const config = configProp ?? storeConfig;
   const containerRef = useRef<HTMLDivElement>(null);
   const effectivePixelDensity = useAdaptivePixelDensity(containerRef, config.pixelDensity);
 

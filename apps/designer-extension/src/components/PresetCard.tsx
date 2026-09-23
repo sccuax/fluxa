@@ -12,24 +12,30 @@ function truncatePresetName(name: string): string {
 // A grid item - clickable for any preset kind with a valid current
 // selection (`canApply`, passed down from PresetsTab.tsx, which owns the
 // actual selected-element polling). All three kinds (`shaderGradient`,
-// `glassLiquid`, `ruidoEvolutivo`) are applicable straight from the gallery
+// `glassLiquid`, `ruidoEvolutivo`) are selectable straight from the gallery
 // - `shaderGradient` was applicable only via EditorTab's own "Apply
 // gradient" button until this was explicitly widened. License (`free`/
 // `pro`) plays no role in clickability - there's no plan/payment gating
-// built yet (see the root CLAUDE.md), so every kind is equally applicable
+// built yet (see the root CLAUDE.md), so every kind is equally selectable
 // regardless of license tier.
 // Prefers `thumbnailUrl` (a real admin-captured screenshot of the live
 // shader, see presetGallery.ts's own comment) when the preset has one;
 // falls back to a `previewColors`-derived linear-gradient approximation
 // for presets nobody's captured a thumbnail for yet.
+//
+// `onSelect` (renamed from `onApply`, per explicit direction/reference
+// screenshot): clicking a card no longer applies the preset directly - it
+// opens PresetPreviewModal (PresetsTab.tsx owns that state), which shows the
+// preset's real live shader with its own "Apply gradient" button. The actual
+// apply call now only ever happens from inside that modal.
 export function PresetCard({
   preset,
   canApply,
-  onApply,
+  onSelect,
 }: {
   preset: GalleryPresetDisplay;
   canApply: boolean;
-  onApply: (preset: GalleryPresetDisplay) => void;
+  onSelect: (preset: GalleryPresetDisplay) => void;
 }) {
   const [color1, color2, color3] = preset.previewColors;
   const clickable = canApply;
@@ -38,13 +44,13 @@ export function PresetCard({
     <div
       role={clickable ? "button" : undefined}
       tabIndex={clickable ? 0 : undefined}
-      onClick={clickable ? () => onApply(preset) : undefined}
+      onClick={clickable ? () => onSelect(preset) : undefined}
       onKeyDown={
         clickable
           ? (event) => {
               if (event.key === "Enter" || event.key === " ") {
                 event.preventDefault();
-                onApply(preset);
+                onSelect(preset);
               }
             }
           : undefined
