@@ -3,25 +3,22 @@ import { FluxaLogoLockup } from "./FluxaLogoLockup";
 import { Icon } from "./Icon";
 
 // Matches the copy-paste reference screenshot (HeaderAppMenu's own "About"
-// row opens this). "Terms of service"/"Privacy policy"/"Website fluxa.app"
-// are real links (the first two reuse LegalFooterLinks.tsx's own URLs, kept
-// as separate literals here rather than a shared import - that component's
-// own two-link row layout doesn't fit this list-row shape). "What's new"/
-// "Licenses"/"Open source libraries" have no real destination yet - plain,
-// non-interactive rows (no Tooltip "locked" treatment - that pattern was
+// row opens this). "Terms of service"/"Privacy policy" are real links (reusing
+// LegalFooterLinks.tsx's own URLs, kept as separate literals here rather than
+// a shared import - that component's own two-link row layout doesn't fit this
+// list-row shape). "What's new"/"Licenses" have no real destination yet -
+// plain, non-interactive rows (no Tooltip "locked" treatment - that pattern was
 // just removed from HeaderAppMenu's own menu per explicit direction, so a
-// brand-new modal shouldn't reintroduce it here).
+// brand-new modal shouldn't reintroduce it here). "Open source libraries" and
+// "Website fluxa.app" rows were removed for Marketplace submission.
 const PRIVACY_POLICY_URL = "https://app.notion.com/p/Fluxa-Privacy-Policy-3c8f1890e7c0819ebbb5e5edcc52dbf4";
 const TERMS_OF_USE_URL = "https://app.notion.com/p/Fluxa-Terms-of-Use-3c8f1890e7c08196bc60d874c78da9a8";
-const WEBSITE_URL = "https://fluxa.app";
 
 const LINKS: Array<{ label: string; href?: string }> = [
   { label: "What's new" },
   { label: "Terms of service", href: TERMS_OF_USE_URL },
   { label: "Privacy policy", href: PRIVACY_POLICY_URL },
   { label: "Licenses" },
-  { label: "Open source libraries" },
-  { label: "Website fluxa.app", href: WEBSITE_URL },
 ];
 
 function AboutLinkRow({ label, href }: { label: string; href?: string }) {

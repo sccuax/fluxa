@@ -32,6 +32,28 @@ async function findExistingRuntimeEmbed(host: PresetTarget): Promise<HtmlEmbedEl
 // final wizard step. No positioning-context/host-style machinery is needed
 // here either way, unlike applyGradient.ts's - this embed has no visual
 // footprint of its own.
+// Brings every existing gallery runtime embed on the CURRENT page up to the
+// current embed code (the 2026-09-23 switch from the whole inline script to
+// a <script src> loader, and any future loader change) without re-running
+// the wizard. Page-scoped, same getAllElements() limitation the rest of this
+// feature has. Returns how many embeds changed - the caller shows the
+// "publish your domains" reminder when that's > 0, since an embed change
+// only reaches a domain on publish.
+export async function upgradeCmsGalleryRuntimeEmbeds(): Promise<number> {
+  const code = buildCmsGalleryEmbedCode();
+  const elements = await getWebflowDesigner().getAllElements();
+  let updated = 0;
+  for (const element of elements) {
+    if (element.type !== "HtmlEmbed") continue;
+    if ((await element.getAttributeValue(RUNTIME_MARKER_ATTRIBUTE)) !== MARKER_VALUE) continue;
+    const settings = await element.getSettings();
+    if (settings.code === code) continue;
+    await element.setSettings({ code });
+    updated += 1;
+  }
+  return updated;
+}
+
 export async function applyCmsGalleryRuntime(host: PresetTarget): Promise<void> {
   const webflowApi = getWebflowDesigner();
   const existing = await findExistingRuntimeEmbed(host);

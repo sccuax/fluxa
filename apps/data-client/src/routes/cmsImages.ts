@@ -8,7 +8,7 @@ import { cmsImageReuses } from "../db/schema";
 import { createCmsImageReuseSchema, updateCmsImageReuseSchema } from "../schema";
 import { requireAuth } from "../middleware/requireAuth";
 import { onValidationError } from "../lib/validation";
-import { getCollectionDetails, listLiveCollectionItems } from "../lib/webflowApi";
+import { getCollectionDetails, listCollectionItems } from "../lib/webflowApi";
 import {
   siteIdParamSchema,
   collectionIdParamSchema,
@@ -69,8 +69,12 @@ function toImageFieldValue(fieldSlug: string, raw: unknown): ImageFieldValue | n
 // thumbnail AND a cover photo, say - each shown as its own thumbnail to
 // pick from). One real Webflow round trip for the collection's own field
 // schema (to know which slugs are actually type "Image"), then the
-// standard paginated live-items call, same limit/offset "Load more" shape
-// as cmsGallery.ts's own item pickers.
+// paginated STAGED items list, same limit/offset "Load more" shape as
+// cmsGallery.ts's own item pickers. Staged, not live (unlike the gallery):
+// this feature has no published-site runtime - it only reads an image's
+// asset to bind it in the Designer - and Webflow's List Live Items 404s
+// outright for a collection/site that was never published (a real reported
+// `webflow_api_error`, 2026-09-23). Archived items are skipped.
 cmsImagesRoutes.get(
   "/:siteId/collections/:collectionId/image-items",
   zValidator("param", collectionIdParamSchema, onValidationError),
@@ -93,14 +97,14 @@ cmsImagesRoutes.get(
         return c.json({ items: [], pagination: { limit, offset, total: 0 } });
       }
 
-      const { items, pagination } = await listLiveCollectionItems({
+      const { items, pagination } = await listCollectionItems({
         accessToken: access.accessToken,
         collectionId,
         limit,
         offset,
       });
 
-      const pageItems = items.map((item) => {
+      const pageItems = items.filter((item) => !item.isArchived).map((item) => {
         const slug = typeof item.fieldData.slug === "string" ? item.fieldData.slug : "";
         const name = typeof item.fieldData.name === "string" ? item.fieldData.name : slug;
         const images = imageFieldSlugs

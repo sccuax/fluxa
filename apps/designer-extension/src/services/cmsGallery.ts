@@ -85,12 +85,128 @@ export async function fetchSiteCollections(siteId: string): Promise<CmsSiteColle
   return collections;
 }
 
+// An element is either the Slug source or a gallery target, never both - a
+// real case: the wizard's old step-5 slip marked the Slug text as the target
+// too, which would make the published script mount the carousel into (and
+// wipe) the very text it reads the slug from. Any target mark is cleared.
 export async function markGallerySlugElement(element: AttributeCapableElement): Promise<void> {
+  if ((await element.getAttributeValue(GALLERY_TARGET_ATTRIBUTE)) !== null) {
+    await element.removeAttribute(GALLERY_TARGET_ATTRIBUTE);
+  }
+  if ((await element.getAttributeValue(GALLERY_CONFIG_ATTRIBUTE)) !== null) {
+    await element.removeAttribute(GALLERY_CONFIG_ATTRIBUTE);
+  }
   await element.setAttribute(GALLERY_SLUG_ATTRIBUTE, MARKER_VALUE);
+}
+
+// Checks, before marking, that the element the customer picked for the Slug
+// step really shows the item's Slug field - a real, reported support case
+// (2026-09-23): an element bound to the Name field got marked instead, and
+// the published gallery rendered nothing at all with no hint why (the
+// runtime script sends the element's text as the slug, and a title never
+// matches one). getSettings() returns CMS bindings with their real
+// `fieldType` (@webflow/designer-extension-typings' BindingValue - 'slug' is
+// its own CmsFieldType). "unknown" covers every case where the binding
+// can't be read at all (no elementSettings capability, an inline
+// "containsBindings" value, a thrown call). Per explicit direction the
+// wizard blocks on EVERY non-"ok" result (step 4 must be genuinely complete
+// before step 5) - so if a correctly bound element is ever rejected, the
+// console.warn below logs the raw getSettings() payload to see what the
+// Designer API actually reported for it.
+export type SlugBindingCheck =
+  | { status: "ok" }
+  | { status: "wrongField"; fieldName: string }
+  | { status: "wrongCollection"; collectionName: string }
+  | { status: "unbound" }
+  | { status: "unknown" };
+
+interface CmsBinding {
+  sourceType: "cms";
+  collectionId: string;
+  collectionName: string;
+  fieldName: string;
+  fieldType: string;
+}
+
+function isCmsBinding(value: unknown): value is CmsBinding {
+  return typeof value === "object" && value !== null && (value as { sourceType?: unknown }).sourceType === "cms";
+}
+
+function isUnsupportedSetting(value: unknown): boolean {
+  return (
+    typeof value === "object" && value !== null && (value as { sourceType?: unknown }).sourceType === "unsupported"
+  );
+}
+
+// The display name of `collectionId`'s Slug field (the field whose reserved
+// slug is "slug"), via any Collection List on the current page bound to that
+// collection - no backend round trip. null when no such list is on the page
+// or the lookup fails; the caller then falls back to Webflow's default name.
+async function findSlugFieldName(collectionId: string): Promise<string | null> {
+  try {
+    const elements = await webflow.getAllElements();
+    for (const element of elements.filter(isCollectionList)) {
+      if ((await getCollectionId(element)) !== collectionId) continue;
+      const fields = await element.searchAvailableFields();
+      return fields.find((field) => field.slug === "slug")?.displayName ?? null;
+    }
+  } catch (error) {
+    console.warn("Fluxa: couldn't read the collection's Slug field name", error);
+  }
+  return null;
+}
+
+export async function checkSlugBinding(
+  element: AnyElement,
+  collectionId: string | null,
+): Promise<SlugBindingCheck> {
+  if (!("elementSettings" in element) || element.elementSettings !== true) {
+    console.warn("Fluxa: slug binding check - element has no elementSettings", element.type);
+    return { status: "unknown" };
+  }
+
+  try {
+    const settings = await element.getSettings();
+    const values: unknown[] = Object.values(settings);
+    const bindings = values.filter(isCmsBinding);
+
+    if (bindings.length === 0) {
+      console.warn("Fluxa: slug binding check found no CMS binding", element.type, JSON.stringify(settings));
+      return values.some(isUnsupportedSetting) ? { status: "unknown" } : { status: "unbound" };
+    }
+
+    // Confirmed in the real Designer (2026-09-23): a text element bound to
+    // the Slug field reports `fieldType: "plainText"`, `fieldName: "Slug"` -
+    // NOT the 'slug' CmsFieldType, so fieldType alone rejects a correct
+    // setup. The Slug field is identified by name instead, read from the
+    // collection's own schema (its field with the reserved slug "slug") so
+    // a renamed Slug field still matches; 'slug' fieldType is kept too in
+    // case Webflow ever reports it that way.
+    const slugFieldName = collectionId ? await findSlugFieldName(collectionId) : null;
+    const slugBinding = bindings.find(
+      (binding) => binding.fieldType === "slug" || binding.fieldName === (slugFieldName ?? "Slug"),
+    );
+    if (slugBinding) {
+      return collectionId && slugBinding.collectionId !== collectionId
+        ? { status: "wrongCollection", collectionName: slugBinding.collectionName }
+        : { status: "ok" };
+    }
+    return { status: "wrongField", fieldName: bindings[0].fieldName };
+  } catch (error) {
+    console.warn("Fluxa: slug binding check threw", error);
+    return { status: "unknown" };
+  }
 }
 
 export async function isGallerySlugElement(element: AttributeCapableElement): Promise<boolean> {
   return (await element.getAttributeValue(GALLERY_SLUG_ATTRIBUTE)) === MARKER_VALUE;
+}
+
+// Clears a Slug mark an earlier (pre-validation) attempt left on an element
+// that turns out not to be bound to the Slug field - otherwise the published
+// script would still pick it up and send its text as the slug.
+export async function unmarkGallerySlugElement(element: AttributeCapableElement): Promise<void> {
+  if (await isGallerySlugElement(element)) await element.removeAttribute(GALLERY_SLUG_ATTRIBUTE);
 }
 
 // The target also carries which gallery config it renders (GALLERY_CONFIG_ATTRIBUTE)

@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { ButtonPrimary } from "../components/ButtonPrimary";
 import { ButtonSecondary } from "../components/ButtonSecondary";
 import { Icon } from "../components/Icon";
@@ -8,13 +8,13 @@ import { SearchInput } from "../components/SearchInput";
 import { UnmaskReveal } from "../components/UnmaskReveal";
 import { WizardStepIndicator } from "../components/WizardStepIndicator";
 import { ToggleSwitch } from "../components/ToggleSwitch";
-import { getWebflowDesigner } from "../services/webflowDesigner";
 import { fetchSiteCollections, type CmsSiteCollection } from "../services/cmsGallery";
 import {
   fetchBlogStagingItems,
   saveItemStaging,
   saveAllItemsStaging,
   saveItemPublishState,
+  fetchBlogStagingScriptStatus,
   type BlogStagingItem,
 } from "../services/blogStaging";
 import { ApiRequestError } from "../services/apiClient";
@@ -57,19 +57,22 @@ export function useBlogStagingFeature(siteId: string | null) {
   const [savingSlug, setSavingSlug] = useState<string | null>(null);
   const [allStagingBusy, setAllStagingBusy] = useState(false);
 
-  // Shows the "publish your site for this to take effect" reminder exactly
-  // once per session, the first time a real staging-only save succeeds -
-  // not persisted (a fresh reminder each time the extension reopens is
-  // fine; the point is just not spamming it on every single toggle click
-  // within one sitting).
-  const scriptNoticeShownRef = useRef(false);
-  function maybeNotifyScriptInstalled() {
-    if (scriptNoticeShownRef.current) return;
-    scriptNoticeShownRef.current = true;
-    getWebflowDesigner().notify({
-      type: "Success",
-      message: "Staging script installed - publish your site in Webflow for it to take effect.",
-    });
+  // In-panel "Remember to publish your domains" message (replaced a one-off
+  // Designer toast, which rendered outside this panel and was easy to miss).
+  // Shown only while the backend says the site's staging script was
+  // installed/updated after its last publish - toggles themselves never
+  // need a publish (the live script reads their state on every page load).
+  // Re-checked on entering the posts step and after every staging save; a
+  // failed check just hides the message rather than surfacing an error.
+  const [publishNeeded, setPublishNeeded] = useState(false);
+  async function refreshScriptStatus() {
+    if (!siteId) return;
+    try {
+      const status = await fetchBlogStagingScriptStatus(siteId);
+      setPublishNeeded(status.publishNeeded);
+    } catch {
+      setPublishNeeded(false);
+    }
   }
 
   async function handleDetectCollections() {
@@ -109,6 +112,7 @@ export function useBlogStagingFeature(siteId: string | null) {
     setItemsOffset(0);
     setItemsTotal(null);
     loadItemsPage(collectionId, 0);
+    refreshScriptStatus();
   }
 
   function changeCollection() {
@@ -128,7 +132,7 @@ export function useBlogStagingFeature(siteId: string | null) {
     try {
       await saveItemStaging(siteId, selectedCollectionId, item.slug, stagingOnly);
       setItems((prev) => prev.map((it) => (it.slug === item.slug ? { ...it, stagingOnly } : it)));
-      if (stagingOnly) maybeNotifyScriptInstalled();
+      refreshScriptStatus();
     } catch (err) {
       setItemsError(err instanceof ApiRequestError ? err.message : "Failed to save this post.");
     } finally {
@@ -142,7 +146,15 @@ export function useBlogStagingFeature(siteId: string | null) {
     setItemsError(null);
     try {
       const result = await saveItemPublishState(siteId, selectedCollectionId, item.id, publish);
-      setItems((prev) => prev.map((it) => (it.slug === item.slug ? { ...it, isDraft: result.isDraft } : it)));
+      // A publish ships the item's current content, so any pending edits
+      // are live now too.
+      setItems((prev) =>
+        prev.map((it) =>
+          it.slug === item.slug
+            ? { ...it, isDraft: result.isDraft, hasUnpublishedChanges: publish ? false : it.hasUnpublishedChanges }
+            : it,
+        ),
+      );
     } catch (err) {
       setItemsError(err instanceof ApiRequestError ? err.message : "Failed to publish this post.");
     } finally {
@@ -158,7 +170,7 @@ export function useBlogStagingFeature(siteId: string | null) {
       const slugs = items.map((item) => item.slug);
       await saveAllItemsStaging(siteId, selectedCollectionId, stagingOnly, slugs);
       setItems((prev) => prev.map((it) => ({ ...it, stagingOnly })));
-      if (stagingOnly) maybeNotifyScriptInstalled();
+      refreshScriptStatus();
     } catch (err) {
       setItemsError(err instanceof ApiRequestError ? err.message : "Failed to save this setting.");
     } finally {
@@ -191,6 +203,7 @@ export function useBlogStagingFeature(siteId: string | null) {
     savingSlug,
     allStagingBusy,
     allStaging,
+    publishNeeded,
     hasMoreItems,
     itemsOffset,
     handleDetectCollections,
@@ -222,6 +235,7 @@ export function BlogToStagingContent({ feature }: { feature: BlogStagingFeature 
     savingSlug,
     allStagingBusy,
     allStaging,
+    publishNeeded,
     handlePickCollection,
     handleToggleStaging,
     handleTogglePublish,
@@ -287,6 +301,12 @@ export function BlogToStagingContent({ feature }: { feature: BlogStagingFeature 
 
       {step === "posts" && (
         <>
+          {publishNeeded && (
+            <p className="rounded-4 border border-accent-500/50 bg-accent-50 px-3 py-2 font-sans text-mobile-text-sm-regular text-accent-500">
+              Remember to publish your domains to see the applied changes.
+            </p>
+          )}
+
           {/* "All posts to staging?" master switch - a real bulk write
               across every currently-loaded item (see the hook's own
               handleToggleAllStaging comment for why this isn't a derived
@@ -330,6 +350,7 @@ export function BlogToStagingContent({ feature }: { feature: BlogStagingFeature 
                   <>
                     {item.name}
                     {item.isDraft && " (draft)"}
+                    {item.hasUnpublishedChanges && " (unpublished changes)"}
                     {item.stagingOnly && " (staging only)"}
                   </>
                 }
@@ -361,6 +382,24 @@ export function BlogToStagingContent({ feature }: { feature: BlogStagingFeature 
                     onChange={(value) => handleTogglePublish(item, value)}
                   />
                 </div>
+                {/* "Publish your draft post" only publishes at the moment
+                    it's switched on - later edits sit unpublished until the
+                    item is published again. This republishes just this item
+                    (same publish-state call as the toggle), no site publish. */}
+                {item.hasUnpublishedChanges && (
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-sans text-mobile-text-sm-regular text-text-black">
+                      This post has changes that aren&apos;t live yet.
+                    </span>
+                    <ButtonSecondary
+                      fullWidth={false}
+                      disabled={savingSlug === item.slug}
+                      onClick={() => handleTogglePublish(item, true)}
+                    >
+                      Publish changes
+                    </ButtonSecondary>
+                  </div>
+                )}
               </ExpandableItemRow>
             );
           })}

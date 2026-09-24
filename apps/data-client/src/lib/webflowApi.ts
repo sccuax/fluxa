@@ -269,6 +269,7 @@ export interface WebflowStagedItem extends WebflowCollectionItem {
   isDraft?: boolean;
   isArchived?: boolean;
   lastPublished?: string | null;
+  lastUpdated?: string | null;
 }
 
 export async function listCollectionItems(params: {
@@ -386,10 +387,63 @@ export async function registerInlineScript(params: {
   return response.json() as Promise<RegisteredScript>;
 }
 
+// Every script version this app has registered on the site - used to
+// recover when a register call fails because that exact version already
+// exists (a previous attempt registered it, then failed before applying).
+export async function listRegisteredScripts(params: {
+  accessToken: string;
+  siteId: string;
+}): Promise<RegisteredScript[]> {
+  const response = await fetch(`${WEBFLOW_API_BASE}/sites/${params.siteId}/registered_scripts`, {
+    headers: { Authorization: `Bearer ${params.accessToken}` },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Webflow list registered scripts failed: ${response.status}`);
+  }
+
+  const body = (await response.json()) as { registeredScripts?: RegisteredScript[] };
+  return body.registeredScripts ?? [];
+}
+
 export interface SiteCustomCodeScript {
   id: string;
   location: "header" | "footer";
   version: string;
+}
+
+// Site publish timestamps - "Blog to staging"'s script-status route compares
+// these against when its Custom Code script was last installed/updated, to
+// know whether the customer still has to publish for it to reach a domain
+// (Webflow only ships registered Custom Code on a real publish). `sites:read`.
+export interface WebflowSitePublishInfo {
+  lastPublished: string | null;
+  customDomains: Array<{ url: string; lastPublished: string | null }>;
+}
+
+export async function getSitePublishInfo(params: {
+  accessToken: string;
+  siteId: string;
+}): Promise<WebflowSitePublishInfo> {
+  const response = await fetch(`${WEBFLOW_API_BASE}/sites/${params.siteId}`, {
+    headers: { Authorization: `Bearer ${params.accessToken}` },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Webflow get site failed: ${response.status}`);
+  }
+
+  const site = (await response.json()) as {
+    lastPublished?: string | null;
+    customDomains?: Array<{ url: string; lastPublished?: string | null }>;
+  };
+  return {
+    lastPublished: site.lastPublished ?? null,
+    customDomains: (site.customDomains ?? []).map((domain) => ({
+      url: domain.url,
+      lastPublished: domain.lastPublished ?? null,
+    })),
+  };
 }
 
 export async function getSiteCustomCode(params: {

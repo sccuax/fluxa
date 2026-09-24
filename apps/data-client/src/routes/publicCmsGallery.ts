@@ -14,6 +14,7 @@ import {
 } from "../db/schema";
 import { onValidationError } from "../lib/validation";
 import { getLiveCollectionItemBySlug } from "../lib/webflowApi";
+import { buildCmsGalleryRuntime } from "../lib/cmsGalleryRuntime";
 
 // Called from an arbitrary PUBLISHED customer site (any domain) by the
 // self-hosted runtime script this feature ships - not from the Designer
@@ -49,6 +50,18 @@ function toGalleryImage(raw: unknown): { fileId: string | null; url: string; alt
   const fileId = (raw as { fileId?: unknown }).fileId;
   return { url, alt: typeof alt === "string" ? alt : null, fileId: typeof fileId === "string" ? fileId : null };
 }
+
+// The gallery's real runtime, loaded by each site's HtmlEmbed via
+// <script src> (lib/cmsGalleryRuntime.ts). One path segment, so it can never
+// collide with the two-segment item route below.
+publicCmsGalleryRoutes.get("/runtime.js", (c) =>
+  c.body(buildCmsGalleryRuntime(c.env.BETTER_AUTH_URL), 200, {
+    "Content-Type": "application/javascript; charset=utf-8",
+    // Short, not immutable: not versioned by name on purpose, so a fix
+    // reaches every published site within minutes with no re-publish.
+    "Cache-Control": "public, max-age=300",
+  }),
+);
 
 publicCmsGalleryRoutes.get(
   "/:configId/:slug",

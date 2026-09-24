@@ -12,6 +12,9 @@ export interface BlogStagingItem {
   slug: string;
   name: string;
   isDraft: boolean;
+  // Published, but edited since - its live version is stale until it's
+  // published again (see data-client routes/blogStaging.ts's own comment).
+  hasUnpublishedChanges: boolean;
   stagingOnly: boolean;
 }
 
@@ -56,6 +59,17 @@ export function saveAllItemsStaging(
     method: "PUT",
     body: JSON.stringify({ stagingOnly, itemSlugs }),
   });
+}
+
+// Whether the site still has to be published for the staging-only script to
+// reach its domains (data-client routes/blogStaging.ts, GET script-status) -
+// drives BlogToStagingScreen.tsx's in-panel "Remember to publish" message.
+// Also upgrades an outdated script server-side for a site already using the
+// feature.
+export function fetchBlogStagingScriptStatus(
+  siteId: string,
+): Promise<{ installed: boolean; publishNeeded: boolean }> {
+  return apiFetch(`/api/blog-staging/${siteId}/script-status`);
 }
 
 // "Publish your draft post." - `itemId` is Webflow's own CMS item id (from

@@ -19,6 +19,10 @@ import {
   getCollectionId,
   getMultiImageFields,
   markGallerySlugElement,
+  checkSlugBinding,
+  isGallerySlugElement,
+  unmarkGallerySlugElement,
+  type SlugBindingCheck,
   markGalleryTargetElement,
   fetchGalleryConfigs,
   createGalleryConfig,
@@ -31,7 +35,7 @@ import {
   type CmsGallerySettings,
 } from "../services/cmsGallery";
 import { canApplyPreset } from "../services/applyGradient";
-import { applyCmsGalleryRuntime } from "../services/applyCmsGalleryEmbed";
+import { applyCmsGalleryRuntime, upgradeCmsGalleryRuntimeEmbeds } from "../services/applyCmsGalleryEmbed";
 import { ApiRequestError } from "../services/apiClient";
 import { linkCurrentInstallation } from "../services/linkInstallation";
 import { ManageGalleryImagesScreen } from "./ManageGalleryImagesScreen";
@@ -268,6 +272,21 @@ const STEP_DESCRIPTIONS: Record<WizardStep, string> = {
   host: "Select any element OUTSIDE the Collection List (e.g. the section wrapping it), then click Install. Webflow doesn't allow the gallery script inside the Collection List itself.",
 };
 
+// Inline wizard error for a step-4 element that isn't confirmed bound to the
+// Slug field (checkSlugBinding, services/cmsGallery.ts).
+function slugBindingErrorMessage(binding: Exclude<SlugBindingCheck, { status: "ok" }>): string {
+  switch (binding.status) {
+    case "wrongField":
+      return `This element shows the "${binding.fieldName}" field, not the item's Slug. In its Settings, bind its text to the Slug field, then mark it again.`;
+    case "wrongCollection":
+      return `This element shows the Slug of the "${binding.collectionName}" collection, not this gallery's. Select the element inside this Collection List.`;
+    case "unbound":
+      return "This element isn't bound to any CMS field. In its Settings, bind its text to the Slug field, then mark it again.";
+    case "unknown":
+      return "We couldn't read this element's CMS binding. Select a text element inside the Collection List whose text is bound to the Slug field.";
+  }
+}
+
 const WEBFLOW_SOLUTIONS_SIZE = { width: 320, height: 620 };
 
 // Visual-only redesign, per explicit direction not to touch any of this
@@ -388,6 +407,9 @@ export function WebflowSolutionsScreen({ onSwitchToShaders }: { onSwitchToShader
   // trigger for it. One ref per row (keyed by config.id) since Dropdown needs
   // a real element ref, not just a boolean.
   const [openMenuConfigId, setOpenMenuConfigId] = useState<string | null>(null);
+  // Set once upgradeCmsGalleryRuntimeEmbeds() actually changed an embed on
+  // this page - the change only reaches a domain on the customer's publish.
+  const [galleryScriptUpdated, setGalleryScriptUpdated] = useState(false);
   const menuButtonRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
   useEffect(() => {
@@ -477,6 +499,15 @@ export function WebflowSolutionsScreen({ onSwitchToShaders }: { onSwitchToShader
       await linkCurrentInstallation(); // never throws - always resolves, see its own comment
       await verifyThisSite(siteId);
       await loadConfigs(siteId);
+      // Moves this page's existing gallery embeds to the current loader
+      // (applyCmsGalleryEmbed.ts) - no wizard re-run needed. Best-effort:
+      // outside a real Designer, or on any Designer API failure, it just
+      // doesn't happen.
+      try {
+        if ((await upgradeCmsGalleryRuntimeEmbeds()) > 0) setGalleryScriptUpdated(true);
+      } catch (error) {
+        console.warn("Fluxa: couldn't update the gallery script embeds", error);
+      }
     })();
   }, [siteId]);
 
@@ -568,6 +599,17 @@ export function WebflowSolutionsScreen({ onSwitchToShaders }: { onSwitchToShader
     setBusy(true);
     setWizardError(null);
     try {
+      // Step 4 only completes once the element is confirmed bound to the
+      // Slug field - every other result stays on this step with the reason
+      // shown inline under the step indicator (not as a Designer toast,
+      // which renders outside this panel and was easy to miss).
+      const binding = await checkSlugBinding(selected, activeConfig?.collectionId ?? null);
+      if (binding.status !== "ok") {
+        await unmarkGallerySlugElement(selected);
+        setWizardError(slugBindingErrorMessage(binding));
+        return;
+      }
+
       await markGallerySlugElement(selected);
       getWebflowDesigner().notify({ type: "Success", message: "Slug element marked." });
       setStep("target");
@@ -586,6 +628,15 @@ export function WebflowSolutionsScreen({ onSwitchToShaders }: { onSwitchToShader
     setBusy(true);
     setWizardError(null);
     try {
+      // Real, reported slip: clicking again right after step 4 (same
+      // selection still active) marked the Slug element itself as the
+      // target and jumped straight to step 6.
+      if (await isGallerySlugElement(selected)) {
+        setWizardError(
+          "This is the element you marked as the Slug. Select the element that should display the gallery instead.",
+        );
+        return;
+      }
       await markGalleryTargetElement(selected, activeConfig.id);
       getWebflowDesigner().notify({ type: "Success", message: "Target element marked." });
       setStep("host");
@@ -711,6 +762,17 @@ export function WebflowSolutionsScreen({ onSwitchToShaders }: { onSwitchToShader
         onSelectWebflowSolutions={() => {}}
       />
       <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto bg-background-white px-5 py-8">
+        {/* The "publish your domains" reminder for an auto-updated gallery
+            embed lives in the Blog to staging tab (per explicit direction),
+            alongside that tab's own publish reminder - skipped while that
+            one is showing, so the same message never appears twice. */}
+        {activeTab === "blogStaging" &&
+          galleryScriptUpdated &&
+          !(blogStaging.step === "posts" && blogStaging.publishNeeded) && (
+            <p className="rounded-4 border border-accent-500/50 bg-accent-50 px-3 py-2 font-sans text-mobile-text-sm-regular text-accent-500">
+              Gallery script updated. Remember to publish your domains to see the applied changes.
+            </p>
+          )}
         {activeTab === "blogStaging" && <BlogToStagingContent feature={blogStaging} />}
         {activeTab === "cmsImages" && <CmsImagesContent feature={cmsImages} />}
         {activeTab === "multiImage" && (

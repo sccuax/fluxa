@@ -5,17 +5,16 @@ import { Dropdown } from "./Dropdown";
 import { AboutModal } from "./AboutModal";
 import { CookiesModal } from "./CookiesModal";
 
-// About/Preferences/Cookies rows for DashboardHeader's "..." menu, rendered
-// inside the generic Dropdown shell (Dropdown.tsx). Preferences still has no
-// destination screen (see CLAUDE.md's Dashboard section) and stays a no-op
-// stub; About opens AboutModal.tsx, Cookies opens CookiesModal.tsx. The Tooltip
-// "Locked. Will be available soon." hint this menu's rows used to carry was
-// removed per explicit direction - scrollable={false} on the Dropdown below
-// is kept regardless (this menu is always exactly 3 rows + the version
-// line, never enough to need Dropdown's own default scroll).
+// About/Cookies rows for DashboardHeader's "..." menu, rendered inside the
+// generic Dropdown shell (Dropdown.tsx). About opens AboutModal.tsx, Cookies
+// opens CookiesModal.tsx. A "Preferences" row used to sit between them as a
+// no-op stub (no destination screen) - removed for Marketplace submission,
+// since a row that does nothing on click reads as broken UI in review; re-add
+// it here once a real Preferences screen exists. scrollable={false} on the
+// Dropdown below: this menu is always 2 rows + the version line, never enough
+// to need Dropdown's own default scroll.
 const MENU_ITEMS: Array<{ label: string; icon: IconName }> = [
   { label: "About", icon: "about" },
-  { label: "Preferences", icon: "preferences" },
   { label: "Cookies", icon: "cookies" },
 ];
 
@@ -68,7 +67,7 @@ export function HeaderAppMenu({ open, onCloseRequest, triggerRef }: {
           );
         })}
         <p className="whitespace-nowrap font-sans text-mobile-text-md-regular text-text-secondary">
-          Version 1.0
+          Open Beta
         </p>
       </Dropdown>
       {aboutOpen && (

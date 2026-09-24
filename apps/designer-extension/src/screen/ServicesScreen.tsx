@@ -200,7 +200,7 @@ export function ServicesScreen({
       swatch: <div className="h-6 w-6 rounded-[2px] bg-gradient-gradient" />,
       title: "Shader gradients",
       description: "Design, customize and apply stunning shader gradients.",
-      previewImage: { src: "./images/Presets-sahders.png", alt: "Sample shader gradient presets", className: "pt-1 w-[433px] self-center max-w-none" },
+      previewImage: { src: "./images/Presets-sahders.png", alt: "Sample shader gradient presets", className: "pt-1 !w-[433px] self-center max-w-none" },
       titleColorClassName: "text-text-black",
       descriptionColorClassName: "text-text-secondary",
       featureTextColorClassName: "text-text-black",
