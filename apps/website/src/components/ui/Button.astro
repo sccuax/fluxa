@@ -1,0 +1,24 @@
+---
+import { cn } from "@/lib/cn";
+
+interface Props {
+  href: string;
+  variant?: "primary" | "ghost";
+  size?: "sm" | "md";
+  class?: string;
+}
+
+const { href, variant = "primary", size = "md", class: className } = Astro.props;
+
+const base =
+  "inline-flex items-center justify-center rounded-full transition-transform duration-200 ease-out-expo hover:-translate-y-0.5 active:translate-y-0";
+const variants = {
+  primary: "bg-gradient-gradient text-text-white shadow-e3",
+  ghost: "border border-text-white/20 text-text-white hover:bg-text-white/5",
+};
+const sizes = { sm: "h-9 px-4 text-text-sm-medium", md: "h-12 px-6 text-text-md-medium" };
+---
+
+<a href={href} class={cn(base, variants[variant], sizes[size], className)}>
+  <slot />
+</a>

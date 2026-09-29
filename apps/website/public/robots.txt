@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://fluxa.app/sitemap-index.xml

@@ -1,0 +1,12 @@
+{
+  "name": "@fluxa/webgpu-particle-field",
+  "version": "0.1.0",
+  "private": true,
+  "description": "EXPERIMENTAL. WebGPU compute particle flow field. No runtime dependencies.",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "devDependencies": {
+    "@webgpu/types": "^0.1.74",
+    "typescript": "^5.5.4"
+  }
+}

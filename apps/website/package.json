@@ -1,0 +1,42 @@
+{
+  "name": "@fluxa/website",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "sync:assets": "node scripts/sync-brand-assets.mjs",
+    "predev": "pnpm run sync:assets",
+    "dev": "astro dev --port 5176",
+    "prebuild": "pnpm run sync:assets",
+    "build": "astro check && astro build",
+    "preview": "astro preview --port 5176",
+    "typecheck": "astro check"
+  },
+  "dependencies": {
+    "@astrojs/check": "^0.9.10",
+    "@astrojs/react": "^7.0.0",
+    "@astrojs/sitemap": "^3.7.4",
+    "@fluxa/glass-liquid-renderer": "workspace:*",
+    "@fluxa/gradient-core": "workspace:*",
+    "@fluxa/ruido-evolutivo-renderer": "workspace:*",
+    "@fluxa/webgpu-particle-field": "workspace:*",
+    "astro": "^7.3.5",
+    "gsap": "^3.15.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "three": "^0.166.1"
+  },
+  "devDependencies": {
+    "@fluxa/design-tokens": "workspace:*",
+    "@types/react": "^18.3.31",
+    "@types/react-dom": "^18.3.7",
+    "@types/three": "^0.166.0",
+    "@webgpu/types": "^0.1.74",
+    "autoprefixer": "^10.5.4",
+    "clsx": "^2.1.1",
+    "postcss": "^8.5.28",
+    "tailwind-merge": "^3.7.0",
+    "tailwindcss": "^3.4.19",
+    "typescript": "^5.9.3"
+  }
+}

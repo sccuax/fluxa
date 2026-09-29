@@ -1,0 +1,24 @@
+---
+import { SITE, type Locale } from "@/config/site";
+import { localizedPath, useTranslations } from "@/i18n";
+
+interface Props {
+  locale: Locale;
+}
+const { locale } = Astro.props;
+const t = useTranslations(locale);
+const year = new Date().getFullYear();
+---
+
+<footer class="mt-24 border-t border-text-white/10">
+  <div
+    class="mx-auto flex max-w-6xl flex-col gap-4 px-5 py-10 text-text-sm-regular text-text-white/60 md:flex-row md:items-center md:justify-between"
+  >
+    <p>© {year} {SITE.name}. {t.footer.rights}</p>
+    <nav aria-label="Legal" class="flex gap-6">
+      <a href={localizedPath("/legal/licenses", locale)}>{t.footer.licenses}</a>
+      <a href={localizedPath("/legal/privacy", locale)}>{t.footer.privacy}</a>
+      <a href={localizedPath("/legal/terms", locale)}>{t.footer.terms}</a>
+    </nav>
+  </div>
+</footer>

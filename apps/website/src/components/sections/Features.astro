@@ -1,0 +1,30 @@
+---
+import type { Locale } from "@/config/site";
+import { useTranslations } from "@/i18n";
+
+interface Props {
+  locale: Locale;
+}
+const { locale } = Astro.props;
+const t = useTranslations(locale);
+---
+
+<section id="features" class="mx-auto max-w-6xl px-5 py-24">
+  <h2 data-reveal class="max-w-2xl font-display text-header-h3 md:text-header-h2">
+    {t.features.title}
+  </h2>
+  <div class="mt-12 grid gap-6 md:grid-cols-3">
+    {
+      t.features.items.map((item, index) => (
+        <article
+          data-reveal
+          data-reveal-delay={index * 90}
+          class="rounded-16 border border-text-white/10 bg-background-dark-2 p-6"
+        >
+          <h3 class="font-display text-header-h5">{item.title}</h3>
+          <p class="mt-3 text-text-md-regular text-text-white/70">{item.body}</p>
+        </article>
+      ))
+    }
+  </div>
+</section>

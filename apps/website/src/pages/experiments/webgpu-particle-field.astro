@@ -1,0 +1,48 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import ParticleFieldDemo from "@/components/islands/ParticleFieldDemo";
+---
+
+<BaseLayout
+  title="WebGPU particle field (experimental) — Fluxa"
+  description="An experimental GPU-compute particle flow field."
+  noindex
+>
+  <article class="mx-auto max-w-4xl px-5 pb-8 pt-32">
+    <span
+      class="inline-block rounded-full border border-text-color-accent-2/40 px-3 py-1 text-mobile-text-md-medium uppercase text-text-color-accent-2"
+    >
+      Experimental
+    </span>
+    <h1 class="mt-4 font-display text-header-h3 md:text-header-h2">
+      WebGPU particle field
+    </h1>
+    <p class="mt-4 max-w-2xl text-text-md-regular text-text-white/70">
+      60,000 particles simulated entirely on the GPU. Move the pointer over the canvas to push them
+      away. Not part of the product yet — planned as a future Fluxa Studio shader.
+    </p>
+
+    <div class="mt-10">
+      <ParticleFieldDemo client:visible />
+    </div>
+
+    <section class="mt-12 grid gap-8 md:grid-cols-2">
+      <div>
+        <h2 class="font-display text-header-h5">How it works</h2>
+        <ul class="mt-3 space-y-2 text-text-md-regular text-text-white/70">
+          <li>A compute shader moves every particle each frame; nothing is read back to the CPU.</li>
+          <li>The same GPU buffer is drawn directly as instanced quads with additive blending.</li>
+          <li>Frame-rate independent motion, off-screen pause, and a device-lost handler.</li>
+        </ul>
+      </div>
+      <div>
+        <h2 class="font-display text-header-h5">Status</h2>
+        <ul class="mt-3 space-y-2 text-text-md-regular text-text-white/70">
+          <li>Code archived as <code>@fluxa/webgpu-particle-field</code> in the monorepo.</li>
+          <li>WebGPU-only: it needs a fallback before it can ship to published sites.</li>
+          <li>Full notes, tuning knobs and rejected looks are in the package README.</li>
+        </ul>
+      </div>
+    </section>
+  </article>
+</BaseLayout>

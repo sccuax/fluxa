@@ -1,0 +1,350 @@
+---
+import HeroFlutes from "@/components/sections/HeroFlutes.astro";
+import {
+  MARK_PATH,
+  MARK_SLOT,
+  WORDMARK_LETTERS,
+  WORDMARK_SUBPATHS,
+  WORDMARK_VIEWBOX,
+  X_PATH_32,
+} from "@/config/wordmark";
+
+const [vbW, vbH] = WORDMARK_VIEWBOX;
+// The logo mark is an HTML element (not SVG) so its animated CSS gradient can live inside it:
+// the mark's outline is applied as a CSS mask. Position/size are % of the wordmark box.
+const markMask = `url("data:image/svg+xml;utf8,${encodeURIComponent(
+  `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><path d='${MARK_PATH}' fill='#000'/></svg>`,
+)}")`;
+const markStyle = [
+  `left:${(MARK_SLOT.x / vbW) * 100}%`,
+  `top:${(MARK_SLOT.y / vbH) * 100}%`,
+  `width:${(MARK_SLOT.size / vbW) * 100}%`,
+  `--mark-mask:${markMask}`,
+].join(";");
+const hollowScale = MARK_SLOT.size / 32;
+
+---
+
+<section class="relative isolate h-screen overflow-hidden" data-hero>
+  <!-- Static fluted-glass backdrop (no animation). -->
+  <div class="absolute inset-0 -z-10">
+    <HeroFlutes />
+  </div>
+  <!-- Fades the bottom of the hero into the next section. -->
+  <div
+    aria-hidden="true"
+    class="absolute inset-x-0 bottom-0 -z-[5] h-40 bg-gradient-to-t from-background-dark to-transparent"
+  >
+  </div>
+
+  <!-- Wordmark: centred, 64px from the bottom. The anchor never moves (used for measuring);
+       [data-wm-move] (the svg) rises on scroll, the gradient mark [data-wm-mark] travels on its own. -->
+  <div class="absolute inset-x-0 bottom-16 flex justify-center px-6">
+    <div class="relative w-[min(1113px,100%)]" style={`aspect-ratio:${vbW}/${vbH}`} data-wm-anchor>
+      <svg
+        viewBox={`0 0 ${vbW} ${vbH}`}
+        fill="none"
+        class="absolute inset-0 z-0 h-full w-full overflow-visible text-text-white"
+        role="img"
+        aria-label="Fluxa"
+        data-wm-move
+      >
+        {
+          WORDMARK_LETTERS.map((letter) => (
+            <g data-wm-letter={letter.id} fill="currentColor" fill-rule="nonzero">
+              <path d={letter.subpaths.map((i) => WORDMARK_SUBPATHS[i]).join("")} />
+            </g>
+          ))
+        }
+        <!-- Empty copy of the mark (outline only): stays with the wordmark once the gradient copy leaves. -->
+        <g data-wm-hollow transform={`translate(${MARK_SLOT.x} ${MARK_SLOT.y}) scale(${hollowScale})`} opacity="0">
+          <path
+            d={MARK_PATH}
+            fill="currentColor"
+            fill-opacity="0"
+            stroke="currentColor"
+            stroke-width={3 / hollowScale}
+            stroke-linejoin="round"
+            data-wm-x={X_PATH_32}
+          ></path>
+        </g>
+      </svg>
+      <div class="wm-mark absolute z-20 aspect-square" style={markStyle} data-wm-mark aria-hidden="true">
+        <span class="wm-mark__gradient">
+          <!-- CSS fallback (the fluxa-logo gradient, rotating); the WebGL2 canvas paints over it. -->
+          <span class="wm-mark__paint"></span>
+          <canvas class="wm-mark__canvas" data-wm-canvas></canvas>
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scroll overlay: soft white veil from the bottom of the screen up to the middle of the letters. -->
+  <div
+    aria-hidden="true"
+    data-hero-veil
+    class="pointer-events-none absolute inset-x-0 bottom-0 z-10 opacity-0"
+    style="background:linear-gradient(0deg,#FBFBFA 0%,rgba(251,251,250,.8) 19.55%,rgba(251,251,250,.4) 50.13%,rgba(251,251,250,.1) 80.2%,rgba(251,251,250,0) 100%)"
+  >
+  </div>
+</section>
+
+<style>
+  /* The mark: outline = mask, fill = layered gradients that drift (matches fluxa-logo.png:
+     orange/peach top, red-pink upper-left, cream centre, mint glow, cyan-blue bottom,
+     magenta -> indigo lower-left). The paint layer is oversized and rotates slowly behind the mask. */
+  .wm-mark__gradient {
+    position: absolute;
+    inset: 0;
+    -webkit-mask: var(--mark-mask) center / 100% 100% no-repeat;
+    mask: var(--mark-mask) center / 100% 100% no-repeat;
+    overflow: hidden;
+  }
+  .wm-mark__canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+  .wm-mark__paint {
+    position: absolute;
+    inset: -30%;
+    background:
+      radial-gradient(38% 38% at 30% 24%, #ff4f6a 0%, transparent 100%),
+      radial-gradient(34% 34% at 70% 14%, #ffa34d 0%, transparent 100%),
+      radial-gradient(30% 30% at 52% 50%, #fff2c2 0%, transparent 100%),
+      radial-gradient(30% 30% at 72% 62%, #6ff5c8 0%, transparent 100%),
+      radial-gradient(36% 36% at 28% 78%, #c235c4 0%, transparent 100%),
+      radial-gradient(38% 38% at 72% 88%, #2fb8ff 0%, transparent 100%),
+      linear-gradient(200deg, #ff8f5a 0%, #ffd9a0 30%, #5fe6d0 55%, #2b7bff 78%, #4a2bd6 100%);
+    animation: wm-drift 12s linear infinite;
+  }
+  @keyframes wm-drift {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  /* Entry animation gating: hide the pieces GSAP will reveal, only when JS runs and motion is allowed.
+     The script adds .hero-done at the end (or on any failure), which restores the static final state. */
+  @media (prefers-reduced-motion: no-preference) {
+    :global(html.js:not(.hero-done) [data-site-header]),
+    :global(html.js:not(.hero-done) [data-wm-letter]),
+    :global(html.js:not(.hero-done) [data-wm-mark]) {
+      opacity: 0;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .wm-mark__paint {
+      animation: none;
+    }
+  }
+
+  /* Scroll fade of the letters: transparent towards their bottom, driven by --wm-fade (0..1). */
+  [data-wm-move] {
+    -webkit-mask-image: linear-gradient(to bottom, #000 0%, rgb(0 0 0 / calc(1 - var(--wm-fade, 0))) 100%);
+    mask-image: linear-gradient(to bottom, #000 0%, rgb(0 0 0 / calc(1 - var(--wm-fade, 0))) 100%);
+  }
+</style>
+
+<script>
+  import { loadGsap } from "@/lib/motion/gsap";
+  import { mountFoamMark } from "@/lib/gradient/foamMark";
+
+  const html = document.documentElement;
+  const done = () => html.classList.add("hero-done");
+  const hero = document.querySelector<HTMLElement>("[data-hero]");
+  const anchor = document.querySelector<HTMLElement>("[data-wm-anchor]");
+  const header = document.querySelector<HTMLElement>("[data-site-header]");
+  const mark = anchor?.querySelector<HTMLElement>("[data-wm-mark]");
+  const move = anchor?.querySelector<SVGElement>("[data-wm-move]");
+  const hollow = anchor?.querySelector<SVGGElement>("[data-wm-hollow]");
+  const veil = hero?.querySelector<HTMLElement>("[data-hero-veil]");
+  const xPath = hollow?.querySelector<SVGPathElement>("path");
+  const letters = anchor ? Array.from(anchor.querySelectorAll<SVGGElement>("[data-wm-letter]")) : [];
+
+  // Geometry of the wordmark (must match config/wordmark.ts).
+  const VB = { w: 1113, h: 352 };
+  const SLOT = { x: 586, y: 84, size: 268 };
+  const NAV_GAP = 96; // hollow mark ends this far below the navbar
+  const BIG = 573; // final size of the brand mark
+  const BIG_BELOW = 91; // how far the big mark hangs below the screen
+
+  // Shared with the WebGL shader: 0 = fluxa-logo palette, 1 = brandmark palette (tweened on scroll).
+  const foam = { mix: 0 };
+  const canvas = mark?.querySelector<HTMLCanvasElement>("[data-wm-canvas]");
+  if (canvas) {
+    mountFoamMark(canvas, () => foam.mix, !window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+  }
+
+  // Uniform morph: both outlines are resampled at equal arc-length steps, the start point / direction of the
+  // target is aligned to minimise the total travel, and every point then moves in a straight line - so all the
+  // parts of the shape change at the same rate (no parts lagging behind or twisting).
+  function buildMorph(path: SVGPathElement, toD: string, n = 360) {
+    const fromD = path.getAttribute("d") ?? "";
+    const svg = path.ownerSVGElement!;
+    const sample = (d: string) => {
+      const el = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      el.setAttribute("d", d);
+      el.style.visibility = "hidden";
+      svg.appendChild(el);
+      const len = el.getTotalLength();
+      const pts: [number, number][] = [];
+      for (let i = 0; i < n; i++) {
+        const p = el.getPointAtLength((len * i) / n);
+        pts.push([p.x, p.y]);
+      }
+      el.remove();
+      return pts;
+    };
+    const area = (p: [number, number][]) =>
+      p.reduce((sum, a, i) => sum + (a[0] * p[(i + 1) % n][1] - p[(i + 1) % n][0] * a[1]), 0);
+    const a = sample(fromD);
+    let b = sample(toD);
+    if (Math.sign(area(a)) !== Math.sign(area(b))) b = b.reverse();
+    let best = 0;
+    let bestCost = Infinity;
+    for (let shift = 0; shift < n; shift++) {
+      let cost = 0;
+      for (let i = 0; i < n; i += 4) {
+        const q = b[(i + shift) % n];
+        cost += (a[i][0] - q[0]) ** 2 + (a[i][1] - q[1]) ** 2;
+      }
+      if (cost < bestCost) {
+        bestCost = cost;
+        best = shift;
+      }
+    }
+    return (t: number) => {
+      if (t <= 0) return fromD;
+      if (t >= 1) return toD;
+      let d = "";
+      for (let i = 0; i < n; i++) {
+        const q = b[(i + best) % n];
+        d += `${i ? "L" : "M"}${(a[i][0] + (q[0] - a[i][0]) * t).toFixed(3)} ${(a[i][1] + (q[1] - a[i][1]) * t).toFixed(3)}`;
+      }
+      return d + "Z";
+    };
+  }
+
+  type Gsap = Awaited<ReturnType<typeof loadGsap>>;
+
+  // Scroll: the whole wordmark rises with the (now empty, outlined) mark; a gradient copy of the mark
+  // drops and grows to 573px while its gradient turns into the brandmark; a white veil covers the
+  // lower half. Scrubbed + pinned; geometry is re-measured on refresh (hero-relative, so pinning
+  // does not disturb it).
+  function setupScroll({ gsap, ScrollTrigger }: Gsap) {
+    if (!hero || !anchor || !mark || !move || !hollow || !veil) return;
+
+    const measure = () => {
+      const h = hero.getBoundingClientRect();
+      const a = anchor.getBoundingClientRect();
+      const k = a.width / VB.w;
+      const left = a.left - h.left;
+      const top = a.top - h.top;
+      const ms = SLOT.size * k;
+      const mx = left + (SLOT.x + SLOT.size / 2) * k; // mark centre
+      const my = top + (SLOT.y + SLOT.size / 2) * k;
+      const navBottom = header ? header.offsetTop + header.offsetHeight : 0;
+      const rise = Math.max(0, top + SLOT.y * k - (navBottom + NAV_GAP));
+      const size = Math.min(BIG, h.width - 32);
+      const cy = h.height + BIG_BELOW - size / 2;
+      return { top, ms, mx, my, rise, size, cx: h.width / 2, cy, height: a.height, vh: h.height };
+    };
+
+    const tl = gsap.timeline({
+      defaults: { ease: "none", duration: 1 },
+      scrollTrigger: {
+        trigger: hero,
+        start: "top top",
+        end: "+=190%", // phase 1 (0..1) keeps the old pace; phase 2 (the morph) is the extra scroll
+        pin: true,
+        scrub: 0.6,
+        invalidateOnRefresh: true,
+        onRefresh: () => {
+          const m = measure();
+          // veil: from the screen bottom up to the middle of the letters (after the rise)
+          const mid = m.top - m.rise + m.height / 2;
+          gsap.set(veil, { height: Math.max(0, m.vh - mid) });
+        },
+      },
+    });
+
+    tl.to(move, { y: () => -measure().rise }, 0)
+      .to(
+        mark,
+        {
+          x: () => measure().cx - measure().mx,
+          y: () => measure().cy - measure().my,
+          scale: () => measure().size / measure().ms,
+        },
+        0,
+      )
+      .to(hollow, { opacity: 1, duration: 0.15 }, 0)
+      // the copy never fades: the shader blends from one palette to the other while it grows
+      .to(foam, { mix: 1 }, 0)
+      // letters dissolve towards their bottom; a soft white veil rises from the screen bottom
+      .to(move, { "--wm-fade": 1 }, 0)
+      .to(veil, { opacity: 0.4 }, 0);
+
+    // Phase 2: the outlined mark morphs into the final "x" and fills in white (the design's fade); the stroke stays.
+    if (xPath?.dataset.wmX) {
+      const morph = buildMorph(xPath, xPath.dataset.wmX);
+      const m = { t: 0 };
+      tl.to(m, { t: 1, duration: 0.75, ease: "power2.inOut", onUpdate: () => xPath.setAttribute("d", morph(m.t)) }, 1.1)
+        .to(xPath, { attr: { "fill-opacity": 1 }, duration: 0.7, ease: "power1.inOut" }, 1.1);
+    }
+
+    if (import.meta.env.DEV) {
+      // ?heroP=<0..1.85> parks the scroll timeline at a progress (screenshots / tuning)
+      const p = new URLSearchParams(location.search).get("heroP");
+      if (p !== null) {
+        tl.scrollTrigger?.disable(false);
+        tl.progress(Number(p) / tl.duration());
+      }
+    }
+
+    ScrollTrigger.refresh();
+  }
+
+  if (!anchor || !mark || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    done();
+  } else {
+    // Failsafe: never leave the page hidden if GSAP is slow or fails.
+    let entry: { progress: (v: number) => unknown } | null = null;
+    const failsafe = window.setTimeout(() => (entry ? entry.progress(1) : done()), 6000);
+    loadGsap()
+      .then((g) => {
+        const { gsap } = g;
+        const slotCenter = SLOT.x + SLOT.size / 2;
+        const fCenter = 134; // centre of the "F"
+        const startX = ((fCenter - slotCenter) / SLOT.size) * 100; // in % of the mark's own width
+
+        gsap.set(header, { yPercent: -140, opacity: 0 });
+        gsap.set(letters, { opacity: 0 });
+        gsap.set(mark, { xPercent: startX, yPercent: 160, opacity: 0, rotationY: 0, transformPerspective: 0 });
+
+        const tl = gsap.timeline({
+          defaults: { ease: "power3.out" },
+          onComplete: () => {
+            gsap.set([header, ...letters, mark], { clearProps: "opacity,transform" });
+            done();
+            window.clearTimeout(failsafe);
+            setupScroll(g);
+          },
+        });
+        entry = tl;
+        // 1. navbar drops in from the top
+        tl.to(header, { yPercent: 0, opacity: 1, duration: 0.8 });
+        // 2. logo rises from the bottom at the F position (letters still hidden)
+        tl.to(mark, { yPercent: 0, opacity: 1, duration: 0.9 }, "-=0.2");
+        // 3. coin flip: spins around the Y axis while travelling to its slot; letters appear as it goes
+        tl.addLabel("flip", "+=0.15");
+        tl.to(mark, { xPercent: 0, rotationY: 1080, duration: 2.2, ease: "power2.inOut" }, "flip");
+        letters.forEach((letter, i) => {
+          tl.to(letter, { opacity: 1, duration: 0.6, ease: "power1.out" }, `flip+=${0.3 + i * 0.4}`);
+        });
+      })
+      .catch(done);
+  }
+</script>

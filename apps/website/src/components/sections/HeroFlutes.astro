@@ -1,0 +1,135 @@
+---
+// Static fluted-glass backdrop, recreated from the design reference
+// (copy-paste/fluxa web/flutes.png). NOT animated.
+//
+//   - canvas: the coloured blades, drawn ONCE per size by lib/flutes/render.ts
+//   - edges:  the blue/pink edges hugging the seams, at device resolution (crisp start, blur out)
+//   - seams:  the hairlines, on their own device-resolution canvas so they stay crisp
+//             (same axis/period/phase as the blades)
+//   - grain:  static SVG noise
+//
+// Without JS only the near-black base and the grain show.
+//
+// Measured from the reference: seams at 53deg above the horizontal, a constant
+// perpendicular period of 7.8% of the width, colour strongest at the upper-left.
+// The colours are raw rgb on purpose (measured art, not UI tokens); the
+// near-black base derives from the background token.
+---
+
+<div class="flutes" aria-hidden="true" data-flutes>
+  <canvas class="flutes__canvas"></canvas>
+  <canvas class="flutes__edges"></canvas>
+  <canvas class="flutes__seams"></canvas>
+  <div class="flutes__grain"></div>
+  <!-- Measures --p in px for the canvas renderer. -->
+  <div data-flutes-probe class="flutes__probe"></div>
+</div>
+
+<style>
+  .flutes {
+    /* Perpendicular distance between seams; scales with the viewport like the design. */
+    --p: clamp(84px, 7.8vw, 170px);
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    /* Near-black, derived from the background token. */
+    background: color-mix(in srgb, var(--background-background-dark) 40%, #000);
+  }
+
+  .flutes > * {
+    position: absolute;
+    inset: 0;
+  }
+  .flutes__probe {
+    inset: auto;
+    width: var(--p);
+    height: 0;
+    visibility: hidden;
+  }
+
+  .flutes__canvas,
+  .flutes__edges,
+  .flutes__seams {
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    transition: opacity 0.6s ease;
+  }
+  .flutes.is-ready .flutes__canvas,
+  .flutes.is-ready .flutes__edges,
+  .flutes.is-ready .flutes__seams {
+    opacity: 1;
+  }
+
+  /* Fine film grain (static SVG noise). */
+  /* Amplitude matched to the reference: std ~5.8/255 on black and inside the bodies alike. */
+  .flutes__grain {
+    opacity: 0.05;
+    mix-blend-mode: screen;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 2.4 -0.68'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  }
+</style>
+
+<script>
+  import { DEFAULT_FLUTES, renderEdges, renderFlutes, renderSeams, type FluteParams } from "@/lib/flutes/render";
+
+  document.querySelectorAll<HTMLElement>("[data-flutes]").forEach((root) => {
+    const canvas = root.querySelector<HTMLCanvasElement>(".flutes__canvas");
+    const edges = root.querySelector<HTMLCanvasElement>(".flutes__edges");
+    const seams = root.querySelector<HTMLCanvasElement>(".flutes__seams");
+    const probe = root.querySelector<HTMLElement>("[data-flutes-probe]");
+    if (!canvas || !edges || !seams || !probe) return;
+
+    // Live overrides, used to tune the look from the console in dev.
+    const overrides: Partial<FluteParams> = {};
+
+    const params = (): FluteParams => {
+      const header = document.querySelector("header");
+      // Bottom edge of the navbar (offset* ignores the entry animation's transform).
+      const navBottom = header ? header.offsetTop + header.offsetHeight : DEFAULT_FLUTES.navBottom;
+      return {
+        ...DEFAULT_FLUTES,
+        period: probe.getBoundingClientRect().width || DEFAULT_FLUTES.period,
+        navBottom,
+        ...overrides,
+      };
+    };
+
+    let lastWidth = 0;
+    const draw = () => {
+      const rect = root.getBoundingClientRect();
+      lastWidth = rect.width;
+      const current = params();
+      // Blades are soft, so ~0.75x is plenty (crisper than the old 0.5x); seams render at device resolution.
+      renderFlutes(canvas, rect.width, rect.height, current, Math.min(1, 1400 / rect.width));
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      // The blue/pink edges are drawn crisp (they start almost solid at the seam, then blur out).
+      renderEdges(edges, rect.width, rect.height, current, Math.min(dpr, 1.25));
+      renderSeams(seams, rect.width, rect.height, current, dpr);
+      root.classList.add("is-ready");
+    };
+
+    // Heavy pixel work: after first paint, off the critical path.
+    const later = (fn: () => void) =>
+      typeof window.requestIdleCallback === "function" ? window.requestIdleCallback(fn, { timeout: 400 }) : setTimeout(fn, 50);
+    later(draw);
+
+    // Re-render only when the WIDTH changes (mobile URL-bar height jitter is ignored).
+    let timer = 0;
+    new ResizeObserver(() => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => {
+        if (Math.abs(root.getBoundingClientRect().width - lastWidth) > 1) draw();
+      }, 150);
+    }).observe(root);
+
+    if (import.meta.env.DEV) {
+      (window as unknown as { __flutes: unknown }).__flutes = {
+        set: (next: Partial<FluteParams>) => {
+          Object.assign(overrides, next);
+          draw();
+        },
+      };
+    }
+  });
+</script>
