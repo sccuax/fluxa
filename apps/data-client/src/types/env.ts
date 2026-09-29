@@ -52,4 +52,12 @@ export interface Bindings {
   // (`wrangler secret put CLOUDFLARE_ANALYTICS_API_TOKEN`) - never in
   // wrangler.toml, never sent to the browser.
   CLOUDFLARE_ANALYTICS_API_TOKEN: string;
+  // Lemon Squeezy (payment gateway, routes/billing.ts + lib/lemonSqueezy.ts).
+  // API_KEY/WEBHOOK_SECRET are real secrets (wrangler secret put); STORE_ID/
+  // VARIANT_ID just identify the already-created "Pro" product/variant in
+  // the dashboard - not sensitive, plain [vars] in wrangler.toml.
+  LEMONSQUEEZY_API_KEY: string;
+  LEMONSQUEEZY_WEBHOOK_SECRET: string;
+  LEMONSQUEEZY_STORE_ID: string;
+  LEMONSQUEEZY_VARIANT_ID: string;
 }

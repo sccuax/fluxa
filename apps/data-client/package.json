@@ -11,7 +11,8 @@
     "test": "vitest run",
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push",
-    "auth:generate": "better-auth generate --config auth-cli.config.ts --output src/db/auth-schema.ts -y"
+    "auth:generate": "better-auth generate --config auth-cli.config.ts --output src/db/auth-schema.ts -y",
+    "seed:pro-plan": "node scripts/seedProPlan.mjs"
   },
   "dependencies": {
     "@fluxa/gradient-core": "workspace:*",

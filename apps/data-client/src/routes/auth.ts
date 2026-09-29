@@ -81,8 +81,11 @@ const callbackQuerySchema = z.object({
 
 // Standalone HTML shown to a human at the end of the Webflow install flow
 // (this route is a top-level browser navigation, not an API call). Kept inline
-// and dependency-free, matching routes/oauthPopup.ts.
-function installResultPage(title: string, body: string) {
+// and dependency-free, matching routes/oauthPopup.ts. Exported since
+// routes/billingCheckoutComplete.ts reuses this exact same "title + body,
+// dark-themed result page" shape for the Lemon Squeezy checkout's own
+// redirect_url landing page - same kind of browser-facing standalone page.
+export function installResultPage(title: string, body: string) {
   return `<!doctype html>
 <html lang="en">
 <head>

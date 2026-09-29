@@ -5,6 +5,7 @@ import { ACTIVE_FILL_GRADIENT } from "./RangeSlider";
 import { apiFetch } from "../services/apiClient";
 import { getWebflowDesigner } from "../services/webflowDesigner";
 import { trackEvent } from "../services/analytics";
+import { useBillingStatus } from "../hooks/useBillingStatus";
 
 // Free plan's preset ceiling - not read from any backend "plans" row (that
 // table exists but has no routes yet, see CLAUDE.md's Database section), so
@@ -51,11 +52,9 @@ function usePresetUsage() {
 //
 // No longer shown disabled (2026-09-14, per explicit direction) - the
 // opacity/pointer-events-none/aria-disabled wrapper and the button's own
-// `disabled` are gone. "Upgrade to Pro" has no real Stripe wiring behind it
-// yet (see root CLAUDE.md's Database section - plans/subscriptions/payments
-// tables exist with no routes), so the button is visually active but has no
-// onClick - clicking it is a harmless no-op until that's built, rather than
-// staying greyed out during this beta pass.
+// `disabled` are gone. "Upgrade to Pro" is wired to a real Lemon Squeezy
+// checkout via useBillingStatus() (data-client's routes/billing.ts) - see
+// that hook's own comment for the open-in-new-tab + poll mechanism.
 //
 // `showUpgradeButton` (default true, matches AccountTab's own inline use)
 // defaults to hidden only for PlanBillingModal.tsx's own copy - per the
@@ -66,6 +65,22 @@ function usePresetUsage() {
 export function PlanCard({ showUpgradeButton = true }: { showUpgradeButton?: boolean }) {
   const usedPresets = usePresetUsage();
   const percent = Math.min(100, (usedPresets / FREE_PLAN_PRESET_LIMIT) * 100);
+  const { status, upgrading, startUpgrade } = useBillingStatus();
+  const isPro = status?.plan === "pro";
+
+  function handleUpgradeClick() {
+    trackEvent("click_upgrade_to_pro");
+    startUpgrade();
+  }
+
+  if (isPro) {
+    return (
+      <div className="flex border-border-border border rounded-8 flex-col gap-3 p-3">
+        <span className="font-sans text-text-sm-medium text-text-black">Pro plan</span>
+        <span className="font-sans text-mobile-text-md-regular text-text-secondary">Unlimited shaders and presets.</span>
+      </div>
+    );
+  }
 
   return (
     <div className="flex border-border-border border rounded-8 flex-col gap-3 p-3">
@@ -77,8 +92,8 @@ export function PlanCard({ showUpgradeButton = true }: { showUpgradeButton?: boo
         <div className="h-full rounded-[4px]" style={{ width: `${percent}%`, background: ACTIVE_FILL_GRADIENT }} />
       </div>
       {showUpgradeButton && (
-        <ButtonPrimary icon={<Icon name="sparkle" />} onClick={() => trackEvent("click_upgrade_to_pro")}>
-          Upgrade to Pro
+        <ButtonPrimary icon={<Icon name="sparkle" />} onClick={handleUpgradeClick} disabled={upgrading}>
+          {upgrading ? "Waiting for payment…" : "Upgrade to Pro"}
         </ButtonPrimary>
       )}
     </div>

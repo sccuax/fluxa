@@ -49,7 +49,8 @@ export type IconName =
   | "tabBlogStaging"
   | "edit"
   | "magnifyingGlass"
-  | "collection";
+  | "collection"
+  | "whatsNew";
 
 // SVG markup lives inline here (not imported from an assets folder) so
 // adding a new icon is a one-file edit - see the paste.txt example this
@@ -696,6 +697,16 @@ const icons: Record<IconName, (props: SVGProps<SVGSVGElement>) => ReactElement> 
       />
       <path d="M2 6C2 6.82843 3.79086 7.5 6 7.5C8.20914 7.5 10 6.82843 10 6" stroke="currentColor" strokeWidth="1" />
     </svg>
+  ),
+  // WhatsNewModal.tsx's own PanelHeader titleIcon - a panel/card outline with
+  // a smaller rounded rect "badge" in its top-left corner, matching the
+  // reference screenshot (copy-paste/what's new.png). Not a pasted Figma
+  // asset - hand-built at this file's usual 16x16/currentColor convention.
+  whatsNew: (props) => (
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+<path d="M15.8333 16.6668H4.16667C3.72464 16.6668 3.30072 16.4912 2.98816 16.1787C2.67559 15.8661 2.5 15.4422 2.5 15.0002V5.00016C2.5 4.55814 2.67559 4.13421 2.98816 3.82165C3.30072 3.50909 3.72464 3.3335 4.16667 3.3335H12.5C12.942 3.3335 13.366 3.50909 13.6785 3.82165C13.9911 4.13421 14.1667 4.55814 14.1667 5.00016V5.8335M15.8333 16.6668C15.3913 16.6668 14.9674 16.4912 14.6548 16.1787C14.3423 15.8661 14.1667 15.4422 14.1667 15.0002V5.8335M15.8333 16.6668C16.2754 16.6668 16.6993 16.4912 17.0118 16.1787C17.3244 15.8661 17.5 15.4422 17.5 15.0002V7.50016C17.5 7.05814 17.3244 6.63421 17.0118 6.32165C16.6993 6.00909 16.2754 5.8335 15.8333 5.8335H14.1667M10.8333 3.3335H7.5M5.83333 13.3335H10.8333M5.83333 6.66683H10.8333V10.0002H5.83333V6.66683Z" stroke="#20242D" stroke-width="1.66667" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
+
   ),
 };
 

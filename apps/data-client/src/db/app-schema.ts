@@ -226,6 +226,13 @@ export const paymentStatusEnum = pgEnum("payment_status", [
   "canceled",
 ]);
 
+// Plain TS unions derived from the enums above - lib/lemonSqueezy.ts's status
+// mappers return these, and routes/billing.ts's webhook handler narrows into
+// them before writing a row (pgEnum's own runtime object has no exported
+// type on its own).
+export type SubscriptionStatus = (typeof subscriptionStatusEnum.enumValues)[number];
+export type PaymentStatus = (typeof paymentStatusEnum.enumValues)[number];
+
 export const plans = pgTable("plans", {
   id: text("id")
     .primaryKey()
@@ -269,6 +276,14 @@ export const subscriptions = pgTable(
       .notNull(),
     trialStart: timestamp("trial_start"),
     trialEnd: timestamp("trial_end"),
+    // Lemon Squeezy's own self-serve "Customer Portal" URL
+    // (data.attributes.urls.customer_portal on every subscription webhook
+    // payload) - persisted here rather than fetched live on every
+    // GET /api/billing/status call, since that endpoint is polled every ~2s
+    // during an active checkout (see useBillingStatus.ts). Nullable: absent
+    // until the first webhook lands, and meaningless for a non-Lemon-Squeezy
+    // provider if one is ever added.
+    customerPortalUrl: text("customer_portal_url"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at")
       .defaultNow()

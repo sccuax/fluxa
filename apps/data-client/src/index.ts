@@ -24,6 +24,8 @@ import { publicRuntimeAssetRoutes } from "./routes/runtimeAssets";
 import { profileRoutes } from "./routes/profile";
 import { oauthPopupRoutes } from "./routes/oauthPopup";
 import { oauthPopupExchangeRoutes } from "./routes/oauthPopupExchange";
+import { billingRoutes } from "./routes/billing";
+import { billingCheckoutCompleteRoutes } from "./routes/billingCheckoutComplete";
 
 const app = new Hono<AppEnv>();
 
@@ -189,5 +191,14 @@ app.route("/api/public/analytics", publicAnalyticsRoutes);
 app.route("/api/profile", profileRoutes);
 app.route("/oauth-popup-callback", oauthPopupRoutes);
 app.route("/api/oauth-popup-exchange", oauthPopupExchangeRoutes);
+// Lemon Squeezy payment gateway. /api/billing is the authenticated
+// checkout/status pair (requireAuth applied per-route, not router-wide -
+// /webhook stays public, see billing.ts's own top comment) - kept as its own
+// /api/* prefix like every other domain router, NOT under /auth (that
+// prefix is reserved for the Webflow app-install OAuth flow specifically;
+// this codebase has a real documented 404 bug from confusing the two, see
+// the data-client CLAUDE.md's "Multi-person site access" section).
+app.route("/api/billing", billingRoutes);
+app.route("/billing-checkout-complete", billingCheckoutCompleteRoutes);
 
 export default app;

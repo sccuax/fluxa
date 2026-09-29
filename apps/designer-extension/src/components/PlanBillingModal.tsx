@@ -1,8 +1,10 @@
 import { ButtonPrimary } from "./ButtonPrimary";
+import { ButtonSecondary } from "./ButtonSecondary";
 import { FullViewModal } from "./FullViewModal";
 import { Icon } from "./Icon";
 import { PlanCard } from "./PlanCard";
 import { trackEvent } from "../services/analytics";
+import { useBillingStatus } from "../hooks/useBillingStatus";
 
 interface PlanFeature {
   label: string;
@@ -49,7 +51,20 @@ function PlanFeatureRow({ label, included, comingSoon, last = false }: PlanFeatu
 // screenshot's own pink "Coming soon" pill. "Upgrade to Pro" sits BELOW the
 // checklist, as its own separate button - per the reference screenshot,
 // NOT inside the Free plan box above.
+//
+// Once Pro, that same bottom slot becomes "Manage subscription" (opens Lemon
+// Squeezy's own self-serve customer portal in a new tab) instead of
+// "Upgrade to Pro" - a second, independent useBillingStatus() instance here
+// is fine (each polls only while its own `upgrading` is true).
 export function PlanBillingModal({ onClose }: { onClose: () => void }) {
+  const { status, upgrading, startUpgrade } = useBillingStatus();
+  const isPro = status?.plan === "pro";
+
+  function handleUpgradeClick() {
+    trackEvent("click_upgrade_to_pro");
+    startUpgrade();
+  }
+
   return (
     <FullViewModal title="Plan & billing" titleIcon={<Icon name="billing" />} onClose={onClose}>
       <div className="flex flex-col gap-4 px-[20px] pb-8 pt-8">
@@ -62,9 +77,24 @@ export function PlanBillingModal({ onClose }: { onClose: () => void }) {
             ))}
           </div>
         </div>
-        <ButtonPrimary icon={<Icon name="sparkle" />} onClick={() => trackEvent("click_upgrade_to_pro")}>
-          Upgrade to Pro
-        </ButtonPrimary>
+        {isPro ? (
+          <div className="flex flex-col gap-2">
+            {status?.customerPortalUrl && (
+              <ButtonSecondary onClick={() => window.open(status.customerPortalUrl!, "_blank")}>
+                Manage subscription
+              </ButtonSecondary>
+            )}
+            {status?.cancelAtPeriodEnd && status.currentPeriodEnd && (
+              <p className="text-center font-sans text-mobile-text-sm-regular text-text-secondary">
+                Cancels on {new Date(status.currentPeriodEnd).toLocaleDateString()}
+              </p>
+            )}
+          </div>
+        ) : (
+          <ButtonPrimary icon={<Icon name="sparkle" />} onClick={handleUpgradeClick} disabled={upgrading}>
+            {upgrading ? "Waiting for payment…" : "Upgrade to Pro"}
+          </ButtonPrimary>
+        )}
       </div>
     </FullViewModal>
   );
