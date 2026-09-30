@@ -1,0 +1,37 @@
+---
+import { ButtonPrimary } from "@fluxa/ui";
+import { SITE, type Locale } from "@/config/site";
+import { useTranslations } from "@/i18n";
+
+interface Props {
+  locale: Locale;
+}
+const { locale } = Astro.props;
+const t = useTranslations(locale);
+
+// Same padding/type as the primary CTA (ButtonPrimary size "md": px-5 py-3 text-md-medium) so the pair lines up.
+const base =
+  "pointer-events-auto inline-flex items-center gap-3 rounded-full px-5 py-3 text-text-md-medium transition-transform duration-200 ease-out-expo hover:-translate-y-0.5 active:translate-y-0";
+---
+
+<div class="flex flex-wrap items-center justify-center gap-3">
+  <!-- The Designer Extension's own primary button (packages/ui), hover ripple included. `client:idle` keeps its
+       React/three.js off the hero intro's critical path; until it hydrates it is already a working link. -->
+  <!-- The lift lives on this wrapper (not on the button's own classes) so it can't clash with ButtonPrimary's
+       own transition-shadow; same motion as the secondary CTA below. -->
+  <span class="pointer-events-auto inline-block transition-transform duration-200 ease-out-expo hover:-translate-y-0.5 active:translate-y-0">
+    <ButtonPrimary client:idle href={SITE.installUrl} size="md">
+      {t.nav.cta}
+      <svg width="6" height="10" viewBox="0 0 6 10" fill="none" aria-hidden="true">
+        <path d="M1 1l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+      </svg>
+    </ButtonPrimary>
+  </span>
+  <!-- TODO: point at the demo video/page once it exists. -->
+  <a href="#demo" class={`${base} border border-text-secondary/50 text-text-secondary hover:border-text-secondary`}>
+    {t.hero.reveal.ctaSecondary}
+    <svg width="6" height="10" viewBox="0 0 6 10" fill="none" aria-hidden="true">
+      <path d="M1 1l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+    </svg>
+  </a>
+</div>

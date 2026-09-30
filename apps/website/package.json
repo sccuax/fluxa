@@ -19,6 +19,7 @@
     "@fluxa/glass-liquid-renderer": "workspace:*",
     "@fluxa/gradient-core": "workspace:*",
     "@fluxa/ruido-evolutivo-renderer": "workspace:*",
+    "@fluxa/ui": "workspace:*",
     "@fluxa/webgpu-particle-field": "workspace:*",
     "astro": "^7.3.5",
     "gsap": "^3.15.0",

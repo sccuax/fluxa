@@ -1,5 +1,10 @@
 ---
 import HeroFlutes from "@/components/sections/HeroFlutes.astro";
+import GradientCards from "@/components/sections/GradientCards.astro";
+import HeroCtas from "@/components/sections/HeroCtas.astro";
+import InfernoConfig from "@/components/sections/InfernoConfig.astro";
+import type { Locale } from "@/config/site";
+import { useTranslations } from "@/i18n";
 import {
   MARK_PATH,
   MARK_SLOT,
@@ -8,6 +13,12 @@ import {
   WORDMARK_VIEWBOX,
   X_PATH_32,
 } from "@/config/wordmark";
+
+interface Props {
+  locale: Locale;
+}
+const { locale } = Astro.props;
+const copy = useTranslations(locale).hero.reveal;
 
 const [vbW, vbH] = WORDMARK_VIEWBOX;
 // The logo mark is an HTML element (not SVG) so its animated CSS gradient can live inside it:
@@ -25,15 +36,22 @@ const hollowScale = MARK_SLOT.size / 32;
 
 ---
 
+<InfernoConfig />
+<!-- Scroll stays locked while the intro plays (until the logo has finished its flip); `done()` in the script below
+     releases it. Not locked with reduced motion, where there is no intro. -->
+<script is:inline>
+  if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) document.documentElement.classList.add("hero-locked");
+</script>
 <section class="relative isolate h-screen overflow-hidden" data-hero>
   <!-- Static fluted-glass backdrop (no animation). -->
-  <div class="absolute inset-0 -z-10">
+  <div class="absolute inset-0 -z-10" data-hero-backdrop>
     <HeroFlutes />
   </div>
   <!-- Fades the bottom of the hero into the next section. -->
   <div
     aria-hidden="true"
     class="absolute inset-x-0 bottom-0 -z-[5] h-40 bg-gradient-to-t from-background-dark to-transparent"
+    data-hero-backdrop
   >
   </div>
 
@@ -74,8 +92,40 @@ const hollowScale = MARK_SLOT.size / 32;
           <!-- CSS fallback (the fluxa-logo gradient, rotating); the WebGL2 canvas paints over it. -->
           <span class="wm-mark__paint"></span>
           <canvas class="wm-mark__canvas" data-wm-canvas></canvas>
+          <!-- The "inferno" preset (the product's real ruidoEvolutivo shader): fades in when the mark turns into
+               the square and runs live until every card is on screen, then freezes. -->
+          <canvas class="wm-mark__card" data-wm-card></canvas>
         </span>
       </div>
+    </div>
+  </div>
+
+  <!-- Final scene: the gradient cards (stills). Hidden until phase 4 of the scroll timeline; they sit under the
+       big mark (z-20) and under the copy, whose own box ignores the pointer so the cards stay clickable. -->
+  <div class="invisible absolute inset-0 z-[4]" data-gcards-host>
+    <GradientCards />
+  </div>
+
+  <!-- Copy revealed at the end of the scroll transition (Hero-Animation-4). Sits under the big mark (z-20),
+       which overlaps its lower lines like in the design. Hidden until the script shows it. -->
+  <div
+    class="hero-copy pointer-events-none absolute inset-x-0 top-[30%] z-[5] flex flex-col gap-6 items-center px-6 text-center"
+    data-hero-copy
+  >
+    <div class="hero-eyebrow rounded-full bg-gradient-gradient p-px" data-copy-badge>
+      <span class="flex items-center gap-2 rounded-full bg-background-white py-1 pl-1.5 pr-3 text-text-sm-medium text-text-secondary">
+        <span class="h-2.5 w-6 rounded-full bg-gradient-gradient" aria-hidden="true"></span>
+        {copy.badge}
+      </span>
+    </div>
+    <h1 class=" max-w-[1100px] font-display text-header-h1 leading-[1.1] text-text-black" data-copy-title>
+      {copy.title}
+    </h1>
+    <p class="max-w-[880px] text-balance text-text-lg-regular text-text-secondary" data-copy-body>
+      {copy.body}
+    </p>
+    <div class="mt-8" data-copy-ctas>
+      <HeroCtas locale={locale} />
     </div>
   </div>
 
@@ -93,6 +143,9 @@ const hollowScale = MARK_SLOT.size / 32;
   /* The mark: outline = mask, fill = layered gradients that drift (matches fluxa-logo.png:
      orange/peach top, red-pink upper-left, cream centre, mint glow, cyan-blue bottom,
      magenta -> indigo lower-left). The paint layer is oversized and rotates slowly behind the mask. */
+  .wm-mark {
+    pointer-events: none;
+  }
   .wm-mark__gradient {
     position: absolute;
     inset: 0;
@@ -105,6 +158,13 @@ const hollowScale = MARK_SLOT.size / 32;
     inset: 0;
     width: 100%;
     height: 100%;
+  }
+  .wm-mark__card {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
   }
   .wm-mark__paint {
     position: absolute;
@@ -140,6 +200,60 @@ const hollowScale = MARK_SLOT.size / 32;
     }
   }
 
+  /* Intro scroll lock: overflow hidden blocks wheel, touch, keys and scrollbar drag alike; the stable gutter keeps
+     the layout from jumping when the scrollbar comes back. */
+  :global(html.hero-locked) {
+    overflow: hidden;
+    scrollbar-gutter: stable;
+  }
+
+  /* Copy: invisible until the script reveals it. */
+  .hero-copy {
+    visibility: hidden;
+  }
+  /* Eyebrow drop shadow (design spec). */
+  .hero-eyebrow {
+    box-shadow:
+      4px 21px 6px 0 rgba(11, 13, 18, 0),
+      2px 13px 5px 0 rgba(11, 13, 18, 0.01),
+      1px 8px 5px 0 rgba(11, 13, 18, 0.05),
+      1px 3px 3px 0 rgba(11, 13, 18, 0.09),
+      0 1px 2px 0 rgba(11, 13, 18, 0.1);
+  }
+
+  /* Stop positions are the design's 73deg ramp with blue/purple/pink pushed right (design: 66.12 / 75.46 / 84.81 %):
+     on this wide, short box the % maps to x ~ 0.5 + (p - 0.5) * 1.05, so blue now holds until the "o" of "code"
+     (~80 % of the width) and pink lands on the final letters instead of the whole last word. */
+  /* Headline gradient. Painted per word (SplitText gives each word its own transform, which would break a single
+     background-clip:text on the h1): every word paints the SAME h1-sized gradient, shifted by its own offset
+     (--wx/--wy, set in onSplit), so it reads as one continuous gradient across the text. --tg (0 = the design's
+     resting position) slides the whole ramp along the text; the scroll timeline tweens it. */
+  [data-copy-title] {
+    --tg: 0;
+  }
+  :global(.split-word) {
+    background-image: linear-gradient(
+      73deg,
+      #20242d calc(47.44% + var(--tg) * 1%),
+      #3b9cd6 calc(56.96% + var(--tg) * 1%),
+      #0955e5 calc(78.5% + var(--tg) * 1%),
+      #8e54c5 calc(89.5% + var(--tg) * 1%),
+      #e23f8c calc(97% + var(--tg) * 1%)
+    );
+    background-size: var(--tg-w, 100%) var(--tg-h, 100%);
+    background-position: var(--wx, 0) var(--wy, 0);
+    background-repeat: no-repeat;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+  }
+  /* SplitText line masks clip at the line box: give descenders (the comma, "y") room. */
+  :global(.split-line-mask) {
+    padding-bottom: 0.14em;
+    margin-bottom: -0.14em;
+  }
+
   /* Scroll fade of the letters: transparent towards their bottom, driven by --wm-fade (0..1). */
   [data-wm-move] {
     -webkit-mask-image: linear-gradient(to bottom, #000 0%, rgb(0 0 0 / calc(1 - var(--wm-fade, 0))) 100%);
@@ -148,11 +262,18 @@ const hollowScale = MARK_SLOT.size / 32;
 </style>
 
 <script>
-  import { loadGsap } from "@/lib/motion/gsap";
+  import { loadGsap, loadSplitText } from "@/lib/motion/gsap";
+  import { MARK_PATH } from "@/config/wordmark";
+  import { initGradientCards } from "@/lib/gradient/gradientCards";
+  import { readInfernoConfig } from "@/lib/gradient/gradientCards";
+  import type { RuidoEvolutivoHandle } from "@fluxa/ruido-evolutivo-renderer";
   import { mountFoamMark } from "@/lib/gradient/foamMark";
 
   const html = document.documentElement;
-  const done = () => html.classList.add("hero-done");
+  const done = () => {
+    html.classList.add("hero-done");
+    html.classList.remove("hero-locked"); // intro over (or skipped / failed): scrolling is allowed again
+  };
   const hero = document.querySelector<HTMLElement>("[data-hero]");
   const anchor = document.querySelector<HTMLElement>("[data-wm-anchor]");
   const header = document.querySelector<HTMLElement>("[data-site-header]");
@@ -160,6 +281,19 @@ const hollowScale = MARK_SLOT.size / 32;
   const move = anchor?.querySelector<SVGElement>("[data-wm-move]");
   const hollow = anchor?.querySelector<SVGGElement>("[data-wm-hollow]");
   const veil = hero?.querySelector<HTMLElement>("[data-hero-veil]");
+  const backdrop = hero ? Array.from(hero.querySelectorAll<HTMLElement>("[data-hero-backdrop]")) : [];
+  const markShape = mark?.querySelector<HTMLElement>(".wm-mark__gradient");
+  const copyEl = hero?.querySelector<HTMLElement>("[data-hero-copy]");
+  const markCard = mark?.querySelector<HTMLCanvasElement>("[data-wm-card]");
+
+  // Live orange square: runs only between "the mark became the square" and "all cards are on screen" (see
+  // updateLive, driven by the scroll timeline); outside that window it is frozen - and so is the F card's still,
+  // which is repainted at the frozen pose so the square dissolves into an identical card.
+  let updateLive: (time: number) => void = () => {};
+
+  // Paints the card stills once (one shared WebGL context) and wires hover/click; the layer stays hidden for now.
+  const gcards = hero?.querySelector<HTMLElement>("[data-gcards]");
+  if (gcards) initGradientCards(gcards);
   const xPath = hollow?.querySelector<SVGPathElement>("path");
   const letters = anchor ? Array.from(anchor.querySelectorAll<SVGGElement>("[data-wm-letter]")) : [];
 
@@ -169,19 +303,21 @@ const hollowScale = MARK_SLOT.size / 32;
   const NAV_GAP = 96; // hollow mark ends this far below the navbar
   const BIG = 573; // final size of the brand mark
   const BIG_BELOW = 91; // how far the big mark hangs below the screen
+  // Phase 3 target: the rounded square of Hero-Animation-4 (mark space, 32 units; corner radius 8 = 25%).
+  const SQUARE_D = "M8 0H24A8 8 0 0 1 32 8V24A8 8 0 0 1 24 32H8A8 8 0 0 1 0 24V8A8 8 0 0 1 8 0Z";
+  const COPY_AT = 2.35; // timeline time at which the copy starts entering
 
   // Shared with the WebGL shader: 0 = fluxa-logo palette, 1 = brandmark palette (tweened on scroll).
-  const foam = { mix: 0 };
+  const foam = { mix: 0, look: 0 }; // look: 0 = brandmark, 1 = gradient-3 (orange square), tweened in phase 3
   const canvas = mark?.querySelector<HTMLCanvasElement>("[data-wm-canvas]");
   if (canvas) {
-    mountFoamMark(canvas, () => foam.mix, !window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+    mountFoamMark(canvas, () => foam.mix, !window.matchMedia("(prefers-reduced-motion: reduce)").matches, () => foam.look);
   }
 
   // Uniform morph: both outlines are resampled at equal arc-length steps, the start point / direction of the
   // target is aligned to minimise the total travel, and every point then moves in a straight line - so all the
   // parts of the shape change at the same rate (no parts lagging behind or twisting).
-  function buildMorph(path: SVGPathElement, toD: string, n = 360) {
-    const fromD = path.getAttribute("d") ?? "";
+  function buildMorph(path: SVGPathElement, toD: string, n = 360, fromD = path.getAttribute("d") ?? "") {
     const svg = path.ownerSVGElement!;
     const sample = (d: string) => {
       const el = document.createElementNS("http://www.w3.org/2000/svg", "path");
@@ -229,6 +365,109 @@ const hollowScale = MARK_SLOT.size / 32;
 
   type Gsap = Awaited<ReturnType<typeof loadGsap>>;
 
+  // Copy entry (GSAP SplitText): the badge floats in, the headline rises word by word out of a line mask,
+  // the paragraph follows line by line. Time-based (not scrubbed) and triggered by scroll position, so it
+  // always plays at its own pace; going back up plays a quick exit. autoSplit re-splits on resize / font load.
+  let showCopy: (on: boolean) => void = () => {};
+  async function setupCopy({ gsap }: Gsap) {
+    const badge = copyEl?.querySelector<HTMLElement>("[data-copy-badge]");
+    const title = copyEl?.querySelector<HTMLElement>("[data-copy-title]");
+    const body = copyEl?.querySelector<HTMLElement>("[data-copy-body]");
+    if (!copyEl || !badge || !title || !body) return;
+    const SplitText = await loadSplitText();
+    await document.fonts.ready;
+
+    let on = false;
+    let words: Element[] = [];
+    let lines: Element[] = [];
+    const hidden = () => {
+      gsap.set(badge, { opacity: 0, y: 14, scale: 0.94, filter: "blur(6px)" });
+      gsap.set(words, { yPercent: 115, rotation: 3, opacity: 0 });
+      gsap.set(lines, { yPercent: 110, opacity: 0 });
+    };
+    const shown = () => {
+      gsap.set(badge, { opacity: 1, y: 0, scale: 1, filter: "blur(0px)" });
+      gsap.set(words, { yPercent: 0, rotation: 0, opacity: 1 });
+      gsap.set(lines, { yPercent: 0, opacity: 1 });
+    };
+
+    SplitText.create(title, {
+      type: "lines,words",
+      mask: "lines",
+      linesClass: "split-line",
+      wordsClass: "split-word",
+      autoSplit: true,
+      onSplit: (self) => {
+        words = self.words;
+        // Measured before hidden()/shown() so no transform is applied yet: each word's offset inside the h1.
+        const box = title.getBoundingClientRect();
+        title.style.setProperty("--tg-w", box.width + "px");
+        title.style.setProperty("--tg-h", box.height + "px");
+        for (const w of words as HTMLElement[]) {
+          const r = w.getBoundingClientRect();
+          w.style.setProperty("--wx", box.left - r.left + "px");
+          w.style.setProperty("--wy", box.top - r.top + "px");
+        }
+        on ? shown() : hidden();
+      },
+    });
+    SplitText.create(body, {
+      type: "lines",
+      mask: "lines",
+      linesClass: "split-line",
+      autoSplit: true,
+      onSplit: (self) => {
+        lines = self.lines;
+        on ? shown() : hidden();
+      },
+    });
+
+    const TG_START = -47.44;
+    showCopy = (next) => {
+      if (next === on) return;
+      on = next;
+      copyEl.style.visibility = "visible";
+      gsap.killTweensOf([badge, ...words, ...lines]);
+      if (on) {
+        // Always replay the full entrance: a previous exit only faded opacity, so without this reset the words
+        // would still sit at yPercent 0 and just fade in (no rise, "appears too fast"). Also covers re-entering
+        // while an exit is still mid-fade.
+        hidden();
+        gsap.to(badge, { opacity: 1, y: 0, scale: 1, filter: "blur(0px)", duration: 0.9, ease: "power3.out" });
+        gsap.to(words, { yPercent: 0, rotation: 0, opacity: 1, duration: 1.2, ease: "expo.out", stagger: 0.07, delay: 0.15 });
+        gsap.to(lines, { yPercent: 0, opacity: 1, duration: 1.1, ease: "expo.out", stagger: 0.12, delay: 0.45 });
+        // Locked to the words: same delay, linear like the stagger that spaces them, ending when the LAST word has
+        // visibly landed. That is not the words tween's full duration (wordsIn.duration()): expo.out is ~97% done at
+        // half of its 1.2s, so the tail is invisible and the gradient kept filling after all the text was readable.
+        const VISIBLE_LAND = 0.55; // s after a word starts until expo.out has visually settled
+        gsap.to(title, {
+          "--tg": 0,
+          duration: 0.07 * Math.max(0, words.length - 1) + VISIBLE_LAND,
+          ease: "none",
+          delay: 0.15,
+          overwrite: "auto",
+        });
+      } else {
+        gsap.to(title, { "--tg": TG_START, duration: 0.3, ease: "power2.in", overwrite: "auto" });
+        gsap.to([badge, ...words, ...lines], {
+          opacity: 0,
+          duration: 0.3,
+          ease: "power2.in",
+          // Once faded, put everything back to the hidden pose (so the next entrance replays the rise) and take
+          // the block out of the page so nothing can linger over the earlier scenes.
+          onComplete: () => {
+            if (on) return;
+            hidden();
+            copyEl.style.visibility = "hidden";
+          },
+        });
+      }
+    };
+    // Headline gradient starting position (see showCopy: it slides to 0 while the words rise).
+    gsap.set(title, { "--tg": TG_START });
+    hidden();
+  }
+
   // Scroll: the whole wordmark rises with the (now empty, outlined) mark; a gradient copy of the mark
   // drops and grows to 573px while its gradient turns into the brandmark; a white veil covers the
   // lower half. Scrubbed + pinned; geometry is re-measured on refresh (hero-relative, so pinning
@@ -257,8 +496,14 @@ const hollowScale = MARK_SLOT.size / 32;
       scrollTrigger: {
         trigger: hero,
         start: "top top",
-        end: "+=190%", // phase 1 (0..1) keeps the old pace; phase 2 (the morph) is the extra scroll
+        end: "+=470%", // ~103% per timeline unit: phase 1 (0..1) keeps its pace; phases 2 and 3 are the extra scroll
+        onUpdate: (self) => {
+          const time = self.progress * (self.animation?.duration() ?? 1);
+          showCopy(time >= COPY_AT);
+          updateLive(time);
+        },
         pin: true,
+        onLeaveBack: () => showCopy(false), // safety net: fully scrolled back up, the copy must be gone
         scrub: 0.6,
         invalidateOnRefresh: true,
         onRefresh: () => {
@@ -295,16 +540,182 @@ const hollowScale = MARK_SLOT.size / 32;
         .to(xPath, { attr: { "fill-opacity": 1 }, duration: 0.7, ease: "power1.inOut" }, 1.1);
     }
 
+    // Phase 3 (Hero-Animation-4): the mark morphs into a rounded square, the fluted glass / dark fade / veil /
+    // wordmark all dissolve so the page background (background-white) takes over, and the copy enters.
+    const P3 = 1.95;
+    // stage 2 (phase 4): square -> the central card's rounded rectangle; built once its slot is measured
+    const sq2 = { t: 0 };
+    let morph2: ((t: number) => string) | null = null;
+    let repaintMark: () => void = () => {};
+    if (markShape && xPath) {
+      const morph = buildMorph(xPath, SQUARE_D, 360, MARK_PATH);
+      const sq = { t: 0 };
+      const paint = () => {
+        if (sq.t <= 0) {
+          // back to the CSS-mask outline used by phases 1-2
+          markShape.style.removeProperty("clip-path");
+          markShape.style.removeProperty("-webkit-mask");
+          markShape.style.removeProperty("mask");
+          return;
+        }
+        // clip-path (sync, no image decode) instead of regenerating a mask image every frame. Capped below 1: at t = 1
+        // morph() returns the raw SQUARE_D (with arc flags), which the numeric scaling below would corrupt.
+        const k = markShape.offsetWidth / 32;
+        const shape = sq2.t > 0 && morph2 ? morph2(Math.min(sq2.t, 0.9999)) : morph(Math.min(sq.t, 0.9999));
+        const d = shape.replace(/-?\d*\.?\d+/g, (n) => String(Number(n) * k));
+        markShape.style.setProperty("-webkit-mask", "none");
+        markShape.style.setProperty("mask", "none");
+        markShape.style.setProperty("clip-path", `path("${d}")`);
+      };
+      repaintMark = paint;
+      tl.to(sq, { t: 1, duration: 0.9, ease: "power2.inOut", onUpdate: paint, onReverseComplete: paint }, P3);
+    }
+    // the shader's palette turns into gradient-3 as the square forms and the copy arrives
+    tl.to(foam, { look: 1, duration: 1, ease: "power2.inOut" }, P3 + 0.3);
+    tl.to(backdrop, { opacity: 0, duration: 0.7, ease: "power1.inOut" }, P3)
+      .to(veil, { opacity: 0, duration: 0.7 }, P3)
+      .to(move, { opacity: 0, duration: 0.6, ease: "power1.in" }, P3);
+    // The square runs "inferno" (the real ruidoEvolutivo shader). Three.js is imported when the intro is done and
+    // the mark is mounted once it has reached full size (the renderer sizes its canvas from getBoundingClientRect,
+    // which includes the mark's scale); it is then paused and only runs between "the mark became the square" and
+    // "every card is on screen", frozen again after that.
+    const inferno = readInfernoConfig();
+    const LIVE_FROM = P3 + 0.3;
+    const LIVE_TO = 3.0 + 1.2; // P4 + 1.2: by then every card is in place
+    if (inferno && markCard) {
+      let handle: RuidoEvolutivoHandle | null = null;
+      let mounting = false;
+      let wantOn = false;
+      const mountRuido = import("@fluxa/ruido-evolutivo-renderer"); // start downloading right away
+      const ensure = async () => {
+        if (handle || mounting) return;
+        mounting = true;
+        try {
+          const { mountRuidoEvolutivo } = await mountRuido;
+          handle = mountRuidoEvolutivo(markCard, { ...inferno, animate: "on" });
+          // let it paint one frame, then hold it unless the scroll already wants it running
+          requestAnimationFrame(() => requestAnimationFrame(() => (wantOn ? handle?.resume() : handle?.pause())));
+        } catch (error) {
+          console.warn("[hero] inferno unavailable:", error);
+        }
+      };
+      updateLive = (time) => {
+        if (time >= 1.2) void ensure();
+        const on = time >= LIVE_FROM && time < LIVE_TO;
+        if (on === wantOn) return;
+        wantOn = on;
+        if (on) handle?.resume();
+        else handle?.pause();
+      };
+      tl.to(markCard, { opacity: 1, duration: 1, ease: "power2.inOut" }, LIVE_FROM);
+    }
+
+    // The navbar's fill becomes solid #0B0D12 as the page turns light.
+    if (header) tl.to(header, { "--nav-solid": 1, duration: 0.6, ease: "power1.inOut" }, P3);
+
+    // Phase 4 (final scene): the square shrinks into its card slot (and dissolves into the real card) while the
+    // other cards rise into place; the copy settles into the middle and the buttons appear.
+    const P4 = 3.0;
+    const cardF = hero.querySelector<HTMLElement>('[data-gcard-wrap="F"]');
+    const cardsHost = hero.querySelector<HTMLElement>("[data-gcards-host]");
+    const others = Array.from(hero.querySelectorAll<HTMLElement>("[data-gcard-wrap]")).filter((el) => el !== cardF);
+    const ctas = copyEl?.querySelector<HTMLElement>("[data-copy-ctas]");
+    if (cardF && cardsHost && copyEl) {
+      gsap.set(others, { opacity: 0, y: 80, scale: 0.92 });
+      gsap.set(cardF, { opacity: 0 });
+      const slot = () => {
+        const r = cardF.getBoundingClientRect();
+        const h = hero.getBoundingClientRect();
+        const radius = parseFloat(getComputedStyle(cardF.querySelector("[data-gcard]") ?? cardF).borderTopLeftRadius) || 0;
+        return { x: r.left - h.left + r.width / 2, y: r.top - h.top + r.height / 2, w: r.width, h: r.height, radius };
+      };
+      // The card's rounded rectangle expressed in the mark's 32-unit box: the mark is scaled so its width equals the
+      // card's width, and the clip keeps only the central band of the card's height, with the card's corner radius.
+      const rectD = () => {
+        const c = slot();
+        const r = c.h / c.w;
+        const y0 = 16 * (1 - r);
+        const y1 = 16 * (1 + r);
+        const rad = Math.min(16 * r, (32 * c.radius) / c.w);
+        return `M${rad} ${y0}H${32 - rad}A${rad} ${rad} 0 0 1 32 ${y0 + rad}V${y1 - rad}A${rad} ${rad} 0 0 1 ${32 - rad} ${y1}H${rad}A${rad} ${rad} 0 0 1 0 ${y1 - rad}V${y0 + rad}A${rad} ${rad} 0 0 1 ${rad} ${y0}Z`;
+      };
+      const buildRect = () => {
+        if (xPath) morph2 = buildMorph(xPath, rectD(), 360, SQUARE_D);
+      };
+      buildRect();
+      ScrollTrigger.addEventListener("refresh", buildRect); // the slot changes with the viewport
+      tl.fromTo(cardsHost, { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.05 }, P4)
+        .to(
+          mark,
+          {
+            x: () => slot().x - measure().mx,
+            y: () => slot().y - measure().my,
+            scale: () => slot().w / measure().ms,
+            duration: 1,
+            ease: "power2.inOut",
+          },
+          P4,
+        )
+        // the shape scales AND turns into the card's rounded rectangle in the same motion
+        .to(sq2, { t: 1, duration: 1, ease: "power2.inOut", onUpdate: repaintMark, onReverseComplete: repaintMark }, P4)
+        // it has landed exactly on the card: a short dissolve hands over to the real (interactive) card, and the mark
+        // goes fully out of the way (autoAlpha also sets visibility: hidden)
+        .to(cardF, { opacity: 1, duration: 0.25, ease: "none" }, P4 + 0.9)
+        .to(mark, { autoAlpha: 0, duration: 0.25, ease: "none" }, P4 + 1.0)
+        .to(others, { opacity: 1, y: 0, scale: 1, duration: 0.9, ease: "power3.out", stagger: 0.07 }, P4 + 0.25)
+        .to(
+          copyEl,
+          { y: () => measure().vh * 0.5 - copyEl.offsetHeight / 2 - copyEl.offsetTop, duration: 1, ease: "power2.inOut" },
+          P4,
+        );
+      if (ctas) {
+        gsap.set(ctas, { autoAlpha: 0, y: 24 });
+        tl.to(ctas, { autoAlpha: 1, y: 0, duration: 0.6, ease: "power3.out" }, P4 + 0.5);
+      }
+    }
+    // hold at the end so the last motion settles before the pin releases
+    tl.to({}, { duration: 0.35 }, P4 + 1.2);
+
+    // Navbar: once the final scene is reached it slides up and stays hidden while scrolling down; any scroll up
+    // brings it back. Before that scene it is always visible.
+    if (header) {
+      let navHidden = false;
+      let lastY = window.scrollY;
+      const setNavHidden = (hide: boolean) => {
+        if (hide === navHidden) return;
+        navHidden = hide;
+        gsap.to(header, { yPercent: hide ? -140 : 0, duration: 0.5, ease: "power3.out", overwrite: "auto" });
+      };
+      const gate = () => {
+        const st = tl.scrollTrigger!;
+        return st.start + ((P4 + 0.6) / tl.duration()) * (st.end - st.start);
+      };
+      window.addEventListener(
+        "scroll",
+        () => {
+          const y = window.scrollY;
+          if (y < gate()) setNavHidden(false);
+          else if (y > lastY + 2) setNavHidden(true);
+          else if (y < lastY - 2) setNavHidden(false);
+          lastY = y;
+        },
+        { passive: true },
+      );
+    }
+
     if (import.meta.env.DEV) {
       // ?heroP=<0..1.85> parks the scroll timeline at a progress (screenshots / tuning)
       const p = new URLSearchParams(location.search).get("heroP");
       if (p !== null) {
+        ScrollTrigger.refresh(); // measure first: refreshing after parking would re-read half-moved values
         tl.scrollTrigger?.disable(false);
         tl.progress(Number(p) / tl.duration());
+        showCopy(Number(p) >= COPY_AT);
+        updateLive(Number(p));
       }
     }
 
-    ScrollTrigger.refresh();
+    if (!new URLSearchParams(location.search).has("heroP")) ScrollTrigger.refresh();
   }
 
   if (!anchor || !mark || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
@@ -328,12 +739,18 @@ const hollowScale = MARK_SLOT.size / 32;
           defaults: { ease: "power3.out" },
           onComplete: () => {
             gsap.set([header, ...letters, mark], { clearProps: "opacity,transform" });
-            done();
+            html.classList.add("hero-done");
             window.clearTimeout(failsafe);
-            setupScroll(g);
+            // keep scrolling locked until the pinned scroll timeline exists, then release (a scroll in between would
+            // otherwise be taken before the pin and jump when it appears)
+            void setupCopy(g)
+              .then(() => setupScroll(g))
+              .catch((error) => console.warn("[hero] scroll setup failed:", error))
+              .finally(() => html.classList.remove("hero-locked"));
           },
         });
         entry = tl;
+        tl.timeScale(1.7); // the intro plays 1.7x faster than its authored timings
         // 1. navbar drops in from the top
         tl.to(header, { yPercent: 0, opacity: 1, duration: 0.8 });
         // 2. logo rises from the bottom at the F position (letters still hidden)

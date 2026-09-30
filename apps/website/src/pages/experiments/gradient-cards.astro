@@ -1,0 +1,34 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import GradientCards from "@/components/sections/GradientCards.astro";
+import HeroCtas from "@/components/sections/HeroCtas.astro";
+import InfernoConfig from "@/components/sections/InfernoConfig.astro";
+import { resolveLocale, useTranslations } from "@/i18n";
+
+const locale = resolveLocale(Astro.currentLocale);
+const t = useTranslations(locale).hero.reveal;
+---
+
+<BaseLayout title="Gradient cards (experimental) — Fluxa" description="Hero final scene: gradient cards." noindex>
+  <InfernoConfig />
+  <!-- The final scene on its own artboard (2000x1709), to tune the cards before they join the hero timeline. -->
+  <section class="relative w-full overflow-hidden" style="aspect-ratio:2000/1709">
+    <GradientCards />
+    <div class="pointer-events-none absolute inset-x-0 top-1/2 z-[5] flex -translate-y-1/2 flex-col items-center px-6 text-center">
+      <div class="rounded-full bg-gradient-gradient p-px shadow-e2">
+        <span class="flex items-center gap-2 rounded-full bg-background-white py-1 pl-1.5 pr-3 text-text-sm-medium text-text-secondary">
+          <span class="h-2.5 w-6 rounded-full bg-gradient-gradient" aria-hidden="true"></span>
+          {t.badge}
+        </span>
+      </div>
+      <h1 class="mt-8 max-w-[1100px] font-display text-header-h1 leading-[1.1] text-text-black">{t.title}</h1>
+      <p class="mt-6 max-w-[520px] text-text-lg-regular text-text-secondary">{t.body}</p>
+      <div class="mt-8"><HeroCtas locale={locale} /></div>
+    </div>
+  </section>
+  <script>
+    import { initGradientCards } from "@/lib/gradient/gradientCards";
+    const root = document.querySelector<HTMLElement>("[data-gcards]");
+    if (root) initGradientCards(root);
+  </script>
+</BaseLayout>

@@ -2,6 +2,7 @@
 import { NAV, SITE, type Locale } from "@/config/site";
 import { localizedPath, useTranslations } from "@/i18n";
 import Logo from "@/components/ui/Logo.astro";
+import { ButtonPrimary } from "@fluxa/ui";
 
 interface Props {
   locale: Locale;
@@ -17,9 +18,9 @@ const items = NAV.map((item) => {
 
 const linkClass =
   "text-text-md-medium text-text-white transition-colors hover:text-text-color-accent aria-[current=page]:text-text-color-accent";
-// 45px tall: with py-4 that makes the pill 77px, the size in the design reference.
-const ctaClass =
-  "inline-flex h-[45px] items-center gap-3 rounded-full bg-gradient-gradient px-5 text-text-md-medium text-text-white shadow-e3 transition-transform duration-200 ease-out-expo hover:-translate-y-0.5 active:translate-y-0";
+// Lift on hover lives on a wrapper so it never clashes with ButtonPrimary's own transition-shadow.
+const liftClass =
+  "transition-transform duration-200 ease-out-expo hover:-translate-y-0.5 active:translate-y-0";
 ---
 
 <!-- Floating pill: fixed and overlaying the hero (no layout space of its own),
@@ -48,12 +49,14 @@ const ctaClass =
         <span aria-hidden="true" class="ml-[40px] mr-[52px] hidden h-4 w-px bg-text-white/25 md:block"></span>
         <a href={SITE.loginUrl} class={`${linkClass} mr-[52px] hidden md:inline`}>{t.nav.login}</a>
 
-        <a href={SITE.installUrl} class={`${ctaClass} hidden md:inline-flex`}>
-          {t.nav.cta}
-          <svg width="6" height="10" viewBox="0 0 6 10" fill="none" aria-hidden="true">
+        <span class={`${liftClass} hidden md:inline-block`}>
+          <ButtonPrimary client:idle href={SITE.installUrl} size="md">
+            {t.nav.cta}
+            <svg width="6" height="10" viewBox="0 0 6 10" fill="none" aria-hidden="true">
             <path d="M1 1l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
           </svg>
-        </a>
+          </ButtonPrimary>
+        </span>
 
         <button
           type="button"
@@ -85,7 +88,9 @@ const ctaClass =
           ))
         }
         <a href={SITE.loginUrl} class={linkClass}>{t.nav.login}</a>
-        <a href={SITE.installUrl} class={`${ctaClass} justify-center`}>{t.nav.cta}</a>
+        <span class={`${liftClass} flex justify-center`}>
+          <ButtonPrimary client:idle href={SITE.installUrl} size="md">{t.nav.cta}</ButtonPrimary>
+        </span>
       </nav>
     </div>
   </div>
@@ -108,7 +113,20 @@ const ctaClass =
   .glass-border {
     --cap: 38.5px;
     position: relative;
+    isolation: isolate;
     background: linear-gradient(to bottom, rgb(0 0 0 / 0.55), rgb(255 255 255 / 0.02));
+  }
+  /* Solid fill (background-dark #0B0D12): the hero timeline tweens --nav-solid 0 -> 1 on the header once the
+     page turns light. It sits under the content and over the glass gradient. */
+  .glass-border::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    background: #0b0d12;
+    opacity: var(--nav-solid, 0);
+    pointer-events: none;
   }
   .glass-border::before {
     content: "";

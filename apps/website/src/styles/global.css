@@ -40,7 +40,7 @@
 
 @layer base {
   html {
-    @apply bg-background-dark text-text-white font-sans antialiased;
+    @apply bg-background-white text-text-black font-sans antialiased;
     scroll-behavior: smooth;
   }
   body {

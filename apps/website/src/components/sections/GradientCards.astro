@@ -1,0 +1,51 @@
+---
+import { CARD_PRESETS } from "@/lib/gradient/cardPresets";
+
+// The final scene's card layout (copy-paste/fluxa web/final-escene.png, 2000x1709 artboard), made relative to
+// whatever box holds it: the layer is a size container, so everything is in container units.
+//  - vertical positions are % of the box HEIGHT (rows hug the top / bottom edge, the middle stays free for the
+//    copy and buttons at any screen height);
+//  - a card's size follows the height (17.67cqh tall, 16:9) but never exceeds ~29% of the width, so on tall or
+//    narrow screens the columns cannot collide;
+//  - column centres are % of the box WIDTH (the outer columns stay cropped by the screen edges).
+const W = 2000;
+const H = 1709;
+const CARD_W = 535;
+const layout: Record<string, [number, number]> = {
+  A: [-205, 133],
+  B: [420, 45],
+  C: [1045, 133],
+  D: [1670, 45],
+  E: [-205, 1363],
+  F: [420, 1273],
+  G: [1045, 1363],
+  H: [1670, 1273],
+};
+const cards = CARD_PRESETS.map((preset) => {
+  const [x, y] = layout[preset.id];
+  const cx = ((x + CARD_W / 2) / W) * 100;
+  const top = (y / H) * 100;
+  return {
+    ...preset,
+    style: `--w:min(31.28cqh,29cqw);width:var(--w);aspect-ratio:535/302;left:calc(${cx}% - var(--w) / 2);top:${top}%`,
+  };
+});
+---
+
+<div class="absolute inset-0 [container-type:size]" data-gcards>
+  {
+    cards.map((card) => (
+      // The wrapper is what the hero timeline moves (GSAP transform); the button inside owns the hover lift.
+      <div data-gcard-wrap={card.id} style={card.style} class="absolute">
+        <button
+          type="button"
+          data-gcard={card.id}
+          aria-label={card.name}
+          class="gcard block h-full w-full cursor-pointer overflow-hidden rounded-[1.52cqh] shadow-e2 transition-[transform,box-shadow] duration-500 ease-out-expo hover:-translate-y-2 hover:scale-[1.035] hover:shadow-e6 focus-visible:-translate-y-2 focus-visible:scale-[1.035]"
+        >
+          <canvas class="block h-full w-full" />
+        </button>
+      </div>
+    ))
+  }
+</div>

@@ -22,6 +22,13 @@ export const en = {
       "Design shader gradients, liquid glass and evolving noise right inside the Designer — they render live on your published pages.",
     primary: "Add to Webflow",
     secondary: "Browse presets",
+    // Copy revealed once the scroll transition lands on the light background (Hero-Animation-4).
+    reveal: {
+      badge: "Webflow designer",
+      title: "Motion, without the code.",
+      body: "Fluxa adds animated shader gradients to any Div block, Section, or Link block right inside Webflow's Designer. No shaders to write, no plugins to install.",
+      ctaSecondary: "Watch the demo",
+    },
   },
   features: {
     title: "Built for designers, tuned for performance",

@@ -19,7 +19,7 @@ function flattenOneLevel(obj) {
 
 /** @type {import('tailwindcss').Config} */
 export default {
-  content: ["./src/**/*.{astro,html,md,mdx,ts,tsx}"],
+  content: ["./src/**/*.{astro,html,md,mdx,ts,tsx}", "../../packages/ui/src/**/*.{ts,tsx}"],
   theme: {
     extend: {
       ...tokens,

@@ -22,6 +22,12 @@ export const es: Dictionary = {
       "Diseña gradientes con shaders, cristal líquido y ruido evolutivo dentro del Designer: se renderizan en vivo en tus páginas publicadas.",
     primary: "Añadir a Webflow",
     secondary: "Ver presets",
+    reveal: {
+      badge: "Webflow designer",
+      title: "Movimiento, sin código.",
+      body: "Fluxa añade gradientes con shaders animados a cualquier Div block, Section o Link block directamente en el Designer de Webflow. Sin shaders que escribir, sin plugins que instalar.",
+      ctaSecondary: "Ver la demo",
+    },
   },
   features: {
     title: "Hecho para diseñadores, optimizado para rendir",

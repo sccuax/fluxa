@@ -1,0 +1,8 @@
+---
+import { loadInfernoConfig } from "@/lib/gradient/infernoPreset";
+
+// Hands the "inferno" preset config to the client scripts (hero mark + the central gradient card).
+const config = await loadInfernoConfig();
+---
+
+<script is:inline type="application/json" id="inferno-config" set:html={JSON.stringify(config)} />

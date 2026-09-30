@@ -41,6 +41,12 @@ const { title = t.meta.title, description = t.meta.description, noindex } = Astr
     <!-- `.js` gates the reveal-hidden state so the page is readable without JS. -->
     <script is:inline>
       document.documentElement.classList.add("js");
+      // Every load starts at the top: the pinned hero cannot resume from a restored scroll position (a #hash link may).
+      if ("scrollRestoration" in history) history.scrollRestoration = "manual";
+      if (!location.hash) window.scrollTo(0, 0);
+      window.addEventListener("pageshow", (e) => {
+        if (e.persisted && !location.hash) window.scrollTo(0, 0);
+      });
     </script>
   </head>
   <body>
