@@ -72,6 +72,9 @@ importers:
       '@fluxa/ruido-evolutivo-renderer':
         specifier: workspace:*
         version: link:../../packages/ruido-evolutivo-renderer
+      '@fluxa/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
       '@react-three/fiber':
         specifier: ^8.18.0
         version: 8.18.0(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(three@0.166.1)
@@ -293,6 +296,9 @@ importers:
       '@fluxa/ruido-evolutivo-renderer':
         specifier: workspace:*
         version: link:../../packages/ruido-evolutivo-renderer
+      '@fluxa/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
       '@fluxa/webgpu-particle-field':
         specifier: workspace:*
         version: link:../../packages/webgpu-particle-field
@@ -393,6 +399,24 @@ importers:
       '@types/three':
         specifier: ^0.166.0
         version: 0.166.0
+      typescript:
+        specifier: ^5.5.4
+        version: 5.9.3
+
+  packages/ui:
+    devDependencies:
+      '@types/react':
+        specifier: ^18.3.3
+        version: 18.3.31
+      '@types/three':
+        specifier: ^0.166.0
+        version: 0.166.0
+      react:
+        specifier: ^18.3.1
+        version: 18.3.1
+      three:
+        specifier: ^0.166.1
+        version: 0.166.1
       typescript:
         specifier: ^5.5.4
         version: 5.9.3
@@ -10159,7 +10183,7 @@ snapshots:
 
   '@types/react-reconciler@0.26.7':
     dependencies:
-      '@types/react': 19.3.0
+      '@types/react': 18.3.31
 
   '@types/react-reconciler@0.28.9(@types/react@18.3.31)':
     dependencies:
