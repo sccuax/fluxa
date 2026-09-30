@@ -10,7 +10,10 @@
     "prebuild": "pnpm run sync:assets",
     "build": "astro check && astro build",
     "preview": "astro preview --port 5176",
-    "typecheck": "astro check"
+    "typecheck": "astro check",
+    "deploy:staging": "node scripts/deploy.mjs staging",
+    "deploy:production": "node scripts/deploy.mjs production",
+    "deploy:both": "node scripts/deploy.mjs both"
   },
   "dependencies": {
     "@astrojs/check": "^0.9.10",
