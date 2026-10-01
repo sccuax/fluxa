@@ -1,8 +1,12 @@
 ---
 // Section 2: "From zero to motion in three steps". Uses the shared grid Section (horizontal rules full-bleed,
-// vertical rules at the content column). The left panel is a placeholder window per step until the real
-// Designer screenshots exist: swap each `[data-step-panel]`'s mock for an <img> (width/height set, lazy).
+// vertical rules at the content column). The left panel shows one Designer screenshot per step (src/assets, served
+// by astro:assets <Picture> as AVIF/WebP with a PNG fallback; they crossfade as the active step changes).
+import { Picture } from "astro:assets";
 import Section from "@/components/layout/Section.astro";
+import openFluxa from "@/assets/open-fluxa.png";
+import pickGradient from "@/assets/pick-gradient.png";
+import dropIt from "@/assets/drop-it.png";
 import type { Locale } from "@/config/site";
 import { useTranslations } from "@/i18n";
 
@@ -11,6 +15,7 @@ interface Props {
 }
 const { locale } = Astro.props;
 const t = useTranslations(locale).steps;
+const shots = [openFluxa, pickGradient, dropIt];
 ---
 
 <Section id="how-it-works" labelledby="how-title" noTopRule bottomRule>
@@ -62,21 +67,15 @@ const t = useTranslations(locale).steps;
             data-active={i === 0 ? "true" : "false"}
             class="absolute inset-0 flex items-center justify-center px-8"
           >
-            <div class="w-full max-w-[480px] overflow-hidden rounded-8 bg-background-dark-2 shadow-2xl ring-1 ring-black/10">
-              <div class="flex items-center gap-1.5 border-b border-white/10 px-3 py-2">
-                <span class="h-2 w-2 rounded-full bg-white/25" />
-                <span class="h-2 w-2 rounded-full bg-white/25" />
-                <span class="h-2 w-2 rounded-full bg-white/25" />
-              </div>
-              <div class="grid aspect-[16/10] grid-cols-[28%_1fr] gap-3 p-3">
-                <div class="flex flex-col gap-2">
-                  {[0, 1, 2, 3].map((n) => (
-                    <span class={`h-2 rounded-full ${n === i ? "bg-gradient-gradient" : "bg-white/15"}`} />
-                  ))}
-                </div>
-                <div class="rounded-4 bg-gradient-gradient opacity-80" style={`opacity:${0.45 + i * 0.2}`} />
-              </div>
-            </div>
+            <Picture
+              src={shots[i]}
+              formats={["avif", "webp"]}
+              widths={[640, 1098]}
+              sizes="(min-width: 1024px) 640px, 100vw"
+              alt=""
+              loading="lazy"
+              class="h-auto w-full max-w-[640px]"
+            />
           </div>
         ))
       }

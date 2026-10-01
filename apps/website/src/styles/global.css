@@ -205,6 +205,14 @@
   70% { transform: scaleY(0.8); }
   100% { transform: scaleY(0.66); }
 }
+/* Step visuals (one per step, stacked): only the active one is visible; they crossfade as the step changes. */
+[data-step-panel] {
+  opacity: 0;
+  transition: opacity 0.5s theme("transitionTimingFunction.out-expo");
+}
+[data-step-panel][data-active="true"] {
+  opacity: 1;
+}
 @media (prefers-reduced-motion: reduce) {
   [data-step][data-active="true"] [data-step-bar] {
     animation: none;
@@ -409,4 +417,28 @@
   clip-path: inset(-40px 0 0 0);
   opacity: 0.85;
   pointer-events: none;
+}
+
+/* Step screenshot entrance: when a step becomes active its image settles in (rises, un-zooms and un-blurs, out-expo)
+   while the panel fades up; the one it replaces drifts back and softens as it fades. Pure CSS: it replays on every
+   selection (click or autoplay) because the transition runs between the inactive and active states. */
+[data-step-panel] img {
+  transform: translateY(18px) scale(0.96);
+  filter: blur(6px);
+  transition:
+    transform 0.9s theme("transitionTimingFunction.out-expo"),
+    filter 0.6s ease-out;
+  will-change: transform, filter;
+}
+[data-step-panel][data-active="true"] img {
+  transform: none;
+  filter: blur(0);
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-step-panel] img {
+    transform: none;
+    filter: none;
+    transition: none;
+    will-change: auto;
+  }
 }
