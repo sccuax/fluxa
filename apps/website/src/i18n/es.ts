@@ -29,6 +29,20 @@ export const es: Dictionary = {
       ctaSecondary: "Ver la demo",
     },
   },
+  steps: {
+    badge: "Soluciones",
+    titlePre: "De cero ",
+    titleAccent: "a movimiento",
+    titlePost: " en tres pasos.",
+    items: [
+      { title: "Abre Fluxa", body: "Lanza el panel sin salir nunca del Designer de Webflow." },
+      { title: "Elige un gradiente", body: "Parte de un preset o crea tu propio plano, esfera o líquido." },
+      {
+        title: "Suéltalo sobre tu elemento",
+        body: "Aplícalo a cualquier Div block, Section o Link block. Queda activo al instante, directo en el canvas.",
+      },
+    ],
+  },
   features: {
     title: "Hecho para diseñadores, optimizado para rendir",
     items: [

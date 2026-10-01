@@ -22,7 +22,7 @@ const targets = {
   },
   production: {
     project: "fluxa-website",
-    url: process.env.PRODUCTION_URL ?? "https://fluxa-website.pages.dev",
+    url: process.env.PRODUCTION_URL ?? "https://fluxa.agency",
     noindex: false,
   },
 };

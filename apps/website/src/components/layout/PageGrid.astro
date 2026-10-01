@@ -1,0 +1,9 @@
+---
+// Wraps every section that shows the site grid (everything after the hero). It draws the two vertical rules ONCE,
+// as a decoration over the whole stack (`.page-grid::before` in styles/global.css), so they run unbroken from
+// the first section to the footer, and sections only add their own full-bleed horizontal rules (see Section.astro).
+---
+
+<div class="page-grid gap-30 mt-30 relative">
+  <slot />
+</div>

@@ -10,9 +10,10 @@ const t = useTranslations(locale);
 const year = new Date().getFullYear();
 ---
 
-<footer class="mt-24 border-t border-text-black/10">
+<!-- Same vertical rules as <PageGrid> (`grid-rules`), no margin above and no top rule of its own: the last section closes with a rule. -->
+<footer class="grid-rules relative">
   <div
-    class="mx-auto flex max-w-6xl flex-col gap-4 px-5 py-10 text-text-sm-regular text-text-black/60 md:flex-row md:items-center md:justify-between"
+    class="mx-auto flex max-w-section flex-col gap-4 px-padding-global py-10 text-text-sm-regular text-text-black/60 md:flex-row md:items-center md:justify-between"
   >
     <p>© {year} {SITE.name}. {t.footer.rights}</p>
     <nav aria-label="Legal" class="flex gap-6">

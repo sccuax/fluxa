@@ -1,0 +1,126 @@
+---
+// Section 2: "From zero to motion in three steps". Uses the shared grid Section (horizontal rules full-bleed,
+// vertical rules at the content column). The left panel is a placeholder window per step until the real
+// Designer screenshots exist: swap each `[data-step-panel]`'s mock for an <img> (width/height set, lazy).
+import Section from "@/components/layout/Section.astro";
+import type { Locale } from "@/config/site";
+import { useTranslations } from "@/i18n";
+
+interface Props {
+  locale: Locale;
+}
+const { locale } = Astro.props;
+const t = useTranslations(locale).steps;
+---
+
+<Section id="how-it-works" labelledby="how-title" noTopRule bottomRule>
+  <div class="flex flex-col items-start gap-4 px-6 pb-10 pt-20 md:px-9 md:py-20" data-reveal>
+    <div class="rounded-full bg-gradient-gradient p-px">
+      <span class="flex items-center gap-2 rounded-full bg-background-white py-1 pl-1.5 pr-3 text-text-sm-medium text-text-secondary">
+        <span class="h-2.5 w-6 rounded-full bg-gradient-gradient" aria-hidden="true"></span>
+        {t.badge}
+      </span>
+    </div>
+    <h2 id="how-title" class="font-display text-header-h2 leading-[1.05] text-text-black">
+      {t.titlePre}<span class="text-gradient-x">{t.titleAccent}</span><br />{t.titlePost}
+    </h2>
+  </div>
+
+  <div class="grid border-t border-border-border lg:grid-cols-[57fr_43fr]" data-steps>
+    <!-- Visual: one decorative window per step, crossfading. -->
+    <!-- The panel stretches to the height of the steps (grid default `stretch`); min-h only matters stacked on mobile. -->
+    <div class="relative min-h-[320px] overflow-hidden bg-background-white-2/60 lg:min-h-0" aria-hidden="true">
+      <!-- Glow: the Fluxa logo mark (778x778 path from the design, native size), gradient-filled and blurred 60px,
+           sitting 599px below the bottom edge so only its top lobes show. It drifts slowly (`.logo-glow`). -->
+      <div class="absolute bottom-[-599px] left-1/2 w-[778px] -translate-x-1/2">
+        <svg
+          class="logo-glow block h-auto w-full blur-[60px]"
+          viewBox="0 0 778 778"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          aria-hidden="true"
+        >
+          <path
+            d="M778 583.531C778 691.01 690.888 778 583.531 778C476.174 778 389.061 690.888 389.061 583.531C389.061 691.01 301.949 778 194.592 778C87.2351 778 0 690.888 0 583.531C0 476.174 87.1124 389.061 194.469 389.061C87.1124 388.939 0 301.949 0 194.469C0 140.73 21.7168 92.1429 56.9298 56.9298C92.1429 21.7168 140.73 0 194.469 0H583.408C690.765 0 777.877 87.1124 777.877 194.469C777.877 248.209 756.161 296.796 720.948 332.009C685.734 367.222 637.148 388.939 583.408 388.939C690.765 388.939 777.877 476.051 777.877 583.408L778 583.531Z"
+            fill="url(#paint0_linear_1099_16627)"
+          ></path>
+          <defs>
+<linearGradient id="paint0_linear_1099_16627" x1="255.057" y1="778" x2="522.943" y2="-2.81477e-06" gradientUnits="userSpaceOnUse">
+<stop stop-color="#6FF5F1"/>
+<stop offset="0.2548" stop-color="#3B9CD6"/>
+<stop offset="0.5" stop-color="#0955E5"/>
+<stop offset="0.75" stop-color="#8E54C5"/>
+<stop offset="1" stop-color="#E23F8C"/>
+</linearGradient>
+</defs>
+        </svg>
+      </div>
+      {
+        t.items.map((_, i) => (
+          <div
+            data-step-panel
+            data-active={i === 0 ? "true" : "false"}
+            class="absolute inset-0 flex items-center justify-center px-8"
+          >
+            <div class="w-full max-w-[480px] overflow-hidden rounded-8 bg-background-dark-2 shadow-2xl ring-1 ring-black/10">
+              <div class="flex items-center gap-1.5 border-b border-white/10 px-3 py-2">
+                <span class="h-2 w-2 rounded-full bg-white/25" />
+                <span class="h-2 w-2 rounded-full bg-white/25" />
+                <span class="h-2 w-2 rounded-full bg-white/25" />
+              </div>
+              <div class="grid aspect-[16/10] grid-cols-[28%_1fr] gap-3 p-3">
+                <div class="flex flex-col gap-2">
+                  {[0, 1, 2, 3].map((n) => (
+                    <span class={`h-2 rounded-full ${n === i ? "bg-gradient-gradient" : "bg-white/15"}`} />
+                  ))}
+                </div>
+                <div class="rounded-4 bg-gradient-gradient opacity-80" style={`opacity:${0.45 + i * 0.2}`} />
+              </div>
+            </div>
+          </div>
+        ))
+      }
+    </div>
+
+    <!-- Steps: all text is always in the DOM; the inactive ones are just dimmed. -->
+    <ol class="flex flex-col divide-y divide-border-border border-t border-border-border lg:border-l lg:border-t-0 2xl:border-r">
+      {
+        t.items.map((item, i) => (
+          <li data-step data-active={i === 0 ? "true" : "false"} class="group relative">
+            <button
+              type="button"
+              class="flex w-full flex-col items-start gap-4 p-10 text-left"
+              aria-current={i === 0 ? "step" : "false"}
+            >
+              <span class="flex items-center gap-1" aria-hidden="true">
+                <span class="step-dot h-2.5 w-6" />
+                {Array.from({ length: i }).map(() => (
+                  <span class="step-dot h-2.5 w-2.5" />
+                ))}
+              </span>
+              <span class="font-display text-header-h4 text-text-secondary/70 transition-colors duration-300 group-data-[active=true]:text-text-black">
+                {item.title}
+              </span>
+              <span class="text-text-lg-regular text-text-secondary/60 transition-colors duration-300 group-data-[active=true]:text-text-secondary">
+                {item.body}
+              </span>
+            </button>
+            <span data-step-bar aria-hidden="true" class="pointer-events-none absolute inset-x-0 bottom-0 h-px">
+              <span class="step-glow">
+                <span class="eq-base" />
+                <span class="eq-mid" />
+                <span class="eq-core" />
+              </span>
+              <span class="step-line" />
+            </span>
+          </li>
+        ))
+      }
+    </ol>
+  </div>
+</Section>
+
+<script>
+  import { initSteps } from "@/lib/motion/steps";
+  initSteps();
+</script>

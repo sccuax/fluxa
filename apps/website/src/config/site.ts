@@ -7,7 +7,7 @@ export const DEFAULT_LOCALE: Locale = "en";
 
 export const SITE = {
   name: "Fluxa",
-  url: import.meta.env.PUBLIC_SITE_URL ?? "https://fluxa.app",
+  url: import.meta.env.PUBLIC_SITE_URL ?? "https://fluxa.agency",
   // Same Worker the Designer Extension talks to. Only the public, unauthenticated
   // routes (/api/public/*) may ever be called from the website.
   apiUrl:

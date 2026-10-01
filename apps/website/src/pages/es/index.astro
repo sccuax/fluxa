@@ -3,10 +3,13 @@
 // and locale-driven, so it just re-renders the same components.
 import BaseLayout from "@/layouts/BaseLayout.astro";
 import Hero from "@/components/sections/Hero.astro";
-import Features from "@/components/sections/Features.astro";
+import HowItWorks from "@/components/sections/HowItWorks.astro";
+import PageGrid from "@/components/layout/PageGrid.astro";
 ---
 
 <BaseLayout>
   <Hero locale="es" />
-  <Features locale="es" />
+  <PageGrid className="gap-30">
+    <HowItWorks locale="es" />
+  </PageGrid>
 </BaseLayout>

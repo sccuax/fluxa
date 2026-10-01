@@ -1,0 +1,35 @@
+---
+// A section inside <PageGrid>. It only owns its horizontal rules (full-bleed: the section is full width, so the
+// border touches both viewport edges) and the content column; the vertical rules belong to PageGrid.
+//
+//   <section  border-t / border-b>      full-width -> horizontal rules that reach the viewport edges
+//     <div  px-padding-global>          gutter: the content starts exactly on the vertical rules
+//       <div  max-w-section mx-auto>    content column (1440px max); `class` goes here
+//
+// Vertical spacing goes INSIDE the content div (`class`). Sections stack with no gap so the verticals never
+// break. Plain CSS only: for crawlers this is just <section> with its content.
+interface Props {
+  id?: string;
+  /** Extra classes for the content div (vertical padding, flex/grid layout, ...). */
+  class?: string;
+  /** Id of the heading that names the section, for `aria-labelledby`. */
+  labelledby?: string;
+  /** Drop the top rule (the first section after the hero has none: the hero carries no grid). */
+  noTopRule?: boolean;
+  /** Add a rule under the section (the last one, before the footer, which has no top rule of its own). */
+  bottomRule?: boolean;
+}
+const { id, class: className = "", labelledby, noTopRule = false, bottomRule = false } = Astro.props;
+---
+
+<section
+  id={id}
+  aria-labelledby={labelledby}
+  class:list={["relative", !noTopRule && "border-t border-border-border", bottomRule && "border-b border-border-border"]}
+>
+  <div class="px-padding-global">
+    <div class:list={["mx-auto w-full max-w-section", className]}>
+      <slot />
+    </div>
+  </div>
+</section>

@@ -29,6 +29,12 @@ export default {
         sans: [...(tokens.fontFamily?.["general-sans"] ?? []), "system-ui", "sans-serif"],
         display: [...(tokens.fontFamily?.["bricolage-grotesque"] ?? []), "system-ui", "sans-serif"],
       },
+      // Horizontal gutter of every page section (2.5rem desktop / 1.5rem mobile; the switch lives in
+      // styles/global.css `--padding-global`). Class: `px-padding-global`.
+      // `30` (7.5rem) is not in Tailwind's default scale (it jumps 28 -> 32); added so `mt-30`/`gap-30` work.
+      spacing: { "padding-global": "var(--padding-global)", 30: "7.5rem" },
+      // Content column of a section (see components/layout/Section.astro). Class: `max-w-section`.
+      maxWidth: { section: "1440px" },
       transitionTimingFunction: {
         // Shared easing vocabulary for CSS and GSAP (see lib/motion/tokens.ts).
         "out-expo": "cubic-bezier(0.16, 1, 0.3, 1)",

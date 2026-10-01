@@ -30,6 +30,20 @@ export const en = {
       ctaSecondary: "Watch the demo",
     },
   },
+  steps: {
+    badge: "Solutions",
+    titlePre: "From zero ",
+    titleAccent: "to motion",
+    titlePost: " in three steps.",
+    items: [
+      { title: "Open Fluxa", body: "Launch the panel without ever leaving Webflow's Designer." },
+      { title: "Pick a gradient", body: "Start from a preset or build your own plane, sphere, liquid." },
+      {
+        title: "Drop it on your element",
+        body: "Apply it to any Div block, Section, or Link block. It's live instantly, right in the canvas.",
+      },
+    ],
+  },
   features: {
     title: "Built for designers, tuned for performance",
     items: [

@@ -39,6 +39,15 @@
 }
 
 @layer base {
+  :root {
+    /* Global horizontal section padding. Mirrors the Tailwind `md` breakpoint (768px). */
+    --padding-global: 1.5rem;
+  }
+  @media (min-width: 768px) {
+    :root {
+      --padding-global: 2.5rem;
+    }
+  }
   html {
     @apply bg-background-white text-text-black font-sans antialiased;
     scroll-behavior: smooth;
@@ -82,5 +91,208 @@
 @media (prefers-reduced-motion: reduce) {
   @view-transition {
     navigation: none;
+  }
+}
+
+/* "Steps" section (lib/motion/steps.ts): progress line on the active step, step panels crossfade.
+   The bar's animation end advances to the next step; paused on hover and while the widget is off-screen. */
+@keyframes step-progress {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+[data-step] [data-step-bar] {
+  transform: scaleX(0);
+  transform-origin: left;
+}
+/* Active step = 8s in two halves: the bare line fills in 4s (no glow), then the glow rises from the line and
+   pulses for 4s; the end of that (animationend, steps.ts) advances to the next step. */
+[data-step][data-active="true"] [data-step-bar] {
+  animation: step-progress 4s linear forwards;
+}
+[data-step][data-active="true"] .step-glow {
+  animation: step-glow-rise 4s ease-out 4s both;
+}
+[data-steps][data-paused="true"] [data-step-bar],
+[data-steps][data-paused="true"] .step-glow,
+[data-steps][data-paused="true"] .step-glow > span,
+[data-steps]:hover [data-step-bar],
+[data-steps]:hover .step-glow,
+[data-steps]:hover .step-glow > span {
+  animation-play-state: paused;
+}
+.step-line {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, #6ff5f1 0%, #3b9cd6 25%, #0955e5 50%, #8e54c5 75%, #e23f8c 100%);
+}
+/* Glow rising from the line, "equalizer" style: three layers of the same ramp (centre, sides, broad base), each with
+   its own elliptical mask and its own irregular up/down rhythm, so the light pumps unevenly like audio bars. The
+   wrapper blurs them together and ramps the overall brightness up; it is tallest in the middle and almost gone at
+   the horizontal ends (tab-glow reference). Hidden until its phase; the wrapper's animation end advances the step. */
+.step-glow {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  height: 40px;
+  filter: blur(12px);
+  clip-path: inset(-60px 0 0 0);
+  opacity: 0;
+}
+.step-glow > span {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, #6ff5f1 0%, #3b9cd6 25%, #0955e5 50%, #8e54c5 75%, #e23f8c 100%);
+  transform-origin: bottom;
+}
+.step-glow .eq-base {
+  -webkit-mask-image: radial-gradient(ellipse 62% 100% at 50% 100%, rgb(0 0 0 / 0.75) 0%, rgb(0 0 0 / 0.3) 45%, transparent 100%);
+  mask-image: radial-gradient(ellipse 62% 100% at 50% 100%, rgb(0 0 0 / 0.75) 0%, rgb(0 0 0 / 0.3) 45%, transparent 100%);
+}
+.step-glow .eq-mid {
+  -webkit-mask-image: radial-gradient(ellipse 42% 100% at 50% 100%, rgb(0 0 0 / 0.8) 0%, transparent 100%);
+  mask-image: radial-gradient(ellipse 42% 100% at 50% 100%, rgb(0 0 0 / 0.8) 0%, transparent 100%);
+}
+.step-glow .eq-core {
+  -webkit-mask-image: radial-gradient(ellipse 24% 100% at 50% 100%, #000 0%, transparent 100%);
+  mask-image: radial-gradient(ellipse 24% 100% at 50% 100%, #000 0%, transparent 100%);
+}
+[data-step][data-active="true"] .step-glow .eq-base {
+  animation: step-eq-base 4s ease-in-out 4s both;
+}
+[data-step][data-active="true"] .step-glow .eq-mid {
+  animation: step-eq-mid 4s ease-in-out 4s both;
+}
+[data-step][data-active="true"] .step-glow .eq-core {
+  animation: step-eq-core 4s ease-in-out 4s both;
+}
+@keyframes step-glow-rise {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+/* Equalizer, uniform and progressive: the three concentric layers share ONE rhythm (same stops), and the swing grows
+   towards the centre (base breathes least, core most), so the light swells together as a smooth bell. */
+@keyframes step-eq-base {
+  0% { transform: scaleY(0.3); }
+  30% { transform: scaleY(0.6); }
+  50% { transform: scaleY(0.55); }
+  70% { transform: scaleY(0.62); }
+  100% { transform: scaleY(0.58); }
+}
+@keyframes step-eq-mid {
+  0% { transform: scaleY(0.25); }
+  30% { transform: scaleY(0.68); }
+  50% { transform: scaleY(0.55); }
+  70% { transform: scaleY(0.7); }
+  100% { transform: scaleY(0.62); }
+}
+@keyframes step-eq-core {
+  0% { transform: scaleY(0.2); }
+  30% { transform: scaleY(0.78); }
+  50% { transform: scaleY(0.55); }
+  70% { transform: scaleY(0.8); }
+  100% { transform: scaleY(0.66); }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-step][data-active="true"] [data-step-bar] {
+    animation: none;
+    transform: scaleX(1);
+  }
+  [data-step][data-active="true"] .step-glow {
+    animation: none;
+    opacity: 0.7;
+  }
+  [data-step][data-active="true"] .step-glow > span {
+    animation: none;
+    transform: scaleY(0.7);
+  }
+  [data-step-panel] {
+    transition: none;
+  }
+}
+
+/* Left-to-right brand gradient for highlighted words in headings. */
+.text-gradient-x {
+  background-image: linear-gradient(90deg, #3b9cd6 0%, #0955e5 35%, #8e54c5 70%, #e23f8c 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Site grid: the two vertical rules, drawn once over everything inside `.page-grid` (and the footer). They sit
+   `--padding-global` from each viewport edge and stay above section backgrounds (z-index) without catching clicks. */
+.page-grid::before,
+.grid-rules::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background:
+    linear-gradient(theme("colors.border.border"), theme("colors.border.border")) var(--padding-global) 0 / 1px 100% no-repeat,
+    linear-gradient(theme("colors.border.border"), theme("colors.border.border")) calc(100% - var(--padding-global) - 1px) 0 / 1px 100% no-repeat;
+}
+
+/* Step bullets: empty (no fill). Idle = a grey 1px ring; on the active step the ring is the brand gradient token
+   (a masked ::before, so the inside stays transparent). */
+.step-dot {
+  position: relative;
+  display: block;
+  border-radius: 9999px;
+  border: 1px solid rgb(92 100 122 / 0.5);
+  transition: border-color 0.3s;
+}
+.step-dot::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  padding: 1px;
+  border-radius: inherit;
+  background: theme("backgroundImage.gradient-gradient");
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box exclude,
+    linear-gradient(#000 0 0);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+[data-step][data-active="true"] .step-dot {
+  border-color: transparent;
+}
+[data-step][data-active="true"] .step-dot::before {
+  opacity: 1;
+}
+
+/* Slow drift of the blurred logo glow behind the steps' visual; only transforms animate. Paused off-screen
+   (steps.ts sets data-paused) and with reduced motion. */
+@keyframes logo-glow-drift {
+  0%,
+  100% {
+    transform: translate3d(-3%, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(3%, -4%, 0) scale(1.05);
+  }
+}
+.logo-glow {
+  animation: logo-glow-drift 16s ease-in-out infinite;
+  will-change: transform;
+}
+[data-steps][data-paused="true"] .logo-glow {
+  animation-play-state: paused;
+}
+@media (prefers-reduced-motion: reduce) {
+  .logo-glow {
+    animation: none;
   }
 }

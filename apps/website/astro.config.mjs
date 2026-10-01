@@ -6,7 +6,7 @@ import sitemap from "@astrojs/sitemap";
 // files behind the CDN. Anything dynamic (presets, billing, auth) lives in the
 // Data Client Worker and is either fetched at build time (lib/api) or by an
 // island in the visitor's browser.
-const SITE = process.env.PUBLIC_SITE_URL ?? "https://fluxa.app";
+const SITE = process.env.PUBLIC_SITE_URL ?? "https://fluxa.agency";
 
 export default defineConfig({
   site: SITE,
