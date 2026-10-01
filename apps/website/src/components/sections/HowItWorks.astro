@@ -4,6 +4,8 @@
 // by astro:assets <Picture> as AVIF/WebP with a PNG fallback; they crossfade as the active step changes).
 import { Picture } from "astro:assets";
 import Section from "@/components/layout/Section.astro";
+import GradientBar from "@/components/ui/GradientBar.astro";
+import LogoGlow from "@/components/ui/LogoGlow.astro";
 import openFluxa from "@/assets/open-fluxa.png";
 import pickGradient from "@/assets/pick-gradient.png";
 import dropIt from "@/assets/drop-it.png";
@@ -35,31 +37,8 @@ const shots = [openFluxa, pickGradient, dropIt];
     <!-- Visual: one decorative window per step, crossfading. -->
     <!-- The panel stretches to the height of the steps (grid default `stretch`); min-h only matters stacked on mobile. -->
     <div class="relative min-h-[320px] overflow-hidden bg-background-white-2/60 lg:min-h-0" aria-hidden="true" data-scroll-reveal>
-      <!-- Glow: the Fluxa logo mark (778x778 path from the design, native size), gradient-filled and blurred 60px,
-           sitting 599px below the bottom edge so only its top lobes show. It drifts slowly (`.logo-glow`). -->
-      <div class="absolute bottom-[-599px] left-1/2 w-[778px] -translate-x-1/2">
-        <svg
-          class="logo-glow block h-auto w-full blur-[60px]"
-          viewBox="0 0 778 778"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-          aria-hidden="true"
-        >
-          <path
-            d="M778 583.531C778 691.01 690.888 778 583.531 778C476.174 778 389.061 690.888 389.061 583.531C389.061 691.01 301.949 778 194.592 778C87.2351 778 0 690.888 0 583.531C0 476.174 87.1124 389.061 194.469 389.061C87.1124 388.939 0 301.949 0 194.469C0 140.73 21.7168 92.1429 56.9298 56.9298C92.1429 21.7168 140.73 0 194.469 0H583.408C690.765 0 777.877 87.1124 777.877 194.469C777.877 248.209 756.161 296.796 720.948 332.009C685.734 367.222 637.148 388.939 583.408 388.939C690.765 388.939 777.877 476.051 777.877 583.408L778 583.531Z"
-            fill="url(#paint0_linear_1099_16627)"
-          ></path>
-          <defs>
-<linearGradient id="paint0_linear_1099_16627" x1="255.057" y1="778" x2="522.943" y2="-2.81477e-06" gradientUnits="userSpaceOnUse">
-<stop stop-color="#6FF5F1"/>
-<stop offset="0.2548" stop-color="#3B9CD6"/>
-<stop offset="0.5" stop-color="#0955E5"/>
-<stop offset="0.75" stop-color="#8E54C5"/>
-<stop offset="1" stop-color="#E23F8C"/>
-</linearGradient>
-</defs>
-        </svg>
-      </div>
+      <!-- Glow: the logo mark, 599px below the bottom edge so only its top lobes show; it drifts slowly. -->
+      <LogoGlow id="how-it-works-glow" class="absolute bottom-[-599px] left-1/2 -translate-x-1/2" />
       {
         t.items.map((_, i) => (
           <div
@@ -91,7 +70,7 @@ const shots = [openFluxa, pickGradient, dropIt];
     <ol class="flex h-full flex-col">
       {
         t.items.map((item, i) => (
-          <li data-step data-active={i === 0 ? "true" : "false"} class="group relative" data-rule={i > 0 ? "t" : undefined}>
+          <li data-step data-active={i === 0 ? "true" : "false"} class="gbar-host group relative" data-rule={i > 0 ? "t" : undefined}>
             <button
               type="button"
               class="flex w-full flex-col items-start gap-4 p-10 text-left"
@@ -111,14 +90,7 @@ const shots = [openFluxa, pickGradient, dropIt];
                 {item.body}
               </span>
             </button>
-            <span data-step-bar aria-hidden="true" class="pointer-events-none absolute inset-x-0 bottom-0 z-[3] h-0.5">
-              <span class="step-glow">
-                <span class="eq-base" />
-                <span class="eq-mid" />
-                <span class="eq-core" />
-              </span>
-              <span class="step-line" />
-            </span>
+            <GradientBar />
           </li>
         ))
       }

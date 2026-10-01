@@ -1,0 +1,164 @@
+---
+// The brand "fill bar": a 2px gradient line that fills left -> right, followed by an equalizer-style glow that rises
+// from it. Used by the steps tabs (section 2) and the feature cards (section 3). It is purely decorative.
+//
+// Usage: put it inside a `position: relative` box, mark an ancestor (the "host") with `.gbar-host`, and activate it:
+//   - `data-active="true"` on the host   -> plays (and restarts whenever the attribute goes false -> true)
+//   - `data-gbar-hover` on the host       -> additionally plays while the host is hovered
+// Timing comes from CSS custom properties on the host (defaults = the steps tabs: 4s fill, then 4s glow):
+//   --gbar-fill   duration of the line fill         --gbar-glow   duration of the glow rise
+//   --gbar-h      thickness of the line (default 2px; the feature cards use 4px)
+// The glow animation (`gbar-glow-rise`) ends last, so consumers can listen to its `animationend`
+// (lib/motion/steps.ts does, to advance to the next step).
+//
+// Position/size are the box's own: absolute, full width, bottom 0, `--gbar-h` tall (2px). Override from the host's CSS if needed.
+// `glow={false}` renders the bare line only (no equalizer glow, no second phase): the feature cards use it and light
+// their own background glow when the line is halfway instead.
+interface Props {
+  glow?: boolean;
+}
+const { glow = true } = Astro.props;
+---
+
+<span class="gbar" aria-hidden="true">
+  {
+    glow && (
+      <span class="gbar-glow">
+        <span class="eq-base" />
+        <span class="eq-mid" />
+        <span class="eq-core" />
+      </span>
+    )
+  }
+  <span class="gbar-line"></span>
+</span>
+
+<style is:global>
+  .gbar {
+    position: absolute;
+    inset-inline: 0;
+    bottom: 0;
+    z-index: 3;
+    height: var(--gbar-h, 2px);
+    min-height: var(--gbar-h, 2px);
+    pointer-events: none;
+    transform-origin: left;
+    transform: scaleX(0);
+  }
+  .gbar-line {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, #6ff5f1 0%, #3b9cd6 25%, #0955e5 50%, #8e54c5 75%, #e23f8c 100%);
+  }
+
+  /* Glow rising from the line, "equalizer" style: three concentric layers of the same ramp (broad base, middle, narrow
+     core), each with its own elliptical mask, sharing ONE rhythm; the swing grows towards the centre, so the light
+     swells together as a smooth bell, tallest in the middle and almost gone at the horizontal ends. The wrapper blurs
+     them together and ramps the overall brightness up. Hidden until the glow phase starts. */
+  .gbar-glow {
+    position: absolute;
+    inset-inline: 0;
+    bottom: 0;
+    height: 40px;
+    filter: blur(12px);
+    clip-path: inset(-60px 0 0 0);
+    opacity: 0;
+  }
+  .gbar-glow > span {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, #6ff5f1 0%, #3b9cd6 25%, #0955e5 50%, #8e54c5 75%, #e23f8c 100%);
+    transform-origin: bottom;
+  }
+  .gbar-glow .eq-base {
+    -webkit-mask-image: radial-gradient(ellipse 62% 100% at 50% 100%, rgb(0 0 0 / 0.75) 0%, rgb(0 0 0 / 0.3) 45%, transparent 100%);
+    mask-image: radial-gradient(ellipse 62% 100% at 50% 100%, rgb(0 0 0 / 0.75) 0%, rgb(0 0 0 / 0.3) 45%, transparent 100%);
+  }
+  .gbar-glow .eq-mid {
+    -webkit-mask-image: radial-gradient(ellipse 42% 100% at 50% 100%, rgb(0 0 0 / 0.8) 0%, transparent 100%);
+    mask-image: radial-gradient(ellipse 42% 100% at 50% 100%, rgb(0 0 0 / 0.8) 0%, transparent 100%);
+  }
+  .gbar-glow .eq-core {
+    -webkit-mask-image: radial-gradient(ellipse 24% 100% at 50% 100%, #000 0%, transparent 100%);
+    mask-image: radial-gradient(ellipse 24% 100% at 50% 100%, #000 0%, transparent 100%);
+  }
+
+  /* Phase 1: the bare line fills. Phase 2 (after the fill): the glow rises and pulses. */
+  .gbar-host[data-active="true"] .gbar,
+  .gbar-host[data-gbar-hover]:hover .gbar {
+    animation: gbar-fill var(--gbar-fill, 4s) linear forwards;
+  }
+  .gbar-host[data-active="true"] .gbar-glow,
+  .gbar-host[data-gbar-hover]:hover .gbar-glow {
+    animation: gbar-glow-rise var(--gbar-glow, 4s) ease-out var(--gbar-fill, 4s) both;
+  }
+  .gbar-host[data-active="true"] .eq-base,
+  .gbar-host[data-gbar-hover]:hover .eq-base {
+    animation: gbar-eq-base var(--gbar-glow, 4s) ease-in-out var(--gbar-fill, 4s) both;
+  }
+  .gbar-host[data-active="true"] .eq-mid,
+  .gbar-host[data-gbar-hover]:hover .eq-mid {
+    animation: gbar-eq-mid var(--gbar-glow, 4s) ease-in-out var(--gbar-fill, 4s) both;
+  }
+  .gbar-host[data-active="true"] .eq-core,
+  .gbar-host[data-gbar-hover]:hover .eq-core {
+    animation: gbar-eq-core var(--gbar-glow, 4s) ease-in-out var(--gbar-fill, 4s) both;
+  }
+
+  @keyframes gbar-fill {
+    from {
+      transform: scaleX(0);
+    }
+    to {
+      transform: scaleX(1);
+    }
+  }
+  @keyframes gbar-glow-rise {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  @keyframes gbar-eq-base {
+    0% { transform: scaleY(0.3); }
+    30% { transform: scaleY(0.6); }
+    50% { transform: scaleY(0.55); }
+    70% { transform: scaleY(0.62); }
+    100% { transform: scaleY(0.58); }
+  }
+  @keyframes gbar-eq-mid {
+    0% { transform: scaleY(0.25); }
+    30% { transform: scaleY(0.68); }
+    50% { transform: scaleY(0.55); }
+    70% { transform: scaleY(0.7); }
+    100% { transform: scaleY(0.62); }
+  }
+  @keyframes gbar-eq-core {
+    0% { transform: scaleY(0.2); }
+    30% { transform: scaleY(0.78); }
+    50% { transform: scaleY(0.55); }
+    70% { transform: scaleY(0.8); }
+    100% { transform: scaleY(0.66); }
+  }
+
+  /* Reduced motion: no animation; an active bar is simply full, with a calm static glow. */
+  @media (prefers-reduced-motion: reduce) {
+    .gbar-host[data-active="true"] .gbar,
+    .gbar-host[data-gbar-hover]:hover .gbar {
+      animation: none;
+      transform: scaleX(1);
+    }
+    .gbar-host[data-active="true"] .gbar-glow,
+    .gbar-host[data-gbar-hover]:hover .gbar-glow {
+      animation: none;
+      opacity: 0.7;
+    }
+    .gbar-host[data-active="true"] .gbar-glow > span,
+    .gbar-host[data-gbar-hover]:hover .gbar-glow > span {
+      animation: none;
+      transform: scaleY(0.7);
+    }
+  }
+</style>

@@ -94,116 +94,21 @@
   }
 }
 
-/* "Steps" section (lib/motion/steps.ts): progress line on the active step, step panels crossfade.
-   The bar's animation end advances to the next step; paused on hover and while the widget is off-screen. */
-@keyframes step-progress {
-  from {
-    transform: scaleX(0);
-  }
-  to {
-    transform: scaleX(1);
-  }
-}
-[data-step] [data-step-bar] {
-  transform: scaleX(0);
-  transform-origin: left;
-}
-/* Active step = 8s in two halves: the bare line fills in 4s (no glow), then the glow rises from the line and
-   pulses for 4s; the end of that (animationend, steps.ts) advances to the next step. */
-[data-step][data-active="true"] [data-step-bar] {
-  animation: step-progress 4s linear forwards;
-}
-[data-step][data-active="true"] .step-glow {
-  animation: step-glow-rise 4s ease-out 4s both;
-}
-/* The bar sits on the same pixel row as the rule that follows its tab (the next tab's top rule; for the last tab, the
-   section's bottom rule), so every bar (2px thick, covering that rule) reads the same. */
-[data-step]:not(:last-child) [data-step-bar] {
+/* "Steps" section (lib/motion/steps.ts). The fill bar itself lives in components/ui/GradientBar.astro; here only what is
+   specific to the tabs: where it sits and when it pauses.
+   The bar sits on the same pixel row as the rule that follows its tab (the next tab's top rule; for the last tab, the
+   section's bottom rule), so every bar (2px thick, covering that rule) reads the same. Paused on hover and while the
+   widget is off-screen. */
+[data-step]:not(:last-child) .gbar {
   bottom: -1px;
 }
-[data-steps][data-paused="true"] [data-step-bar],
-[data-steps][data-paused="true"] .step-glow,
-[data-steps][data-paused="true"] .step-glow > span,
-[data-steps]:hover [data-step-bar],
-[data-steps]:hover .step-glow,
-[data-steps]:hover .step-glow > span {
+[data-steps][data-paused="true"] .gbar,
+[data-steps][data-paused="true"] .gbar-glow,
+[data-steps][data-paused="true"] .gbar-glow > span,
+[data-steps]:hover .gbar,
+[data-steps]:hover .gbar-glow,
+[data-steps]:hover .gbar-glow > span {
   animation-play-state: paused;
-}
-.step-line {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(90deg, #6ff5f1 0%, #3b9cd6 25%, #0955e5 50%, #8e54c5 75%, #e23f8c 100%);
-}
-/* Glow rising from the line, "equalizer" style: three layers of the same ramp (centre, sides, broad base), each with
-   its own elliptical mask and its own irregular up/down rhythm, so the light pumps unevenly like audio bars. The
-   wrapper blurs them together and ramps the overall brightness up; it is tallest in the middle and almost gone at
-   the horizontal ends (tab-glow reference). Hidden until its phase; the wrapper's animation end advances the step. */
-.step-glow {
-  position: absolute;
-  inset-inline: 0;
-  bottom: 0;
-  height: 40px;
-  filter: blur(12px);
-  clip-path: inset(-60px 0 0 0);
-  opacity: 0;
-}
-.step-glow > span {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(90deg, #6ff5f1 0%, #3b9cd6 25%, #0955e5 50%, #8e54c5 75%, #e23f8c 100%);
-  transform-origin: bottom;
-}
-.step-glow .eq-base {
-  -webkit-mask-image: radial-gradient(ellipse 62% 100% at 50% 100%, rgb(0 0 0 / 0.75) 0%, rgb(0 0 0 / 0.3) 45%, transparent 100%);
-  mask-image: radial-gradient(ellipse 62% 100% at 50% 100%, rgb(0 0 0 / 0.75) 0%, rgb(0 0 0 / 0.3) 45%, transparent 100%);
-}
-.step-glow .eq-mid {
-  -webkit-mask-image: radial-gradient(ellipse 42% 100% at 50% 100%, rgb(0 0 0 / 0.8) 0%, transparent 100%);
-  mask-image: radial-gradient(ellipse 42% 100% at 50% 100%, rgb(0 0 0 / 0.8) 0%, transparent 100%);
-}
-.step-glow .eq-core {
-  -webkit-mask-image: radial-gradient(ellipse 24% 100% at 50% 100%, #000 0%, transparent 100%);
-  mask-image: radial-gradient(ellipse 24% 100% at 50% 100%, #000 0%, transparent 100%);
-}
-[data-step][data-active="true"] .step-glow .eq-base {
-  animation: step-eq-base 4s ease-in-out 4s both;
-}
-[data-step][data-active="true"] .step-glow .eq-mid {
-  animation: step-eq-mid 4s ease-in-out 4s both;
-}
-[data-step][data-active="true"] .step-glow .eq-core {
-  animation: step-eq-core 4s ease-in-out 4s both;
-}
-@keyframes step-glow-rise {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-/* Equalizer, uniform and progressive: the three concentric layers share ONE rhythm (same stops), and the swing grows
-   towards the centre (base breathes least, core most), so the light swells together as a smooth bell. */
-@keyframes step-eq-base {
-  0% { transform: scaleY(0.3); }
-  30% { transform: scaleY(0.6); }
-  50% { transform: scaleY(0.55); }
-  70% { transform: scaleY(0.62); }
-  100% { transform: scaleY(0.58); }
-}
-@keyframes step-eq-mid {
-  0% { transform: scaleY(0.25); }
-  30% { transform: scaleY(0.68); }
-  50% { transform: scaleY(0.55); }
-  70% { transform: scaleY(0.7); }
-  100% { transform: scaleY(0.62); }
-}
-@keyframes step-eq-core {
-  0% { transform: scaleY(0.2); }
-  30% { transform: scaleY(0.78); }
-  50% { transform: scaleY(0.55); }
-  70% { transform: scaleY(0.8); }
-  100% { transform: scaleY(0.66); }
 }
 /* Step visuals (one per step, stacked): only the active one is visible; they crossfade as the step changes. */
 [data-step-panel] {
@@ -214,18 +119,6 @@
   opacity: 1;
 }
 @media (prefers-reduced-motion: reduce) {
-  [data-step][data-active="true"] [data-step-bar] {
-    animation: none;
-    transform: scaleX(1);
-  }
-  [data-step][data-active="true"] .step-glow {
-    animation: none;
-    opacity: 0.7;
-  }
-  [data-step][data-active="true"] .step-glow > span {
-    animation: none;
-    transform: scaleY(0.7);
-  }
   [data-step-panel] {
     transition: none;
   }
@@ -448,4 +341,10 @@
     transition: none;
     will-change: auto;
   }
+}
+
+/* Product mock-ups on the site (components/panels): the app's segmented buttons are 400-weight; the design shows them
+   medium, like the control names and input values. */
+.panel-mock button {
+  font-weight: 500;
 }

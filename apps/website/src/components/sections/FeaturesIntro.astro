@@ -1,8 +1,13 @@
 ---
 // Section 3 (mock-up from copy-paste/fluxa web/maquetar-seccion-3.png): a glow divider band, the centred
-// "Features" heading (standard heading reveal with the headline gradient) and the start of the content grid.
-// Only the visible part of the design exists so far: the feature grid below the heading is a placeholder panel.
+// "Features" heading (standard heading reveal with the headline gradient) and the grid of feature cards
+// (ui/FeatureCard, texts in the `featuresIntro.cards` dictionary). Each card shows a static mock-up of the extension's
+// panel built from the shared @fluxa/ui components (components/panels/*).
+import { Picture } from "astro:assets";
 import Section from "@/components/layout/Section.astro";
+import FeatureCard from "@/components/ui/FeatureCard.astro";
+import { ShapePanel } from "@/components/panels/ShapePanel";
+import { ColorPanel } from "@/components/panels/ColorPanel";
 import type { Locale } from "@/config/site";
 import { useTranslations } from "@/i18n";
 
@@ -11,6 +16,18 @@ interface Props {
 }
 const { locale } = Astro.props;
 const t = useTranslations(locale).featuresIntro;
+// Card art lives in src/assets/features/ and is picked up by name, no code change: card-1 / card-2 / card-3 = the previews
+// above the panels, card-4 = the Designer screenshot behind the colour picker, card-5 = the whole presets panel,
+// card-6 = the image in the last cell. For 1-3 and 6 a CSS stand-in is used until the file exists.
+const art = import.meta.glob<ImageMetadata>("/src/assets/features/*.{png,jpg,jpeg,webp,avif}", { eager: true, import: "default" });
+const imageFor = (name: string) => Object.entries(art).find(([path]) => path.includes(`/${name}.`))?.[1];
+
+// Stand-ins for the live shader canvas shown at the top of each panel mock-up (CSS gradients, no WebGL on this page).
+const previews = [
+  "linear-gradient(90deg,#fff36b,#ff8a1f 55%,#ff1a00)",
+  "radial-gradient(60% 80% at 70% 40%,#5ff8ff 0%,transparent 60%),linear-gradient(135deg,#ff7bff 0%,#3a1f6e 45%,#1a0a3a 100%)",
+  "radial-gradient(40% 60% at 50% 50%,#1fb6ff 0%,#0a3cff 35%,#0b0d12 75%)",
+];
 ---
 
 <!-- Divider band: empty row between sections whose lower rule carries a soft brand glow. -->
@@ -32,8 +49,67 @@ const t = useTranslations(locale).featuresIntro;
   </div>
 </Section>
 
-<!-- Start of the content grid: left panel (placeholder) and an open right column, as in the mock-up. -->
-<Section noTopRule class="grid min-h-[360px] lg:grid-cols-2">
-  <div class="bg-background-white-2/60" aria-hidden="true" data-scroll-reveal></div>
-  <div></div>
+<!-- Feature cards: two columns from `lg` (a centre rule between them), one column below. -->
+<Section noTopRule bottomRule class="relative grid lg:grid-cols-2">
+  <span class="rule-line rule-line--v left-1/2 hidden lg:block" aria-hidden="true"></span>
+  <!-- From 2xl the 1440px column is narrower than the page grid; side rules keep the cards' container closed. -->
+  <span class="rule-line rule-line--v left-0 hidden 2xl:block" aria-hidden="true"></span>
+  <span class="rule-line rule-line--v right-0 hidden 2xl:block" aria-hidden="true"></span>
+  {
+    t.cards.map((card, i) => (
+      <FeatureCard
+        title={card.title}
+        description={card.body}
+        rule={i === 0 ? "none" : i === 1 ? "top-mobile" : "top"}
+        anchor={i === 0 || i === 4 ? "bottom" : "center"}
+        padTop={i === 4 ? "pt-6 md:pt-8" : undefined}
+      >
+        {i === 0 && (
+          <ShapePanel preview={previews[0]} maxWidth={509} cropBottom>
+            {imageFor("card-1") && <Picture src={imageFor("card-1")!} formats={["avif", "webp"]} alt="" widths={[509, 1018]} sizes="509px" />}
+          </ShapePanel>
+        )}
+        {i === 1 && (
+          <ShapePanel preview={previews[1]} showTabs={false} maxWidth={503}>
+            {imageFor("card-2") && <Picture src={imageFor("card-2")!} formats={["avif", "webp"]} alt="" widths={[503, 1006]} sizes="503px" />}
+          </ShapePanel>
+        )}
+        {i === 2 && (
+          <ShapePanel preview={previews[2]} tab="camera" rows="camera" aspect="16 / 8" maxWidth={518}>
+            {imageFor("card-3") && <Picture src={imageFor("card-3")!} formats={["avif", "webp"]} alt="" widths={[518, 1036]} sizes="518px" />}
+          </ShapePanel>
+        )}
+        {i === 3 && (
+          <div class="relative w-full max-w-[620px]">
+            {imageFor("card-4") && (
+              <Picture
+                src={imageFor("card-4")!}
+                formats={["avif", "webp"]}
+                alt=""
+                widths={[620, 1240]}
+                sizes="620px"
+                class="ml-[14%] block h-auto w-[86%] rounded-16 shadow-2xl"
+              />
+            )}
+            <div class:list={["flex w-full max-w-[320px] items-center", imageFor("card-4") ? "absolute left-0 top-1/2 -translate-y-1/2" : ""]}>
+              <ColorPanel />
+            </div>
+          </div>
+        )}
+        {i === 4 && imageFor("card-5") && (
+          <Picture src={imageFor("card-5")!} formats={["avif", "webp"]} alt="" widths={[727, 1454]} sizes="(min-width: 1024px) 656px, 100vw" class="block h-auto w-full max-w-[727px]" />
+        )}
+      </FeatureCard>
+    ))
+  }
+  <!-- Last cell: an image (design: a soft mint gradient); same top rule as the other cards of its row. -->
+  <div class="relative hidden min-h-[420px] items-center justify-center lg:flex" data-rule="t" data-scroll-reveal aria-hidden="true">
+    {
+      imageFor("card-6") ? (
+        <Picture src={imageFor("card-6")!} formats={["avif", "webp"]} alt="" widths={[517]} sizes="517px" class="block h-auto w-full max-w-[517px]" />
+      ) : (
+        <div class="h-[260px] w-[340px] rounded-16" style="background:linear-gradient(135deg,#e7f5d8 0%,#bfeede 45%,#8fe9dd 100%);box-shadow:0 14px 34px rgb(0 0 0 / 0.12)" />
+      )
+    }
+  </div>
 </Section>

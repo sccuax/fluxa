@@ -48,6 +48,13 @@ export const en = {
     badge: "Features",
     line1: "Everything you need.",
     line2: "Nothing you have to learn.",
+    cards: [
+      { title: "Three ways to shape it", body: "Plane, sphere, or liquid gradients pick the type that fits your layout, not the other way around." },
+      { title: "Real depth, not flat noise", body: "Plane, sphere, or liquid shapes, each with its own distortion and resolution controls." },
+      { title: "Motion you control", body: "Speed, scale, rotation, offset dial in exactly how it moves, down to the detail." },
+      { title: "Color, exact", body: "HEX, RGB, or HSL. Pick straight from your screen with the eyedropper match your brand without guessing." },
+      { title: "A library to start from", body: "Browse presets by color, popularity, or license. Skip the blank canvas when you don't need to start from scratch." },
+    ],
   },
   features: {
     title: "Built for designers, tuned for performance",

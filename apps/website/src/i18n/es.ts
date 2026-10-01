@@ -47,6 +47,13 @@ export const es: Dictionary = {
     badge: "Funciones",
     line1: "Todo lo que necesitas.",
     line2: "Nada que tengas que aprender.",
+    cards: [
+      { title: "Tres formas de darle forma", body: "Gradientes plano, esfera o líquido: eliges el tipo que encaja con tu layout, y no al revés." },
+      { title: "Profundidad real, no ruido plano", body: "Formas plano, esfera o líquido, cada una con sus propios controles de distorsión y resolución." },
+      { title: "Movimiento bajo tu control", body: "Velocidad, escala, rotación y desplazamiento: ajusta cómo se mueve con total precisión, hasta el detalle." },
+      { title: "Color, exacto", body: "HEX, RGB o HSL. Toma el color directo de tu pantalla con el gotero y iguala tu marca sin adivinar." },
+      { title: "Una biblioteca para empezar", body: "Explora presets por color, popularidad o licencia. Evita el lienzo en blanco cuando no necesitas empezar de cero." },
+    ],
   },
   features: {
     title: "Hecho para diseñadores, optimizado para rendir",

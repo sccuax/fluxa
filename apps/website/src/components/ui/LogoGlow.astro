@@ -1,0 +1,28 @@
+---
+// The blurred brand glow: the Fluxa logo mark (778x778 path from the design), gradient-filled and blurred 60px, that
+// drifts slowly. Place it inside a `relative overflow-hidden` box and position the wrapper with `class`
+// (e.g. `absolute bottom-[-599px] left-1/2 -translate-x-1/2` so only the top lobes show). Decorative only.
+// `id` must be unique per instance: it names the SVG gradient (duplicate ids would make instances share one).
+interface Props {
+  id: string;
+  class?: string;
+}
+const { id, class: className = "" } = Astro.props;
+---
+
+<div class:list={["w-[778px]", className]} aria-hidden="true">
+  <svg class="logo-glow block h-auto w-full blur-[60px]" viewBox="0 0 778 778" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path
+      d="M778 583.531C778 691.01 690.888 778 583.531 778C476.174 778 389.061 690.888 389.061 583.531C389.061 691.01 301.949 778 194.592 778C87.2351 778 0 690.888 0 583.531C0 476.174 87.1124 389.061 194.469 389.061C87.1124 388.939 0 301.949 0 194.469C0 140.73 21.7168 92.1429 56.9298 56.9298C92.1429 21.7168 140.73 0 194.469 0H583.408C690.765 0 777.877 87.1124 777.877 194.469C777.877 248.209 756.161 296.796 720.948 332.009C685.734 367.222 637.148 388.939 583.408 388.939C690.765 388.939 777.877 476.051 777.877 583.408L778 583.531Z"
+      fill={`url(#${id})`}></path>
+    <defs>
+      <linearGradient id={id} x1="255.057" y1="778" x2="522.943" y2="-2.81477e-06" gradientUnits="userSpaceOnUse">
+        <stop stop-color="#6FF5F1"></stop>
+        <stop offset="0.2548" stop-color="#3B9CD6"></stop>
+        <stop offset="0.5" stop-color="#0955E5"></stop>
+        <stop offset="0.75" stop-color="#8E54C5"></stop>
+        <stop offset="1" stop-color="#E23F8C"></stop>
+      </linearGradient>
+    </defs>
+  </svg>
+</div>

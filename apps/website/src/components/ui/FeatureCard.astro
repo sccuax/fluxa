@@ -1,0 +1,122 @@
+---
+// Feature card (section 3). A visual area on top (the default slot: an image or a mock-up) and a title + description
+// below. Hover state (card-seccion-3-con-hover.png): the card turns grey-blue, an ANIMATED gradient glow (soft radial
+// gradients that drift side to side, no blur filter) fades in at the bottom of the visual, and the gradient fill bar
+// (ui/GradientBar, 4px here, line only: no glow of its own) fills along the line between the visual and the text; the
+// background glow switches on at the same moment (no delay). All CSS-only; the fill time is --gbar-fill.
+//
+// Rules (the grid's horizontal separators) are drawn on scroll like the rest of the page grid:
+//   rule="top"         a top rule at every width (rows below the first)
+//   rule="top-mobile"  a top rule only when the cards are stacked (single column), none from `lg`
+//   rule="none"        no top rule (the first card)
+import GradientBar from "@/components/ui/GradientBar.astro";
+
+interface Props {
+  title: string;
+  description: string;
+  rule?: "top" | "top-mobile" | "none";
+  /** "bottom": the visual hangs from the top and runs off the bottom edge (cropped by the bar), instead of being centred. */
+  anchor?: "center" | "bottom";
+  /** Classes for the visual area (default height: 460px, 680px from md, as in the design). */
+  visualClass?: string;
+  /** Top padding of an `anchor="bottom"` visual (how far down it hangs). */
+  padTop?: string;
+  class?: string;
+}
+const { title, description, rule = "none", anchor = "center", visualClass = "h-[460px] md:h-[680px]", padTop = "pt-16 md:pt-[110px]", class: className = "" } = Astro.props;
+---
+
+<article
+  class:list={[
+    "gbar-host group/card relative flex cursor-pointer flex-col transition-colors duration-500 hover:bg-background-white-2/60",
+    className,
+  ]}
+  style="--gbar-fill: 1s; --gbar-h: 4px"
+  data-gbar-hover
+  data-rule={rule === "top" ? "t" : undefined}
+  data-scroll-reveal
+>
+  {rule === "top-mobile" && <span class="rule-line rule-line--h lg:hidden" aria-hidden="true" />}
+
+  <!-- Visual -->
+  <div
+    class:list={[
+      "relative flex justify-center overflow-hidden px-8",
+      anchor === "bottom" ? `items-start ${padTop}` : "items-center",
+      visualClass,
+    ]}
+  >
+    <div class="card-glow" aria-hidden="true"></div>
+    <div class="relative z-[1] flex w-full justify-center">
+      <slot />
+    </div>
+    <GradientBar glow={false} />
+  </div>
+
+  <!-- Text -->
+  <div class="flex flex-col gap-3 px-10 pb-10 pt-8">
+    <h3 class="font-display text-header-h4 text-text-black">{title}</h3>
+    <p class="text-text-lg-regular text-text-secondary">{description}</p>
+  </div>
+</article>
+
+<style>
+  /* Hover glow: three soft radial gradients (blue, pink, violet) over-sized horizontally so they can drift past each other
+     slowly. No blur filter (the gradients are already soft), so it stays cheap. 30% dimmer than full strength (opacity .7);
+     the drift only runs while the card is hovered and resumes where it left off. */
+  .card-glow {
+    position: absolute;
+    inset-inline: 0;
+    bottom: 0;
+    height: 80%;
+    opacity: 0;
+    transform: translateY(10%) scale(0.97);
+    transform-origin: 50% 100%;
+    transition:
+      opacity 0.25s ease-out,
+      transform 0.25s ease-out;
+    pointer-events: none;
+    background:
+      radial-gradient(50% 90% at 50% 85%, rgb(9 85 229 / 0.75), transparent 70%),
+      radial-gradient(50% 85% at 50% 85%, rgb(226 63 140 / 0.7), transparent 70%),
+      radial-gradient(45% 70% at 50% 93%, rgb(142 84 197 / 0.7), transparent 70%);
+    /* Feathered on every side (an intersection of a vertical and a horizontal fade): the gradients are clipped by this
+       box, and without the mask its straight top and side edges would show. */
+    -webkit-mask-image:
+      linear-gradient(to top, #000 35%, transparent 100%),
+      linear-gradient(to right, transparent 0%, #000 22%, #000 78%, transparent 100%);
+    mask-image:
+      linear-gradient(to top, #000 35%, transparent 100%),
+      linear-gradient(to right, transparent 0%, #000 22%, #000 78%, transparent 100%);
+    -webkit-mask-composite: source-in;
+    mask-composite: intersect;
+    background-repeat: no-repeat;
+    background-size: 150% 100%, 150% 100%, 130% 100%;
+    background-position: 0% 100%, 100% 100%, 50% 100%;
+    animation: card-glow-drift 7s ease-in-out infinite alternate;
+    animation-play-state: paused;
+  }
+  /* On hover it starts together with the bar (no delay). */
+  :global([data-gbar-hover]:hover) .card-glow {
+    opacity: 0.7;
+    transform: none;
+    transition:
+      opacity 0.3s ease-out,
+      transform 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+    animation-play-state: running;
+  }
+  @keyframes card-glow-drift {
+    from {
+      background-position: 0% 100%, 100% 100%, 40% 100%;
+    }
+    to {
+      background-position: 100% 100%, 0% 100%, 60% 100%;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .card-glow {
+      animation: none;
+      transform: none;
+    }
+  }
+</style>
