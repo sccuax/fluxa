@@ -43,6 +43,11 @@ export const es: Dictionary = {
       },
     ],
   },
+  featuresIntro: {
+    badge: "Funciones",
+    line1: "Todo lo que necesitas.",
+    line2: "Nada que tengas que aprender.",
+  },
   features: {
     title: "Hecho para diseñadores, optimizado para rendir",
     items: [

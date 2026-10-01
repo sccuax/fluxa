@@ -44,6 +44,11 @@ export const en = {
       },
     ],
   },
+  featuresIntro: {
+    badge: "Features",
+    line1: "Everything you need.",
+    line2: "Nothing you have to learn.",
+  },
   features: {
     title: "Built for designers, tuned for performance",
     items: [

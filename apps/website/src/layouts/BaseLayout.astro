@@ -60,6 +60,11 @@ const { title = t.meta.title, description = t.meta.description, noindex } = Astr
       initReveal();
       import { initMagnet } from "@/lib/motion/magnet";
       initMagnet();
+      // GSAP-based; they load it lazily and do nothing on pages without their markup.
+      import { initHeadingReveal } from "@/lib/motion/headingReveal";
+      import { initScrollDraw } from "@/lib/motion/scrollDraw";
+      initHeadingReveal();
+      initScrollDraw();
     </script>
   </body>
 </html>

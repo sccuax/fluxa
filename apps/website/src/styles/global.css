@@ -116,6 +116,11 @@
 [data-step][data-active="true"] .step-glow {
   animation: step-glow-rise 4s ease-out 4s both;
 }
+/* The bar sits on the same pixel row as the rule that follows its tab (the next tab's top rule; for the last tab, the
+   section's bottom rule), so every bar (2px thick, covering that rule) reads the same. */
+[data-step]:not(:last-child) [data-step-bar] {
+  bottom: -1px;
+}
 [data-steps][data-paused="true"] [data-step-bar],
 [data-steps][data-paused="true"] .step-glow,
 [data-steps][data-paused="true"] .step-glow > span,
@@ -236,8 +241,101 @@
   z-index: 2;
   pointer-events: none;
   background:
-    linear-gradient(theme("colors.border.border"), theme("colors.border.border")) var(--padding-global) 0 / 1px 100% no-repeat,
-    linear-gradient(theme("colors.border.border"), theme("colors.border.border")) calc(100% - var(--padding-global) - 1px) 0 / 1px 100% no-repeat;
+    linear-gradient(theme("colors.border.border"), theme("colors.border.border")) var(--padding-global) 0 / 1px var(--grid-draw, 100%) no-repeat,
+    linear-gradient(theme("colors.border.border"), theme("colors.border.border")) calc(100% - var(--padding-global) - 1px) 0 / 1px var(--grid-draw, 100%) no-repeat;
+}
+
+/* Scroll-drawn rules (lib/motion/scrollDraw.ts). The custom properties default to "fully drawn", so without JS or
+   with reduced motion every rule is simply there.
+   [data-rule~="t"] / [data-rule~="b"]: the element's own top / bottom rule (::before / ::after), drawn left -> right.
+   .rule-line: a free-standing decorative rule (--h left -> right, --v top -> bottom). */
+[data-rule] {
+  position: relative;
+}
+[data-rule~="t"]::before,
+[data-rule~="b"]::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: theme("colors.border.border");
+  transform-origin: left;
+  pointer-events: none;
+}
+[data-rule~="t"]::before {
+  top: 0;
+  transform: scaleX(var(--rule-t, 1));
+}
+[data-rule~="b"]::after {
+  bottom: 0;
+  transform: scaleX(var(--rule-b, 1));
+}
+.rule-line {
+  position: absolute;
+  pointer-events: none;
+  background: theme("colors.border.border");
+}
+.rule-line--h {
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 1px;
+  transform-origin: left;
+  transform: scaleX(var(--rule-draw, 1));
+}
+.rule-line--v {
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  transform-origin: top;
+  transform: scaleY(var(--rule-draw, 1));
+}
+
+/* Standard heading reveal (lib/motion/headingReveal.ts). Hidden only while JS is about to split and pose the text
+   (the script adds .hr-ready), and only when motion is allowed, so the heading is never lost without JS. */
+@media (prefers-reduced-motion: no-preference) {
+  .js [data-heading-reveal]:not(.hr-ready) :is([data-hr-badge], [data-hr-title], [data-hr-body]) {
+    visibility: hidden;
+  }
+  /* Scrubbed scroll reveals start invisible; scrollDraw.ts animates them in (and shows them if GSAP fails). */
+  .js [data-scroll-reveal] {
+    opacity: 0;
+  }
+}
+/* SplitText line masks clip at the line box: give descenders room. */
+.hr-line-mask {
+  padding-bottom: 0.14em;
+  margin-bottom: -0.14em;
+}
+/* Headline gradient of a split heading ([data-hr-gradient]): the hero's 73deg ramp, painted per word at the size of the
+   whole title (--tg-w/--tg-h on the title, --wx/--wy per word) so it is continuous across words and lines. `--tg`
+   (0 = resting position, set per line) slides the ramp; headingReveal.ts tweens it line by line. */
+.hr-gradient-word {
+  background-image: linear-gradient(
+    73deg,
+    #20242d calc(47.44% + var(--tg, 0) * 1%),
+    #3b9cd6 calc(56.96% + var(--tg, 0) * 1%),
+    #0955e5 calc(78.5% + var(--tg, 0) * 1%),
+    #8e54c5 calc(89.5% + var(--tg, 0) * 1%),
+    #e23f8c calc(97% + var(--tg, 0) * 1%)
+  );
+  background-size: var(--tg-w, 100%) var(--tg-h, 100%);
+  background-position: var(--wx, 0) var(--wy, 0);
+  background-repeat: no-repeat;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+/* Accent words of a split heading: each paints the gradient of the whole accent box (size/position set inline). */
+.hr-accent-word {
+  background-image: linear-gradient(90deg, #3b9cd6 0%, #0955e5 35%, #8e54c5 70%, #e23f8c 100%);
+  background-repeat: no-repeat;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
 }
 
 /* Step bullets: empty (no fill). Idle = a grey 1px ring; on the active step the ring is the brand gradient token
@@ -295,4 +393,20 @@
   .logo-glow {
     animation: none;
   }
+}
+
+/* Divider band glow (FeaturesIntro): a static soft light resting on the band's lower rule, strongest in the middle
+   and fading out towards both sides (same brand ramp as the step glow). */
+.band-glow {
+  position: absolute;
+  inset-inline: 8%;
+  bottom: 0;
+  height: 30px;
+  background: linear-gradient(90deg, transparent 0%, #6ff5f1 22%, #0955e5 50%, #e23f8c 78%, transparent 100%);
+  filter: blur(10px);
+  -webkit-mask-image: radial-gradient(ellipse 50% 100% at 50% 100%, #000 0%, transparent 100%);
+  mask-image: radial-gradient(ellipse 50% 100% at 50% 100%, #000 0%, transparent 100%);
+  clip-path: inset(-40px 0 0 0);
+  opacity: 0.85;
+  pointer-events: none;
 }

@@ -1,0 +1,39 @@
+---
+// Section 3 (mock-up from copy-paste/fluxa web/maquetar-seccion-3.png): a glow divider band, the centred
+// "Features" heading (standard heading reveal with the headline gradient) and the start of the content grid.
+// Only the visible part of the design exists so far: the feature grid below the heading is a placeholder panel.
+import Section from "@/components/layout/Section.astro";
+import type { Locale } from "@/config/site";
+import { useTranslations } from "@/i18n";
+
+interface Props {
+  locale: Locale;
+}
+const { locale } = Astro.props;
+const t = useTranslations(locale).featuresIntro;
+---
+
+<!-- Divider band: empty row between sections whose lower rule carries a soft brand glow. -->
+<Section noTopRule bottomRule class="relative h-[104px]">
+  <span class="band-glow" aria-hidden="true"></span>
+</Section>
+
+<Section id="features" labelledby="features-title" noTopRule bottomRule>
+  <div class="flex flex-col items-center gap-4 px-6 py-20 text-center md:px-9 md:py-24" data-heading-reveal>
+    <div class="rounded-full bg-gradient-gradient p-px" data-hr-badge>
+      <span class="flex items-center gap-2 rounded-full bg-background-white py-1 pl-1.5 pr-3 text-text-sm-medium text-text-secondary">
+        <span class="h-2.5 w-6 rounded-full bg-gradient-gradient" aria-hidden="true"></span>
+        {t.badge}
+      </span>
+    </div>
+    <h2 id="features-title" class="font-display text-header-h2 leading-[1.05] text-text-black" data-hr-title data-hr-gradient>
+      {t.line1}<br />{t.line2}
+    </h2>
+  </div>
+</Section>
+
+<!-- Start of the content grid: left panel (placeholder) and an open right column, as in the mock-up. -->
+<Section noTopRule class="grid min-h-[360px] lg:grid-cols-2">
+  <div class="bg-background-white-2/60" aria-hidden="true" data-scroll-reveal></div>
+  <div></div>
+</Section>

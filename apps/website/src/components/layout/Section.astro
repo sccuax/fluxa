@@ -22,10 +22,12 @@ interface Props {
 const { id, class: className = "", labelledby, noTopRule = false, bottomRule = false } = Astro.props;
 ---
 
+<!-- The rules are drawn by `[data-rule]` (styles/global.css) so lib/motion/scrollDraw.ts can draw them on scroll. -->
 <section
   id={id}
   aria-labelledby={labelledby}
-  class:list={["relative", !noTopRule && "border-t border-border-border", bottomRule && "border-b border-border-border"]}
+  data-rule={[!noTopRule && "t", bottomRule && "b"].filter(Boolean).join(" ") || undefined}
+  class="relative"
 >
   <div class="px-padding-global">
     <div class:list={["mx-auto w-full max-w-section", className]}>

@@ -14,22 +14,22 @@ const t = useTranslations(locale).steps;
 ---
 
 <Section id="how-it-works" labelledby="how-title" noTopRule bottomRule>
-  <div class="flex flex-col items-start gap-4 px-6 pb-10 pt-20 md:px-9 md:py-20" data-reveal>
-    <div class="rounded-full bg-gradient-gradient p-px">
+  <div class="flex flex-col items-start gap-4 px-6 pb-10 pt-20 md:px-9 md:py-20" data-heading-reveal>
+    <div class="rounded-full bg-gradient-gradient p-px" data-hr-badge>
       <span class="flex items-center gap-2 rounded-full bg-background-white py-1 pl-1.5 pr-3 text-text-sm-medium text-text-secondary">
         <span class="h-2.5 w-6 rounded-full bg-gradient-gradient" aria-hidden="true"></span>
         {t.badge}
       </span>
     </div>
-    <h2 id="how-title" class="font-display text-header-h2 leading-[1.05] text-text-black">
-      {t.titlePre}<span class="text-gradient-x">{t.titleAccent}</span><br />{t.titlePost}
+    <h2 id="how-title" class="font-display text-header-h2 leading-[1.05] text-text-black" data-hr-title data-hr-gradient>
+      {t.titlePre}{t.titleAccent}<br />{t.titlePost}
     </h2>
   </div>
 
-  <div class="grid border-t border-border-border lg:grid-cols-[57fr_43fr]" data-steps>
+  <div class="grid lg:grid-cols-[57fr_43fr]" data-steps data-rule="t">
     <!-- Visual: one decorative window per step, crossfading. -->
     <!-- The panel stretches to the height of the steps (grid default `stretch`); min-h only matters stacked on mobile. -->
-    <div class="relative min-h-[320px] overflow-hidden bg-background-white-2/60 lg:min-h-0" aria-hidden="true">
+    <div class="relative min-h-[320px] overflow-hidden bg-background-white-2/60 lg:min-h-0" aria-hidden="true" data-scroll-reveal>
       <!-- Glow: the Fluxa logo mark (778x778 path from the design, native size), gradient-filled and blurred 60px,
            sitting 599px below the bottom edge so only its top lobes show. It drifts slowly (`.logo-glow`). -->
       <div class="absolute bottom-[-599px] left-1/2 w-[778px] -translate-x-1/2">
@@ -83,14 +83,21 @@ const t = useTranslations(locale).steps;
     </div>
 
     <!-- Steps: all text is always in the DOM; the inactive ones are just dimmed. -->
-    <ol class="flex flex-col divide-y divide-border-border border-t border-border-border lg:border-l lg:border-t-0 2xl:border-r">
+    <!-- The column's rules are decorative `.rule-line` spans (drawn on scroll): top rule when stacked, left rule from
+         lg, right rule from 2xl; the dividers between tabs are the `data-rule="t"` of tabs 2 and 3. -->
+    <div class="relative">
+      <span class="rule-line rule-line--h lg:hidden" aria-hidden="true"></span>
+      <span class="rule-line rule-line--v left-0 hidden lg:block" aria-hidden="true"></span>
+      <span class="rule-line rule-line--v right-0 hidden 2xl:block" aria-hidden="true"></span>
+    <ol class="flex h-full flex-col">
       {
         t.items.map((item, i) => (
-          <li data-step data-active={i === 0 ? "true" : "false"} class="group relative">
+          <li data-step data-active={i === 0 ? "true" : "false"} class="group relative" data-rule={i > 0 ? "t" : undefined}>
             <button
               type="button"
               class="flex w-full flex-col items-start gap-4 p-10 text-left"
               aria-current={i === 0 ? "step" : "false"}
+              data-scroll-reveal
             >
               <span class="flex items-center gap-1" aria-hidden="true">
                 <span class="step-dot h-2.5 w-6" />
@@ -105,7 +112,7 @@ const t = useTranslations(locale).steps;
                 {item.body}
               </span>
             </button>
-            <span data-step-bar aria-hidden="true" class="pointer-events-none absolute inset-x-0 bottom-0 h-px">
+            <span data-step-bar aria-hidden="true" class="pointer-events-none absolute inset-x-0 bottom-0 z-[3] h-0.5">
               <span class="step-glow">
                 <span class="eq-base" />
                 <span class="eq-mid" />
@@ -117,6 +124,7 @@ const t = useTranslations(locale).steps;
         ))
       }
     </ol>
+    </div>
   </div>
 </Section>
 
