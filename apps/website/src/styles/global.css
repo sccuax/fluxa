@@ -240,7 +240,8 @@
 }
 
 /* Site grid: the two vertical rules, drawn once over everything inside `.page-grid` (and the footer). They sit
-   `--padding-global` from each viewport edge and stay above section backgrounds (z-index) without catching clicks. */
+   `--padding-global` from each viewport edge (in the 1px just OUTSIDE the content column, like a border, so nothing
+   inside the column can overlap them) and stay above section backgrounds (z-index) without catching clicks. */
 .page-grid::before,
 .grid-rules::before {
   content: "";
@@ -249,8 +250,8 @@
   z-index: 2;
   pointer-events: none;
   background:
-    linear-gradient(theme("colors.border.border"), theme("colors.border.border")) var(--padding-global) 0 / 1px var(--grid-draw, 100%) no-repeat,
-    linear-gradient(theme("colors.border.border"), theme("colors.border.border")) calc(100% - var(--padding-global) - 1px) 0 / 1px var(--grid-draw, 100%) no-repeat;
+    linear-gradient(theme("colors.border.border"), theme("colors.border.border")) calc(var(--padding-global) - 1px) 0 / 1px var(--grid-draw, 100%) no-repeat,
+    linear-gradient(theme("colors.border.border"), theme("colors.border.border")) calc(100% - var(--padding-global)) 0 / 1px var(--grid-draw, 100%) no-repeat;
 }
 
 /* Scroll-drawn rules (lib/motion/scrollDraw.ts). The custom properties default to "fully drawn", so without JS or
@@ -423,6 +424,12 @@
    while the panel fades up; the one it replaces drifts back and softens as it fades. Pure CSS: it replays on every
    selection (click or autoplay) because the transition runs between the inactive and active states. */
 [data-step-panel] img {
+  /* The PNGs are cropped tight to a window with ~23px (of 1098px) rounded corners: the radius, in % of the image, makes
+     the box-shadow follow those corners. */
+  border-radius: 2.09% / 3.72%;
+  box-shadow:
+    0 14.821px 34.229px 0 rgb(0 0 0 / 0.25),
+    3.529px 0.882px 112.04px -70.576px var(--colors-secondary-300, #b392dc);
   transform: translateY(18px) scale(0.96);
   filter: blur(6px);
   transition:
