@@ -22,11 +22,11 @@
 import { loadGsap } from "./gsap";
 
 const COVERED_EVENT = "fluxa:faq-covered";
+const GATE_EVENT = "fluxa:footer-gate";
 const COVER_AT = 0.5; // timeline time at which the sheet fully covers the FAQ
 const VP_PER_UNIT = 2.1 / 1.35; // scroll length (viewports) per timeline unit: the CTA part alone is 1.35 units over 2.1 viewports
-const FOOTER_AT = 1.5; // the footer starts to rise once the CTA has settled
-const FOOTER_RISE = 1.0;
-const FOOTER_CIRCLE = "75%"; // final radius of the reveal circle: % of sqrt((w^2+h^2)/2), 75% reaches past the corners
+const FOOTER_HOLD = 0.35; // scroll left after the CTA settles: crossing the threshold plays the whole footer entrance
+const FOOTER_SECONDS = 1.5; // the entrance is TIME-based: one scroll gesture past the threshold plays it all
 
 export async function initCtaStage(): Promise<void> {
   const stage = document.querySelector<HTMLElement>("[data-cta-stage]");
@@ -49,6 +49,7 @@ export async function initCtaStage(): Promise<void> {
   const { gsap, ScrollTrigger } = mods;
 
   let covered = false;
+  let footerAt = Infinity; // timeline time at which the footer entrance fires (set once the timeline is built)
   const setCovered = (next: boolean) => {
     if (next === covered) return;
     covered = next;
@@ -59,6 +60,35 @@ export async function initCtaStage(): Promise<void> {
   mm.add("(min-width: 1024px) and (prefers-reduced-motion: no-preference)", () => {
     stage.classList.add("is-stage");
     const parts = Array.from(content.children) as HTMLElement[]; // headline, body, button
+
+    // The footer entrance: a circle that starts complete at the bottom of the viewport and grows; its lower left / right
+    // points stay on the bottom edge of the screen (the centre is fixed, so the circle just outgrows the viewport).
+    // Not scrubbed: crossing the threshold plays it (and scrolling back up reverses it).
+    footer.dataset.gate = "closed"; // the footer's scene sleeps until the entrance runs (lib/footer/glassFooter.ts)
+    const ftl = gsap.timeline({
+      paused: true,
+      defaults: { ease: "power3.inOut" },
+      onReverseComplete: () => openGate(false),
+    });
+    ftl
+      .set(footer, { autoAlpha: 1 }, 0)
+      .fromTo(footer, { "--fr": "0vmax" }, { "--fr": "100vmax", duration: FOOTER_SECONDS }, 0)
+      .fromTo(dim, { opacity: 0 }, { opacity: 0.75, duration: FOOTER_SECONDS, ease: "none" }, 0)
+      // the page's vertical rules would draw over the footer: fade them out as it covers the page
+      .fromTo(grid, { "--grid-fade": 1 }, { "--grid-fade": 0, duration: FOOTER_SECONDS * 0.4, ease: "none" }, FOOTER_SECONDS * 0.3);
+    let footerOn = false;
+    const setFooter = (on: boolean) => {
+      if (on === footerOn) return;
+      footerOn = on;
+      if (on) {
+        openGate(true);
+        ftl.play();
+      } else ftl.reverse();
+    };
+    const openGate = (open: boolean) => {
+      footer.dataset.gate = open ? "open" : "closed";
+      window.dispatchEvent(new CustomEvent(GATE_EVENT));
+    };
 
     const tl = gsap.timeline({
       defaults: { ease: "none" },
@@ -75,8 +105,10 @@ export async function initCtaStage(): Promise<void> {
           const time = self.progress * (self.animation?.duration() ?? 1);
           setCovered(time >= COVER_AT);
           stage.classList.toggle("cta-live", time >= 0.3);
+          setFooter(time >= footerAt);
         },
         onLeaveBack: () => {
+          setFooter(false);
           setCovered(false);
           stage.classList.remove("cta-live");
         },
@@ -92,24 +124,17 @@ export async function initCtaStage(): Promise<void> {
       )
       .to(sheet, { "--cta-line": 1, duration: 0.25, ease: "power2.out" }, 0.62)
       .fromTo(parts, { y: 34, opacity: 0 }, { y: 0, opacity: 1, duration: 0.3, stagger: 0.1, ease: "power2.out" }, 0.8)
-      .to({}, { duration: 0.15 }) // the CTA settles
-      // The footer opens as a circle from the centre of the screen until it covers the CTA, which dims behind it.
-      .set(footer, { autoAlpha: 1 }, FOOTER_AT)
-      .fromTo(
-        footer,
-        { clipPath: "circle(0% at 50% 50%)" },
-        { clipPath: `circle(${FOOTER_CIRCLE} at 50% 50%)`, duration: FOOTER_RISE, ease: "power2.inOut" },
-        FOOTER_AT,
-      )
-      .fromTo(dim, { opacity: 0 }, { opacity: 0.75, duration: FOOTER_RISE, ease: "none" }, FOOTER_AT)
-      // the page's vertical rules would draw over the footer: fade them out as it covers the page
-      .fromTo(grid, { "--grid-fade": 1 }, { "--grid-fade": 0, duration: 0.4, ease: "none" }, FOOTER_AT + 0.1)
-      .to({}, { duration: 0.2 }); // hold on the finished footer before the pin releases
+      .to({}, { duration: 0.15 }); // the CTA settles
+    footerAt = tl.duration();
+    tl.to({}, { duration: FOOTER_HOLD }); // scroll left for the footer: it plays by itself once footerAt is crossed
 
     // the CTA left the flow: positions below it changed
     requestAnimationFrame(() => ScrollTrigger.refresh());
 
     return () => {
+      ftl.kill();
+      delete footer.dataset.gate;
+      window.dispatchEvent(new CustomEvent(GATE_EVENT));
       stage.classList.remove("is-stage", "cta-live");
       setCovered(false);
       requestAnimationFrame(() => ScrollTrigger.refresh());

@@ -47,6 +47,10 @@ export const DEFAULTS: GlassParams = {
 const MASK = { w: 1097, h: 380, centerY: 0.54 } as const; // Figma px; sigma = blur / 2
 const PAGE_RGB: [number, number, number] = [11 / 255, 13 / 255, 18 / 255]; // background-dark #0b0d12
 const SM = "State Machine 1";
+// hero.riv opens with a "RIVE" splash (~0.5s) and a black beat before the scene grows in: the scene is hidden for this long
+// after it starts playing, then fades in.
+const HIDE_MS = 1000;
+const FADE_MS = 600;
 const PAD = 48; // css px of SDF around the wordmark (rim light + soft edge need room)
 
 const VERT = `#version 300 es
@@ -65,7 +69,7 @@ uniform vec2 uMaskCenter;
 uniform vec2 uMaskHalf;
 uniform float uMaskSigma;
 uniform vec3 uPage;
-uniform float uOverlay, uDesat;
+uniform float uOverlay, uDesat, uGain;
 uniform float uRefr, uDepth, uDisp, uFrost, uLight, uLayer, uFadeFrom, uFadeTo;
 uniform vec2 uLightDir;
 uniform float uPad;
@@ -89,6 +93,7 @@ vec3 behind(vec2 p) {
   vec3 s = texture(uScene, uv).rgb;
   s = mix(s, vec3(dot(s, vec3(0.2126, 0.7152, 0.0722))), uDesat);
   s = mix(s, uPage, uOverlay);
+  s = mix(uPage, s, uGain); // hides the file's first moments (see HIDE_MS)
   return mix(uPage, s, maskAt(p));
 }
 float sdfAt(vec2 p) {
@@ -198,7 +203,7 @@ export function mountFooterScene(
     scene: U("uScene"), sdf: U("uSdf"), size: U("uSize"), dpr: U("uDpr"), wmO: U("uWmOrigin"), wmS: U("uWmSize"),
     mc: U("uMaskCenter"), mh: U("uMaskHalf"), ms: U("uMaskSigma"), page: U("uPage"), refr: U("uRefr"),
     depth: U("uDepth"), disp: U("uDisp"), frost: U("uFrost"), light: U("uLight"), layer: U("uLayer"),
-    ov: U("uOverlay"), ds: U("uDesat"), ff: U("uFadeFrom"), ft: U("uFadeTo"), ld: U("uLightDir"), pad: U("uPad"),
+    ov: U("uOverlay"), gn: U("uGain"), ds: U("uDesat"), ff: U("uFadeFrom"), ft: U("uFadeTo"), ld: U("uLightDir"), pad: U("uPad"),
   };
 
   const mkTex = (unit: number) => {
@@ -222,9 +227,16 @@ export function mountFooterScene(
   let height = 0;
   let dpr = 1;
   let visible = false;
+  let intersecting = false;
+  // On the home page the footer is revealed by a scroll animation (lib/motion/ctaStage.ts): until it opens, the scene sleeps.
+  const gateEl = root.closest<HTMLElement>("[data-cta-footer]");
+  const gateOpen = () => gateEl?.dataset.gate !== "closed";
   let raf = 0;
   let destroyed = false;
   let sceneReady = false;
+  let played = 0; // ms the animation has been playing
+  let lastTick = 0;
+  const setGain = () => gl.uniform1f(u.gn, reducedMotion ? 1 : Math.min(Math.max((played - HIDE_MS) / FADE_MS, 0), 1));
   const wantsPlay = () => visible && !reducedMotion; // plays while the footer is on screen
 
   const pushParams = () => {
@@ -296,6 +308,7 @@ export function mountFooterScene(
     gl.uniform2f(u.mh, MASK.w / 2, MASK.h / 2);
     buildSdf(wo.w, wo.h);
     pushParams();
+    setGain();
     rive?.resizeDrawingSurfaceToCanvas();
     void resized;
     draw();
@@ -313,6 +326,10 @@ export function mountFooterScene(
   const loop = () => {
     raf = 0;
     if (!wantsPlay() || destroyed) return;
+    const now = performance.now();
+    if (lastTick) played += Math.min(now - lastTick, 100);
+    lastTick = now;
+    setGain();
     draw();
     raf = requestAnimationFrame(loop);
   };
@@ -326,6 +343,7 @@ export function mountFooterScene(
       kick();
     } else {
       rive?.pause(SM);
+      lastTick = 0;
     }
   };
 
@@ -349,12 +367,18 @@ export function mountFooterScene(
   ro.observe(root);
   const io = new IntersectionObserver(
     ([e]) => {
-      visible = e.isIntersecting;
+      intersecting = e.isIntersecting;
+      visible = intersecting && gateOpen();
       sync();
     },
     { rootMargin: "200px" },
   );
   io.observe(root);
+  const onGate = () => {
+    visible = intersecting && gateOpen();
+    sync();
+  };
+  window.addEventListener("fluxa:footer-gate", onGate);
   layout();
 
   if (import.meta.env.DEV) {
@@ -376,6 +400,7 @@ export function mountFooterScene(
       cancelAnimationFrame(raf);
       ro.disconnect();
       io.disconnect();
+      window.removeEventListener("fluxa:footer-gate", onGate);
       rive?.cleanup();
       rive = null;
     },
