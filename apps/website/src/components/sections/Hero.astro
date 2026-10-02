@@ -34,6 +34,7 @@ const markStyle = [
 ].join(";");
 const hollowScale = MARK_SLOT.size / 32;
 
+import Eyebrow from "@/components/ui/Eyebrow.astro";
 ---
 
 <InfernoConfig />
@@ -112,12 +113,7 @@ const hollowScale = MARK_SLOT.size / 32;
     class="hero-copy pointer-events-none absolute inset-x-0 top-[30%] z-[5] flex flex-col gap-6 items-center px-6 text-center"
     data-hero-copy
   >
-    <div class="hero-eyebrow rounded-full bg-gradient-gradient p-px" data-copy-badge>
-      <span class="flex items-center gap-2 rounded-full bg-background-white py-1 pl-1.5 pr-3 text-text-sm-medium text-text-secondary">
-        <span class="h-2.5 w-6 rounded-full bg-gradient-gradient" aria-hidden="true"></span>
-        {copy.badge}
-      </span>
-    </div>
+    <Eyebrow data-copy-badge>{copy.badge}</Eyebrow>
     <h1 class=" max-w-[1100px] font-display text-header-h1 leading-[1.1] text-text-black" data-copy-title>
       {copy.title}
     </h1>
@@ -211,16 +207,6 @@ const hollowScale = MARK_SLOT.size / 32;
   .hero-copy {
     visibility: hidden;
   }
-  /* Eyebrow drop shadow (design spec). */
-  .hero-eyebrow {
-    box-shadow:
-      4px 21px 6px 0 rgba(11, 13, 18, 0),
-      2px 13px 5px 0 rgba(11, 13, 18, 0.01),
-      1px 8px 5px 0 rgba(11, 13, 18, 0.05),
-      1px 3px 3px 0 rgba(11, 13, 18, 0.09),
-      0 1px 2px 0 rgba(11, 13, 18, 0.1);
-  }
-
   /* Stop positions are the design's 73deg ramp with blue/purple/pink pushed right (design: 66.12 / 75.46 / 84.81 %):
      on this wide, short box the % maps to x ~ 0.5 + (p - 0.5) * 1.05, so blue now holds until the "o" of "code"
      (~80 % of the width) and pink lands on the final letters instead of the whole last word. */
@@ -265,6 +251,7 @@ const hollowScale = MARK_SLOT.size / 32;
   import { loadGsap, loadSplitText } from "@/lib/motion/gsap";
   import { MARK_PATH } from "@/config/wordmark";
   import { initGradientCards } from "@/lib/gradient/gradientCards";
+  import { initCardParallax } from "@/lib/gradient/cardParallax";
   import { readInfernoConfig } from "@/lib/gradient/gradientCards";
   import type { RuidoEvolutivoHandle } from "@fluxa/ruido-evolutivo-renderer";
   import { mountFoamMark } from "@/lib/gradient/foamMark";
@@ -294,6 +281,9 @@ const hollowScale = MARK_SLOT.size / 32;
   // Paints the card stills once (one shared WebGL context) and wires hover/click; the layer stays hidden for now.
   const gcards = hero?.querySelector<HTMLElement>("[data-gcards]");
   if (gcards) initGradientCards(gcards);
+  // Mouse parallax on the cards: armed only once the final scene has settled (see PARALLAX_AT).
+  const parallax = gcards ? initCardParallax(gcards) : null;
+  const PARALLAX_AT = 3.0 + 1.45; // P4 + 1.45: the cards have landed
   const xPath = hollow?.querySelector<SVGPathElement>("path");
   const letters = anchor ? Array.from(anchor.querySelectorAll<SVGGElement>("[data-wm-letter]")) : [];
 
@@ -500,6 +490,7 @@ const hollowScale = MARK_SLOT.size / 32;
         onUpdate: (self) => {
           const time = self.progress * (self.animation?.duration() ?? 1);
           showCopy(time >= COPY_AT);
+          parallax?.setActive(time >= PARALLAX_AT);
           updateLive(time);
         },
         pin: true,
@@ -711,6 +702,7 @@ const hollowScale = MARK_SLOT.size / 32;
         tl.scrollTrigger?.disable(false);
         tl.progress(Number(p) / tl.duration());
         showCopy(Number(p) >= COPY_AT);
+        parallax?.setActive(Number(p) >= PARALLAX_AT);
         updateLive(Number(p));
       }
     }

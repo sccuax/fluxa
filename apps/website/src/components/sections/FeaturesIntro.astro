@@ -48,9 +48,6 @@ const previews = [
 <!-- Feature cards: two columns from `lg` (a centre rule between them), one column below. -->
 <Section noTopRule bottomRule class="relative grid lg:grid-cols-2">
   <span class="rule-line rule-line--v z-10 left-1/2 hidden lg:block" aria-hidden="true"></span>
-  <!-- From 2xl the 1440px column is narrower than the page grid; side rules keep the cards' container closed. -->
-  <span class="rule-line rule-line--v z-10 left-0 hidden 2xl:block" aria-hidden="true"></span>
-  <span class="rule-line rule-line--v z-10 right-0 hidden 2xl:block" aria-hidden="true"></span>
   {
     t.cards.map((card, i) => (
       <FeatureCard

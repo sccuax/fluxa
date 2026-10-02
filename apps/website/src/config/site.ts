@@ -16,6 +16,9 @@ export const SITE = {
   // Where "Login" points. There is no web app yet (auth lives in the Designer
   // Extension), so this is a placeholder until that exists.
   loginUrl: import.meta.env.PUBLIC_LOGIN_URL ?? "#",
+  // Footer social links: placeholders until the real profiles exist.
+  socialX: import.meta.env.PUBLIC_SOCIAL_X ?? "#",
+  socialLinkedin: import.meta.env.PUBLIC_SOCIAL_LINKEDIN ?? "#",
   supportEmail: "support@fluxa.app",
   repoUrl: "https://github.com/sccuax/fluxa",
 } as const;

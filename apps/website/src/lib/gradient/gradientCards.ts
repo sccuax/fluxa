@@ -66,6 +66,8 @@ function paintStills(root: HTMLElement) {
 }
 
 let opening = false;
+/** True while a card is expanded / animating to or from full screen. */
+export const isCardOpen = () => opening;
 
 async function expand(card: HTMLElement) {
   const preset = byId.get(card.dataset.gcard ?? "");

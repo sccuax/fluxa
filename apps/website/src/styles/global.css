@@ -45,7 +45,7 @@
   }
   @media (min-width: 768px) {
     :root {
-      --padding-global: 2.5rem;
+      --padding-global: 6rem;
     }
   }
   html {
@@ -140,12 +140,17 @@
 .grid-rules::before {
   content: "";
   position: absolute;
-  inset: 0;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  /* The content column (max 1440px, `--padding-global` from each edge) plus the 1px rule on each side. */
+  width: min(100% - 2 * var(--padding-global) + 2px, 1440px + 2px);
   z-index: 2;
   pointer-events: none;
   background:
-    linear-gradient(theme("colors.border.border"), theme("colors.border.border")) calc(var(--padding-global) - 1px) 0 / 1px var(--grid-draw, 100%) no-repeat,
-    linear-gradient(theme("colors.border.border"), theme("colors.border.border")) calc(100% - var(--padding-global)) 0 / 1px var(--grid-draw, 100%) no-repeat;
+    linear-gradient(theme("colors.border.border"), theme("colors.border.border")) 0 0 / 1px var(--grid-draw, 100%) no-repeat,
+    linear-gradient(theme("colors.border.border"), theme("colors.border.border")) 100% 0 / 1px var(--grid-draw, 100%) no-repeat;
 }
 
 /* Scroll-drawn rules (lib/motion/scrollDraw.ts). The custom properties default to "fully drawn", so without JS or

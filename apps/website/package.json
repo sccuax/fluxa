@@ -24,6 +24,7 @@
     "@fluxa/ruido-evolutivo-renderer": "workspace:*",
     "@fluxa/ui": "workspace:*",
     "@fluxa/webgpu-particle-field": "workspace:*",
+    "@rive-app/canvas": "^2.44.0",
     "astro": "^7.3.5",
     "gsap": "^3.15.0",
     "react": "^18.3.1",

@@ -118,7 +118,7 @@ export const es: Dictionary = {
   footer: {
     rights: "Todos los derechos reservados.",
     licenses: "Licencias",
-    privacy: "Privacidad",
-    terms: "Términos",
+    privacy: "Política de privacidad",
+    terms: "Términos del servicio",
   },
 };

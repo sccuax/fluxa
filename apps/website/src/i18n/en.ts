@@ -119,8 +119,8 @@ export const en = {
   footer: {
     rights: "All rights reserved.",
     licenses: "Licenses",
-    privacy: "Privacy",
-    terms: "Terms",
+    privacy: "Privacy policy",
+    terms: "Terms of service",
   },
 };
 

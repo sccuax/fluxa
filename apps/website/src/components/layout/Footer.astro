@@ -1,6 +1,13 @@
 ---
+// Footer (copy-paste/fluxa web/footer.png): the Rive scene (assets/hero.riv) fills the footer behind a blurred mask, the
+// "Fluxa" wordmark is a glass layer over it, and the legal row sits at the bottom. The scene + glass are ONE WebGL2 pass
+// (lib/footer/glassFooter.ts); this file is the markup, the no-WebGL fallback and the lazy start.
+//
+// Layering (bottom -> top): page colour, GL canvas (pointer-events none), the Rive canvas (opacity 0, ONLY there so the
+// pointer reaches the animation's state machine; the GL canvas shows its pixels), the legal row.
 import { SITE, type Locale } from "@/config/site";
 import { localizedPath, useTranslations } from "@/i18n";
+import { FALLBACK_PATHS, FRAME } from "@/lib/footer/wordmark";
 
 interface Props {
   locale: Locale;
@@ -10,16 +17,96 @@ const t = useTranslations(locale);
 const year = new Date().getFullYear();
 ---
 
-<!-- Same vertical rules as <PageGrid> (`grid-rules`), no margin above and no top rule of its own: the last section closes with a rule. -->
-<footer class="grid-rules relative">
+<footer class="relative isolate overflow-hidden bg-background-dark text-text-white" data-footer>
+  <!-- The stage is at most 1440px wide (the scene is never wider); beyond that the page colour continues. -->
+  <div class="footer-scene relative mx-auto w-full max-w-[1440px]" data-footer-stage>
+  <canvas class="absolute inset-0 h-full w-full" data-footer-gl aria-hidden="true"></canvas>
+  <canvas class="footer-rive absolute inset-0 h-full w-full" data-footer-rive aria-hidden="true"></canvas>
+
+  <!-- The wordmark frame: 1191x362 at a 1440 viewport (the design size), shrinks with the page paddings. -->
   <div
-    class="mx-auto flex max-w-section flex-col gap-4 px-padding-global py-10 text-text-sm-regular text-text-black/60 md:flex-row md:items-center md:justify-between"
+    class="pointer-events-none absolute bottom-[100px] left-1/2 w-[min(1191px,calc(100%-2*var(--padding-global)))] -translate-x-1/2"
+    style={`aspect-ratio:${FRAME.w}/${FRAME.h}`}
+    data-footer-wordmark
   >
-    <p>© {year} {SITE.name}. {t.footer.rights}</p>
-    <nav aria-label="Legal" class="flex gap-6">
-      <a href={localizedPath("/legal/licenses", locale)}>{t.footer.licenses}</a>
-      <a href={localizedPath("/legal/privacy", locale)}>{t.footer.privacy}</a>
-      <a href={localizedPath("/legal/terms", locale)}>{t.footer.terms}</a>
-    </nav>
+    <!-- no-WebGL fallback: the letters as thin outlines (hidden once the glass is drawn) -->
+    <svg viewBox={`0 0 ${FRAME.w} ${FRAME.h}`} class="footer-outline h-full w-full" fill="none" aria-hidden="true">
+      {FALLBACK_PATHS.map((p) => <path d={p.d} transform={p.transform} stroke="rgba(239,241,244,.55)" stroke-width="1.5" />)}
+    </svg>
+  </div>
+  <span class="sr-only">{SITE.name}</span>
+
+  <div class="absolute inset-x-0 bottom-0 z-10">
+    <div
+      class="mx-auto grid max-w-section grid-cols-1 items-center gap-4 px-padding-global py-6 text-center text-text-md-regular text-[#5C647A] md:h-[78px] md:grid-cols-[1fr_auto_1fr] md:py-0 md:text-left"
+    >
+      <nav aria-label="Legal" class="flex flex-wrap justify-center gap-x-4 gap-y-1 md:justify-start">
+        <a class="footer-link" href={localizedPath("/legal/terms", locale)}>{t.footer.terms}</a>
+        <a class="footer-link" href={localizedPath("/legal/privacy", locale)}>{t.footer.privacy}</a>
+        <a class="footer-link" href={localizedPath("/legal/licenses", locale)}>{t.footer.licenses}</a>
+      </nav>
+      <div class="flex items-center justify-center gap-3">
+        <a class="footer-link" href={SITE.socialX} target="_blank" rel="noopener noreferrer" aria-label="X">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path d="M15.2033 1.875H17.9599L11.9374 8.75833L19.0224 18.125H13.4749L9.12992 12.4442L4.15826 18.125H1.39992L7.84159 10.7625L1.04492 1.875H6.73326L10.6608 7.0675L15.2033 1.875ZM14.2358 16.475H15.7633L5.90325 3.43833H4.26409L14.2358 16.475Z" fill="currentColor"></path>
+          </svg>
+        </a>
+        <a class="footer-link" href={SITE.socialLinkedin} target="_blank" rel="noopener noreferrer" aria-label="LinkedIn">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path d="M17.0392 17.0433H14.0775V12.4025C14.0775 11.2958 14.055 9.87167 12.5342 9.87167C10.99 9.87167 10.7542 11.0758 10.7542 12.3208V17.0433H7.7925V7.5H10.6375V8.80083H10.6758C11.0733 8.05083 12.04 7.25917 13.4842 7.25917C16.485 7.25917 17.04 9.23417 17.04 11.805L17.0392 17.0433ZM4.4475 6.19417C3.49417 6.19417 2.72833 5.4225 2.72833 4.47333C2.72833 3.525 3.495 2.75417 4.4475 2.75417C5.3975 2.75417 6.1675 3.525 6.1675 4.47333C6.1675 5.4225 5.39667 6.19417 4.4475 6.19417ZM5.9325 17.0433H2.9625V7.5H5.9325V17.0433ZM18.5208 0H1.47583C0.66 0 0 0.645 0 1.44083V18.5592C0 19.3558 0.66 20 1.47583 20H18.5183C19.3333 20 20 19.3558 20 18.5592V1.44083C20 0.645 19.3333 0 18.5183 0H18.5208Z" fill="currentColor"></path>
+          </svg>
+        </a>
+      </div>
+      <p class="md:text-right">© {year} {SITE.name} app. {t.footer.rights}</p>
+    </div>
+  </div>
   </div>
 </footer>
+
+<style is:global>
+  /* The scene is 1500x844 (hero.riv), so the footer keeps that shape; the floor keeps it usable on narrow screens. */
+  .footer-scene {
+    aspect-ratio: 1500 / 844;
+    min-height: 640px;
+  }
+  /* Opacity 0, not display:none: a hidden canvas still receives the pointer (the state machine listens to it). */
+  .footer-rive {
+    opacity: 0;
+  }
+  .footer-link {
+    transition: color 0.2s;
+  }
+  .footer-link:hover {
+    color: theme("colors.text.white");
+  }
+  /* The outline is the no-WebGL fallback and the placeholder until the glass is drawn. */
+  .footer-scene[data-ready="true"] .footer-outline {
+    display: none;
+  }
+</style>
+
+<script>
+  // Lazy: Rive's runtime + wasm (~300 KB) only load when the footer is about to be seen.
+  const root = document.querySelector<HTMLElement>("[data-footer-stage]");
+  const gl = root?.querySelector<HTMLCanvasElement>("[data-footer-gl]");
+  const rv = root?.querySelector<HTMLCanvasElement>("[data-footer-rive]");
+  const wm = root?.querySelector<HTMLElement>("[data-footer-wordmark]");
+  if (root && gl && rv && wm) {
+    const io = new IntersectionObserver(
+      async ([e]) => {
+        if (!e.isIntersecting) return;
+        io.disconnect();
+        const { mountFooterScene } = await import("@/lib/footer/glassFooter");
+        const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+        try {
+          if (!mountFooterScene(root, gl, rv, wm, reduced)) root.dataset.gl = "false";
+        } catch (err) {
+          console.warn("[footer] scene failed", err);
+          root.dataset.gl = "false";
+        }
+      },
+      { rootMargin: "800px" },
+    );
+    io.observe(root);
+  }
+</script>

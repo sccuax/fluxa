@@ -302,6 +302,9 @@ importers:
       '@fluxa/webgpu-particle-field':
         specifier: workspace:*
         version: link:../../packages/webgpu-particle-field
+      '@rive-app/canvas':
+        specifier: ^2.44.0
+        version: 2.44.0
       astro:
         specifier: ^7.3.5
         version: 7.3.5(@types/node@26.1.2)(jiti@1.21.7)(terser@5.49.0)(tsx@4.23.1)(yaml@2.9.1)
@@ -2849,6 +2852,9 @@ packages:
         optional: true
       react-native:
         optional: true
+
+  '@rive-app/canvas@2.44.0':
+    resolution: {integrity: sha512-ak0GGwCbuWubi6rP9qB5YPy5CxYuTY3AiuTV4i1Vi7GXhuK2XB+M+4WJMuGcYGfGLzojaVMKaxtunD5OjjGzOQ==}
 
   '@rolldown/binding-android-arm-eabi@1.2.11':
     resolution: {integrity: sha512-A5kXfGKvKWWZE0TtPrfsvT+q4Y5d1QG8gGUzpYjGydM+fARM9MuX90PrXYXe0XbsDVgyxxNzHo6giCj90bsFNw==}
@@ -9837,6 +9843,8 @@ snapshots:
       react-dom: 18.3.1(react@18.3.1)
     transitivePeerDependencies:
       - '@types/react'
+
+  '@rive-app/canvas@2.44.0': {}
 
   '@rolldown/binding-android-arm-eabi@1.2.11':
     optional: true
