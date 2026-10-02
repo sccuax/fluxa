@@ -50,7 +50,7 @@ const billed = t.billedYearly.replace("{total}", `$${proAnnualTotal}`);
     </div>
   </div>
 
-  <div class="grid md:grid-cols-2" data-rule="t b" data-pricing>
+  <div class="grid md:grid-cols-2" data-rule="t" data-pricing>
     <!-- Free -->
     <article class="flex flex-col bg-background-white-2 p-px" data-scroll-reveal>
       <div class="flex h-16 items-center px-5">
@@ -124,9 +124,10 @@ const billed = t.billedYearly.replace("{total}", `$${proAnnualTotal}`);
       </div>
     </article>
   </div>
-  <!-- Empty band under the cards: the cards row closes with its own rule, this row with the section rule. -->
-  <div class="h-[100px]" aria-hidden="true"></div>
 </Section>
+
+<!-- Empty band under the cards: the cards section closes with a full-bleed rule, this row with another one. -->
+<Section noTopRule bottomRule class="h-[100px]"><span class="sr-only"></span></Section>
 
 <style is:global>
   .bt-switch[aria-checked="true"] {

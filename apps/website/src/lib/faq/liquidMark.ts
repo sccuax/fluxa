@@ -730,7 +730,7 @@ export async function mountLiquidMark(canvas: HTMLCanvasElement, hit: HTMLElemen
   let intervalN = 0;
   const loop = (now: number) => {
     raf = 0;
-    if (!visible || document.hidden) return;
+    if (!visible || document.hidden || covered) return;
     raf = requestAnimationFrame(loop);
     const dt = Math.min((now - last) / 1000, 0.05);
     last = now;
@@ -752,8 +752,15 @@ export async function mountLiquidMark(canvas: HTMLCanvasElement, hit: HTMLElemen
       }
     }
   };
+  // the CTA sheet can cover the whole FAQ (lib/motion/ctaStage.ts): nothing to draw then
+  let covered = false;
+  const onCovered = (e: Event) => {
+    covered = !!(e as CustomEvent<boolean>).detail;
+    if (!covered) start();
+  };
+  window.addEventListener("fluxa:faq-covered", onCovered);
   const start = () => {
-    if (!raf && !reduced) {
+    if (!raf && !reduced && !covered) {
       last = lastDrawn = performance.now();
       intervalSum = intervalN = 0;
       raf = requestAnimationFrame(loop);
@@ -780,6 +787,7 @@ export async function mountLiquidMark(canvas: HTMLCanvasElement, hit: HTMLElemen
       ro.disconnect();
       cancelAnimationFrame(raf);
       document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("fluxa:faq-covered", onCovered);
       hit.removeEventListener("pointermove", onMove);
       hit.removeEventListener("pointerenter", onMove);
       hit.removeEventListener("pointerleave", onLeave);

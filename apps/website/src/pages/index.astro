@@ -18,7 +18,10 @@ const locale = resolveLocale(Astro.currentLocale);
     <HowItWorks locale={locale} />
     <FeaturesIntro locale={locale} />
     <Pricing locale={locale} />
-    <Faq locale={locale} />
-    <Cta locale={locale} />
+    <!-- The FAQ is pinned at the end of its scroll and the CTA rises over it (lib/motion/ctaStage.ts). -->
+    <div class="cta-stage relative" data-cta-stage>
+      <Faq locale={locale} />
+      <Cta locale={locale} />
+    </div>
   </PageGrid>
 </BaseLayout>
