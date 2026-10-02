@@ -23,13 +23,21 @@ import { loadGsap } from "./gsap";
 
 const COVERED_EVENT = "fluxa:faq-covered";
 const COVER_AT = 0.5; // timeline time at which the sheet fully covers the FAQ
+const VP_PER_UNIT = 2.1 / 1.35; // scroll length (viewports) per timeline unit: the CTA part alone is 1.35 units over 2.1 viewports
+const FOOTER_AT = 1.5; // the footer starts to rise once the CTA has settled
+const FOOTER_RISE = 1.0;
+const FOOTER_CIRCLE = "75%"; // final radius of the reveal circle: % of sqrt((w^2+h^2)/2), 75% reaches past the corners
 
 export async function initCtaStage(): Promise<void> {
   const stage = document.querySelector<HTMLElement>("[data-cta-stage]");
   const sheet = stage?.querySelector<HTMLElement>("[data-cta-sheet]");
   const panel = stage?.querySelector<HTMLElement>("[data-cta-panel]");
   const content = stage?.querySelector<HTMLElement>("[data-cta-content]");
-  if (!stage || !sheet || !panel || !content) return;
+  const footer = stage?.querySelector<HTMLElement>("[data-cta-footer]");
+  const dim = stage?.querySelector<HTMLElement>("[data-cta-dim]");
+  // the var goes on the grid's PARENT: scrollDraw owns tweens (overwrite) on the grid element itself and would kill ours
+  const grid = stage?.closest<HTMLElement>(".page-grid")?.parentElement;
+  if (!stage || !sheet || !panel || !content || !footer || !dim || !grid) return;
 
   let mods: Awaited<ReturnType<typeof loadGsap>>;
   try {
@@ -57,7 +65,7 @@ export async function initCtaStage(): Promise<void> {
       scrollTrigger: {
         trigger: stage,
         start: "bottom bottom",
-        end: () => "+=" + Math.round(window.innerHeight * 2.1),
+        end: () => "+=" + Math.round(window.innerHeight * VP_PER_UNIT * tl.duration()),
         pin: true,
         anticipatePin: 1,
         scrub: 0.6,
@@ -84,7 +92,19 @@ export async function initCtaStage(): Promise<void> {
       )
       .to(sheet, { "--cta-line": 1, duration: 0.25, ease: "power2.out" }, 0.62)
       .fromTo(parts, { y: 34, opacity: 0 }, { y: 0, opacity: 1, duration: 0.3, stagger: 0.1, ease: "power2.out" }, 0.8)
-      .to({}, { duration: 0.15 }); // hold at the end so the last motion settles before the pin releases
+      .to({}, { duration: 0.15 }) // the CTA settles
+      // The footer opens as a circle from the centre of the screen until it covers the CTA, which dims behind it.
+      .set(footer, { autoAlpha: 1 }, FOOTER_AT)
+      .fromTo(
+        footer,
+        { clipPath: "circle(0% at 50% 50%)" },
+        { clipPath: `circle(${FOOTER_CIRCLE} at 50% 50%)`, duration: FOOTER_RISE, ease: "power2.inOut" },
+        FOOTER_AT,
+      )
+      .fromTo(dim, { opacity: 0 }, { opacity: 0.75, duration: FOOTER_RISE, ease: "none" }, FOOTER_AT)
+      // the page's vertical rules would draw over the footer: fade them out as it covers the page
+      .fromTo(grid, { "--grid-fade": 1 }, { "--grid-fade": 0, duration: 0.4, ease: "none" }, FOOTER_AT + 0.1)
+      .to({}, { duration: 0.2 }); // hold on the finished footer before the pin releases
 
     // the CTA left the flow: positions below it changed
     requestAnimationFrame(() => ScrollTrigger.refresh());

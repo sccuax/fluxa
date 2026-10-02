@@ -148,6 +148,7 @@
   width: min(100% - 2 * var(--padding-global) + 2px, 1440px + 2px);
   z-index: 2;
   pointer-events: none;
+  opacity: var(--grid-fade, 1); /* the footer entrance fades the rules out (lib/motion/ctaStage.ts) */
   background:
     linear-gradient(theme("colors.border.border"), theme("colors.border.border")) 0 0 / 1px var(--grid-draw, 100%) no-repeat,
     linear-gradient(theme("colors.border.border"), theme("colors.border.border")) 100% 0 / 1px var(--grid-draw, 100%) no-repeat;

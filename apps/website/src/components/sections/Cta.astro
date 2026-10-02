@@ -173,6 +173,38 @@ const glows = [
     animation-play-state: paused;
   }
 
+  /* ---- footer hand-over: the footer is the last layer of the stage (see lib/motion/ctaStage.ts) ---------------------- */
+  .cta-footer {
+    position: relative;
+    z-index: 3; /* above the page grid's vertical rules (z-index 2) */
+    background: theme("colors.background.dark");
+  }
+  .cta-dim {
+    display: none;
+  }
+  .cta-stage.is-stage .cta-dim {
+    display: block;
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    background: #000;
+    opacity: 0;
+    pointer-events: none;
+  }
+  .cta-stage.is-stage .cta-footer {
+    position: absolute;
+    inset-inline: 0;
+    bottom: 0;
+    display: flex;
+    align-items: flex-end;
+    min-height: 100vh;
+    overflow: hidden;
+    visibility: hidden; /* until the timeline brings it in */
+  }
+  .cta-stage.is-stage .cta-footer > footer {
+    width: 100%;
+  }
+
   /* A glow: an elliptical radial gradient centred on (left, top), pulled back by half its own size. */
   .cta-glow {
     position: absolute;

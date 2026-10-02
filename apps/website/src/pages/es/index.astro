@@ -8,10 +8,11 @@ import FeaturesIntro from "@/components/sections/FeaturesIntro.astro";
 import Pricing from "@/components/sections/Pricing.astro";
 import Faq from "@/components/sections/Faq.astro";
 import Cta from "@/components/sections/Cta.astro";
+import Footer from "@/components/layout/Footer.astro";
 import PageGrid from "@/components/layout/PageGrid.astro";
 ---
 
-<BaseLayout>
+<BaseLayout footer={false}>
   <Hero locale="es" />
   <PageGrid className="gap-30">
     <HowItWorks locale="es" />
@@ -21,6 +22,11 @@ import PageGrid from "@/components/layout/PageGrid.astro";
     <div class="cta-stage relative" data-cta-stage>
       <Faq locale="es" />
       <Cta locale="es" />
+      <!-- The footer rises over the pinned CTA with round top corners (lib/motion/ctaStage.ts). -->
+      <div class="cta-dim" data-cta-dim aria-hidden="true"></div>
+      <div class="cta-footer" data-cta-footer>
+        <Footer locale="es" />
+      </div>
     </div>
   </PageGrid>
 </BaseLayout>
