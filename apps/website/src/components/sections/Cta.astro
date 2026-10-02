@@ -199,10 +199,8 @@ const glows = [
     align-items: flex-end;
     min-height: 100vh;
     overflow: hidden;
-    /* A circle that starts complete at the bottom of the viewport (--fr0) and grows (--fr, driven by ctaStage.ts); its centre
-       stays put, so the circle's lower left / right points slide along the bottom edge of the screen as it outgrows it. */
-    --fr0: 4vmax;
-    clip-path: circle(var(--fr, 0px) at 50% calc(100% - min(var(--fr, 0px), var(--fr0))));
+    /* Revealed through the logo: #footer-reveal (Footer.astro) is a clipPath whose path ctaStage.ts scales and positions. */
+    clip-path: url(#footer-reveal);
     visibility: hidden; /* until the timeline brings it in */
   }
   .cta-stage.is-stage .cta-footer > footer {

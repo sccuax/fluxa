@@ -8,6 +8,7 @@
 import { SITE, type Locale } from "@/config/site";
 import { localizedPath, useTranslations } from "@/i18n";
 import { FALLBACK_PATHS, FRAME } from "@/lib/footer/wordmark";
+import { MARK_PATH } from "@/config/wordmark";
 
 interface Props {
   locale: Locale;
@@ -16,6 +17,13 @@ const { locale } = Astro.props;
 const t = useTranslations(locale);
 const year = new Date().getFullYear();
 ---
+
+<!-- The home page reveals the footer through this logo-shaped clip (lib/motion/ctaStage.ts moves/scales the path). -->
+<svg width="0" height="0" class="absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <clipPath id="footer-reveal" clipPathUnits="userSpaceOnUse"><path id="footer-reveal-path" d={MARK_PATH}></path></clipPath>
+  </defs>
+</svg>
 
 <footer class="relative isolate overflow-hidden bg-background-dark text-text-white" data-footer>
   <!-- The stage is at most 1440px wide (the scene is never wider); beyond that the page colour continues. -->
@@ -40,12 +48,12 @@ const year = new Date().getFullYear();
     <div
       class="mx-auto grid max-w-section grid-cols-1 items-center gap-4 px-padding-global py-6 text-center text-text-md-regular text-[#5C647A] md:h-[78px] md:grid-cols-[1fr_auto_1fr] md:py-0 md:text-left"
     >
-      <nav aria-label="Legal" class="flex flex-wrap justify-center gap-x-4 gap-y-1 md:justify-start">
+      <nav aria-label="Legal" data-footer-in style="--i:0" class="flex flex-wrap justify-center gap-x-4 gap-y-1 md:justify-start">
         <a class="footer-link" href={localizedPath("/legal/terms", locale)}>{t.footer.terms}</a>
         <a class="footer-link" href={localizedPath("/legal/privacy", locale)}>{t.footer.privacy}</a>
         <a class="footer-link" href={localizedPath("/legal/licenses", locale)}>{t.footer.licenses}</a>
       </nav>
-      <div class="flex items-center justify-center gap-3">
+      <div class="flex items-center justify-center gap-3" data-footer-in style="--i:1">
         <a class="footer-link" href={SITE.socialX} target="_blank" rel="noopener noreferrer" aria-label="X">
           <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
             <path d="M15.2033 1.875H17.9599L11.9374 8.75833L19.0224 18.125H13.4749L9.12992 12.4442L4.15826 18.125H1.39992L7.84159 10.7625L1.04492 1.875H6.73326L10.6608 7.0675L15.2033 1.875ZM14.2358 16.475H15.7633L5.90325 3.43833H4.26409L14.2358 16.475Z" fill="currentColor"></path>
@@ -57,7 +65,7 @@ const year = new Date().getFullYear();
           </svg>
         </a>
       </div>
-      <p class="md:text-right">© {year} {SITE.name} app. {t.footer.rights}</p>
+      <p class="md:text-right" data-footer-in style="--i:2">© {year} {SITE.name} app. {t.footer.rights}</p>
     </div>
   </div>
   </div>
@@ -78,6 +86,18 @@ const year = new Date().getFullYear();
   }
   .footer-link:hover {
     color: theme("colors.text.white");
+  }
+  /* The legal row comes in after the footer opens (glassFooter.ts sets data-footer-reveal): staggered fade + rise. */
+  [data-footer-in] {
+    transition:
+      opacity 0.9s ease,
+      transform 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+    transition-delay: calc(0.7s + var(--i, 0) * 0.14s);
+  }
+  .footer-scene[data-footer-reveal="false"] [data-footer-in] {
+    opacity: 0;
+    transform: translateY(14px);
+    transition-delay: 0s;
   }
   /* The outline is the no-WebGL fallback and the placeholder until the glass is drawn. */
   .footer-scene[data-ready="true"] .footer-outline {

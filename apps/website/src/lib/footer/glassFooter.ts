@@ -49,6 +49,8 @@ const PAGE_RGB: [number, number, number] = [11 / 255, 13 / 255, 18 / 255]; // ba
 const SM = "State Machine 1";
 // hero.riv opens with a "RIVE" splash (~0.5s) and a black beat before the scene grows in: the scene is hidden for this long
 // after it starts playing, then fades in.
+const MELT_MS = 2600; // letters: melted -> solid
+const ALPHA_MS = 700; // ...and they fade in over the first part of it
 const HIDE_MS = 1000;
 const FADE_MS = 600;
 const PAD = 48; // css px of SDF around the wordmark (rim light + soft edge need room)
@@ -69,7 +71,7 @@ uniform vec2 uMaskCenter;
 uniform vec2 uMaskHalf;
 uniform float uMaskSigma;
 uniform vec3 uPage;
-uniform float uOverlay, uDesat, uGain;
+uniform float uOverlay, uDesat, uGain, uMelt, uAlpha;
 uniform float uRefr, uDepth, uDisp, uFrost, uLight, uLayer, uFadeFrom, uFadeTo;
 uniform vec2 uLightDir;
 uniform float uPad;
@@ -96,7 +98,16 @@ vec3 behind(vec2 p) {
   s = mix(uPage, s, uGain); // hides the file's first moments (see HIDE_MS)
   return mix(uPage, s, maskAt(p));
 }
-float sdfAt(vec2 p) {
+// The letters "melt" in: while uMelt > 0 the field they are read from sags (more at the bottom, in waves) and wobbles.
+vec2 warp(vec2 p) {
+  if (uMelt <= 0.0) return p;
+  float v = clamp((p.y - uWmOrigin.y) / uWmSize.y, 0.0, 1.0);
+  float wave = 0.6 + 0.4 * sin(p.x * 0.045 + 1.3);
+  float sag = (24.0 + 120.0 * smoothstep(0.15, 1.0, v)) * wave;
+  return p + vec2(uMelt * 16.0 * sin(p.y * 0.03 + p.x * 0.012), -uMelt * sag);
+}
+float sdfAt(vec2 pw) {
+  vec2 p = warp(pw);
   vec2 uv = (p - uWmOrigin + uPad) / (uWmSize + 2.0 * uPad);
   if (uv.x < 0.0 || uv.y < 0.0 || uv.x > 1.0 || uv.y > 1.0) return -64.0;
   return texture(uSdf, uv).r;
@@ -108,7 +119,7 @@ void main() {
   vec3 col = behind(p);
 
   float sd = sdfAt(p);
-  if (sd > -uLayer * 0.5 - 2.0) {
+  if (sd > -(uLayer * 0.5 + 2.0 + uMelt * 20.0)) {
     // outline normal (points INTO the letter) from the SDF's gradient
     vec2 g = vec2(sdfAt(p + vec2(1.0, 0.0)) - sdfAt(p - vec2(1.0, 0.0)), sdfAt(p + vec2(0.0, 1.0)) - sdfAt(p - vec2(0.0, 1.0))) * 0.5;
     float gl = length(g);
@@ -116,7 +127,7 @@ void main() {
 
     float t = clamp(sd / uDepth, 0.0, 1.0);
     float bend = pow(1.0 - t, 2.0) * step(0.0, sd + 0.5);
-    float R = uRefr * 0.01 * uDepth * 1.2;
+    float R = uRefr * 0.01 * uDepth * 1.2 * (1.0 + 0.6 * uMelt);
 
     // refraction + chromatic dispersion + frost (a small disc blur), per channel
     vec3 glass;
@@ -140,12 +151,12 @@ void main() {
     float gaps = smoothstep(0.05, 0.6, 0.5 + 0.28 * sin(p.x * 0.011 + p.y * 0.017) + 0.22 * sin(p.x * 0.0047 - p.y * 0.013 + 1.7));
     float rim = 1.0 - smoothstep(0.0, 1.6, sd);
     float soft = pow(1.0 - t, 3.0) * 0.12;
-    float hl = facing * gaps * (rim + soft) * uLight;
+    float hl = facing * gaps * (rim + soft) * uLight * (1.0 - uMelt);
 
     float v = (p.y - uWmOrigin.y) / uWmSize.y;
-    float fade = 1.0 - clamp((v - uFadeFrom) / (uFadeTo - uFadeFrom), 0.0, 1.0); // linear, like the hero's letters
+    float fade = (1.0 - clamp((v - uFadeFrom) / (uFadeTo - uFadeFrom), 0.0, 1.0)) * uAlpha; // linear, like the hero's letters
     float coverCrisp = smoothstep(-0.6, 0.6, sd);
-    float feather = max(uLayer * 0.25, 0.5);
+    float feather = max(uLayer * 0.25, 0.5) + uMelt * 18.0;
     float coverBody = smoothstep(-feather, feather, sd);
 
     vec3 body = mix(col, glass + 0.025, coverBody * fade);
@@ -203,7 +214,7 @@ export function mountFooterScene(
     scene: U("uScene"), sdf: U("uSdf"), size: U("uSize"), dpr: U("uDpr"), wmO: U("uWmOrigin"), wmS: U("uWmSize"),
     mc: U("uMaskCenter"), mh: U("uMaskHalf"), ms: U("uMaskSigma"), page: U("uPage"), refr: U("uRefr"),
     depth: U("uDepth"), disp: U("uDisp"), frost: U("uFrost"), light: U("uLight"), layer: U("uLayer"),
-    ov: U("uOverlay"), gn: U("uGain"), ds: U("uDesat"), ff: U("uFadeFrom"), ft: U("uFadeTo"), ld: U("uLightDir"), pad: U("uPad"),
+    ov: U("uOverlay"), gn: U("uGain"), melt: U("uMelt"), alpha: U("uAlpha"), ds: U("uDesat"), ff: U("uFadeFrom"), ft: U("uFadeTo"), ld: U("uLightDir"), pad: U("uPad"),
   };
 
   const mkTex = (unit: number) => {
@@ -234,6 +245,37 @@ export function mountFooterScene(
   let raf = 0;
   let destroyed = false;
   let sceneReady = false;
+  // Reveal (letters melt in, legal row rises): driven by the home page's footer entrance (fluxa:footer-reveal), or by the
+  // footer first showing on screen when there is no entrance (mobile / reduced layout).
+  let revealed = false;
+  let revealAt = 0;
+  const animated = !reducedMotion;
+  let forced: [number, number] | null = null; // dev only: freeze [melt, alpha] to inspect a frame
+  const pushReveal = () => {
+    if (forced) {
+      gl.uniform1f(u.melt, forced[0]);
+      gl.uniform1f(u.alpha, forced[1]);
+      return;
+    }
+    if (!animated) {
+      gl.uniform1f(u.melt, 0);
+      gl.uniform1f(u.alpha, 1);
+      return;
+    }
+    const t = revealed ? performance.now() - revealAt : 0;
+    const k = Math.min(Math.max(t / MELT_MS, 0), 1);
+    gl.uniform1f(u.melt, revealed ? Math.pow(1 - k, 3) : 1);
+    gl.uniform1f(u.alpha, revealed ? Math.min(t / ALPHA_MS, 1) : 0);
+  };
+  const setReveal = (on: boolean) => {
+    if (!animated || on === revealed) return;
+    revealed = on;
+    revealAt = performance.now();
+    root.dataset.footerReveal = String(on);
+    pushReveal();
+    kick();
+  };
+  if (animated) root.dataset.footerReveal = "false";
   let played = 0; // ms the animation has been playing
   let lastTick = 0;
   const setGain = () => gl.uniform1f(u.gn, reducedMotion ? 1 : Math.min(Math.max((played - HIDE_MS) / FADE_MS, 0), 1));
@@ -309,6 +351,7 @@ export function mountFooterScene(
     buildSdf(wo.w, wo.h);
     pushParams();
     setGain();
+    pushReveal();
     rive?.resizeDrawingSurfaceToCanvas();
     void resized;
     draw();
@@ -330,6 +373,7 @@ export function mountFooterScene(
     if (lastTick) played += Math.min(now - lastTick, 100);
     lastTick = now;
     setGain();
+    pushReveal();
     draw();
     raf = requestAnimationFrame(loop);
   };
@@ -369,6 +413,7 @@ export function mountFooterScene(
     ([e]) => {
       intersecting = e.isIntersecting;
       visible = intersecting && gateOpen();
+      if (intersecting && gateEl?.dataset.gate === undefined) setReveal(true); // no entrance animation: reveal on first sight
       sync();
     },
     { rootMargin: "200px" },
@@ -379,13 +424,20 @@ export function mountFooterScene(
     sync();
   };
   window.addEventListener("fluxa:footer-gate", onGate);
+  const onReveal = (e: Event) => setReveal((e as CustomEvent<boolean>).detail);
+  window.addEventListener("fluxa:footer-reveal", onReveal);
   layout();
 
   if (import.meta.env.DEV) {
     (window as unknown as { __footerGlass: unknown }).__footerGlass = {
       params,
       rive: () => rive,
-      state: () => ({ playing: rive?.isPlaying, visible, raf }),
+      freeze(melt: number, alpha = 1) {
+        forced = [melt, alpha];
+        pushReveal();
+        draw();
+      },
+      state: () => ({ playing: rive?.isPlaying, visible, raf, played, revealed, revealAt, now: performance.now(), sceneReady }),
       set(next: Partial<GlassParams>) {
         Object.assign(params, next);
         pushParams();
@@ -401,6 +453,7 @@ export function mountFooterScene(
       ro.disconnect();
       io.disconnect();
       window.removeEventListener("fluxa:footer-gate", onGate);
+      window.removeEventListener("fluxa:footer-reveal", onReveal);
       rive?.cleanup();
       rive = null;
     },

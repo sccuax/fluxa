@@ -20,12 +20,15 @@
 // shader behind a modal in the extension's editor).
 // Below `lg` / with reduced motion nothing runs: the CTA is a plain section after the FAQ.
 import { loadGsap } from "./gsap";
+import { MARK_PATH } from "@/config/wordmark";
 
 const COVERED_EVENT = "fluxa:faq-covered";
 const GATE_EVENT = "fluxa:footer-gate";
 const COVER_AT = 0.5; // timeline time at which the sheet fully covers the FAQ
 const VP_PER_UNIT = 2.1 / 1.35; // scroll length (viewports) per timeline unit: the CTA part alone is 1.35 units over 2.1 viewports
+const CTA_DWELL = 0.55; // extra scroll the finished CTA stays on screen before the footer can fire (fast scrollers)
 const FOOTER_HOLD = 0.35; // scroll left after the CTA settles: crossing the threshold plays the whole footer entrance
+const REVEAL_EVENT = "fluxa:footer-reveal";
 const FOOTER_SECONDS = 1.5; // the entrance is TIME-based: one scroll gesture past the threshold plays it all
 
 export async function initCtaStage(): Promise<void> {
@@ -37,7 +40,8 @@ export async function initCtaStage(): Promise<void> {
   const dim = stage?.querySelector<HTMLElement>("[data-cta-dim]");
   // the var goes on the grid's PARENT: scrollDraw owns tweens (overwrite) on the grid element itself and would kill ours
   const grid = stage?.closest<HTMLElement>(".page-grid")?.parentElement;
-  if (!stage || !sheet || !panel || !content || !footer || !dim || !grid) return;
+  const clip = document.getElementById("footer-reveal-path");
+  if (!stage || !sheet || !panel || !content || !footer || !dim || !grid || !clip) return;
 
   let mods: Awaited<ReturnType<typeof loadGsap>>;
   try {
@@ -65,6 +69,33 @@ export async function initCtaStage(): Promise<void> {
     // points stay on the bottom edge of the screen (the centre is fixed, so the circle just outgrows the viewport).
     // Not scrubbed: crossing the threshold plays it (and scrolling back up reverses it).
     footer.dataset.gate = "closed"; // the footer's scene sleeps until the entrance runs (lib/footer/glassFooter.ts)
+    // The shape is the LOGO: #footer-reveal's path (32-unit space) is scaled to 2r and centred on (w/2, h - min(r, r0)), so
+    // it starts complete at the bottom edge and its lower lobes slide along it as it outgrows the screen.
+    const markPath = new Path2D(MARK_PATH);
+    const probe = document.createElement("canvas").getContext("2d")!;
+    const startR = () => Math.max(window.innerWidth, window.innerHeight) * 0.04;
+    const place = (r: number) => {
+      const w = footer.offsetWidth;
+      const h = footer.offsetHeight;
+      const cy = h - Math.min(r, startR());
+      clip.setAttribute("transform", `translate(${w / 2 - r} ${cy - r}) scale(${(2 * r) / 32})`);
+    };
+    // smallest half-size at which the logo (not just its bounding square) covers the whole footer
+    const coverRadius = () => {
+      const w = footer.offsetWidth;
+      const h = footer.offsetHeight;
+      const cy = h - startR();
+      const pts: [number, number][] = [];
+      // the whole border, finely: the logo's waist (its notches sit at the height of the centre) leaves thin slivers
+      for (let x = 0; x <= w; x += 6) pts.push([x, 0], [x, h]);
+      for (let y = 0; y <= h; y += 6) pts.push([0, y], [w, y]);
+      for (let r = Math.max(w, h) / 2; r < Math.max(w, h) * 8; r *= 1.08) {
+        const k = 32 / (2 * r);
+        if (pts.every(([x, y]) => probe.isPointInPath(markPath, (x - (w / 2 - r)) * k, (y - (cy - r)) * k))) return r * 1.05;
+      }
+      return Math.max(w, h) * 8;
+    };
+    const reveal = { r: 0 };
     const ftl = gsap.timeline({
       paused: true,
       defaults: { ease: "power3.inOut" },
@@ -72,10 +103,20 @@ export async function initCtaStage(): Promise<void> {
     });
     ftl
       .set(footer, { autoAlpha: 1 }, 0)
-      .fromTo(footer, { "--fr": "0vmax" }, { "--fr": "100vmax", duration: FOOTER_SECONDS }, 0)
+      .to(reveal, { r: 1, duration: FOOTER_SECONDS, onUpdate: () => place(reveal.r) }, 0) // r: set by refit()
       .fromTo(dim, { opacity: 0 }, { opacity: 0.75, duration: FOOTER_SECONDS, ease: "none" }, 0)
       // the page's vertical rules would draw over the footer: fade them out as it covers the page
-      .fromTo(grid, { "--grid-fade": 1 }, { "--grid-fade": 0, duration: FOOTER_SECONDS * 0.4, ease: "none" }, FOOTER_SECONDS * 0.3);
+      .fromTo(grid, { "--grid-fade": 1 }, { "--grid-fade": 0, duration: FOOTER_SECONDS * 0.4, ease: "none" }, FOOTER_SECONDS * 0.3)
+      // the letters melt in and the legal row appears once the logo is well open (the footer's scene listens)
+      .call(() => window.dispatchEvent(new CustomEvent(REVEAL_EVENT, { detail: !ftl.reversed() })), [], FOOTER_SECONDS * 0.5);
+    const grow = ftl.getTweensOf(reveal)[0];
+    const refit = () => {
+      grow.vars.r = coverRadius();
+      grow.invalidate();
+      place(reveal.r);
+    };
+    refit();
+    ScrollTrigger.addEventListener("refresh", refit);
     let footerOn = false;
     const setFooter = (on: boolean) => {
       if (on === footerOn) return;
@@ -124,7 +165,8 @@ export async function initCtaStage(): Promise<void> {
       )
       .to(sheet, { "--cta-line": 1, duration: 0.25, ease: "power2.out" }, 0.62)
       .fromTo(parts, { y: 34, opacity: 0 }, { y: 0, opacity: 1, duration: 0.3, stagger: 0.1, ease: "power2.out" }, 0.8)
-      .to({}, { duration: 0.15 }); // the CTA settles
+      .to({}, { duration: 0.15 }) // the CTA settles
+      .to({}, { duration: CTA_DWELL }); // ...and stays: a fast scroller does not skip straight to the footer
     footerAt = tl.duration();
     tl.to({}, { duration: FOOTER_HOLD }); // scroll left for the footer: it plays by itself once footerAt is crossed
 
@@ -132,7 +174,9 @@ export async function initCtaStage(): Promise<void> {
     requestAnimationFrame(() => ScrollTrigger.refresh());
 
     return () => {
+      ScrollTrigger.removeEventListener("refresh", refit);
       ftl.kill();
+      window.dispatchEvent(new CustomEvent(REVEAL_EVENT, { detail: true })); // plain layout: the footer simply shows
       delete footer.dataset.gate;
       window.dispatchEvent(new CustomEvent(GATE_EVENT));
       stage.classList.remove("is-stage", "cta-live");
