@@ -35,6 +35,7 @@ const { glow = true } = Astro.props;
 
 <style is:global>
   .gbar {
+    --gbar-ramp: linear-gradient(75deg, #6ff5f1 21.05%, #3b9cd6 38.49%, #0955e5 55.26%, #8e54c5 72.37%, #e23f8c 89.47%);
     position: absolute;
     inset-inline: 0;
     bottom: 0;
@@ -48,7 +49,7 @@ const { glow = true } = Astro.props;
   .gbar-line {
     position: absolute;
     inset: 0;
-    background: linear-gradient(90deg, #6ff5f1 0%, #3b9cd6 25%, #0955e5 50%, #8e54c5 75%, #e23f8c 100%);
+    background: var(--gbar-ramp);
   }
 
   /* Glow rising from the line, "equalizer" style: three concentric layers of the same ramp (broad base, middle, narrow
@@ -67,7 +68,7 @@ const { glow = true } = Astro.props;
   .gbar-glow > span {
     position: absolute;
     inset: 0;
-    background: linear-gradient(90deg, #6ff5f1 0%, #3b9cd6 25%, #0955e5 50%, #8e54c5 75%, #e23f8c 100%);
+    background: var(--gbar-ramp);
     transform-origin: bottom;
   }
   .gbar-glow .eq-base {

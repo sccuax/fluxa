@@ -2,7 +2,7 @@
 //   .page-grid           the two vertical rules are scrubbed: the drawing tip follows the 80% viewport line
 //   [data-rule="t b"]    an element's own top and/or bottom rule draws left -> right, once, at the 80% viewport line
 //   .rule-line           free-standing decorative rules (--h left -> right, --v top -> bottom), same behaviour
-//   [data-scroll-reveal] fades/rises in as it scrolls into view
+//   [data-scroll-reveal] fades/rises in as it scrolls into view (optional data-scroll-reveal-y px, data-scroll-reveal-delay s)
 // Everything is driven through CSS custom properties (styles/global.css), whose defaults mean "fully drawn",
 // so without JS / with reduced motion the page is complete and static.
 
@@ -90,6 +90,7 @@ export async function initScrollDraw(root: ParentNode = document): Promise<void>
         y: 0,
         duration: 1,
         ease: "power3.out",
+        delay: Number(el.dataset.scrollRevealDelay ?? 0), // optional stagger for siblings that enter together
         scrollTrigger: { trigger: el, start: RULE_START, once: true, refreshPriority: REFRESH_AFTER_PINS },
       },
     );

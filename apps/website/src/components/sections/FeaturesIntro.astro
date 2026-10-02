@@ -51,17 +51,17 @@ const previews = [
 
 <!-- Feature cards: two columns from `lg` (a centre rule between them), one column below. -->
 <Section noTopRule bottomRule class="relative grid lg:grid-cols-2">
-  <span class="rule-line rule-line--v left-1/2 hidden lg:block" aria-hidden="true"></span>
+  <span class="rule-line rule-line--v z-10 left-1/2 hidden lg:block" aria-hidden="true"></span>
   <!-- From 2xl the 1440px column is narrower than the page grid; side rules keep the cards' container closed. -->
-  <span class="rule-line rule-line--v left-0 hidden 2xl:block" aria-hidden="true"></span>
-  <span class="rule-line rule-line--v right-0 hidden 2xl:block" aria-hidden="true"></span>
+  <span class="rule-line rule-line--v z-10 left-0 hidden 2xl:block" aria-hidden="true"></span>
+  <span class="rule-line rule-line--v z-10 right-0 hidden 2xl:block" aria-hidden="true"></span>
   {
     t.cards.map((card, i) => (
       <FeatureCard
         title={card.title}
         description={card.body}
         rule={i === 0 ? "none" : i === 1 ? "top-mobile" : "top"}
-        anchor={i === 0 || i === 4 ? "bottom" : "center"}
+        anchor={i === 0 ? "flush-bottom" : i === 4 ? "bottom" : "center"}
         padTop={i === 4 ? "pt-6 md:pt-8" : undefined}
       >
         {i === 0 && (

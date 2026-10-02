@@ -1,0 +1,181 @@
+---
+// Section 4 (copy-paste/fluxa web/seccion-4.png): heading + Monthly/Annual switch (annual = 20% off) + two plan cards.
+// Prices live here, the switch is a tiny inline script (no framework): it swaps `[data-price]` and the "billed per
+// year" line. Texts come from the `pricing` dictionary (en/es).
+import Section from "@/components/layout/Section.astro";
+import { ButtonPrimary } from "@fluxa/ui";
+import { SITE, type Locale } from "@/config/site";
+import { useTranslations } from "@/i18n";
+
+interface Props {
+  locale: Locale;
+}
+const { locale } = Astro.props;
+const t = useTranslations(locale).pricing;
+
+const PRO_MONTHLY = 5; // USD per month
+const ANNUAL_DISCOUNT = 0.2; // the "-20%" next to the switch
+const proAnnualMonthly = Math.round(PRO_MONTHLY * (1 - ANNUAL_DISCOUNT) * 100) / 100; // 4
+const proAnnualTotal = Math.round(proAnnualMonthly * 12 * 100) / 100; // 48
+const billed = t.billedYearly.replace("{total}", `$${proAnnualTotal}`);
+---
+
+<!-- Empty divider row between section 3 and this one (design: lineas-seccion-4.png): section 3's bottom rule, a band, and this rule. -->
+<Section noTopRule bottomRule class="h-[92px]"><span class="sr-only"></span></Section>
+
+<Section id="pricing" labelledby="pricing-title" noTopRule bottomRule>
+  <div class="flex flex-col items-center gap-4 px-6 py-20 text-center md:px-9 md:py-24" data-heading-reveal>
+    <div class="rounded-full bg-gradient-gradient p-px" data-hr-badge>
+      <span class="flex items-center gap-2 rounded-full bg-background-white py-1 pl-1.5 pr-3 text-text-sm-medium text-text-secondary">
+        <span class="h-2.5 w-6 rounded-full bg-gradient-gradient" aria-hidden="true"></span>
+        {t.badge}
+      </span>
+    </div>
+    <h2 id="pricing-title" class="font-display text-header-h2 leading-[1.05] text-text-black" data-hr-title data-hr-gradient>
+      {t.titlePre}{t.titleAccent}
+    </h2>
+
+    <!-- Billing switch -->
+    <div class="mt-2 flex items-center gap-3 text-text-sm-medium text-text-black" data-billing-toggle data-monthly={PRO_MONTHLY} data-annual={proAnnualMonthly}>
+      <span class="transition-opacity duration-300" data-bt-label="monthly">{t.monthly}</span>
+      <button
+        type="button"
+        role="switch"
+        aria-checked="false"
+        aria-label={`${t.monthly} / ${t.annual}`}
+        class="bt-switch relative h-6 w-12 cursor-pointer [filter:drop-shadow(0_1.5px_1.5px_rgba(0,0,0,0.10))_drop-shadow(0_4.5px_4.5px_rgba(0,0,0,0.09))_drop-shadow(0_9px_6px_rgba(0,0,0,0.05))_drop-shadow(0_15px_6px_rgba(0,0,0,0.01))_drop-shadow(0_24px_7.5px_rgba(0,0,0,0))] shadow-[0_1.059px_7.059px_0_rgba(0,0,0,0.15)_inset] rounded-full bg-background-white-2 transition-colors duration-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-text-black"
+      >
+        <span class="bt-knob absolute left-0.5 top-0 h-6 w-6 rounded-full bg-[linear-gradient(180deg,var(--Background-Background-White,#EFF1F4)_20.59%,var(--Background-Background-White-2,#D7DAE2)_85.35%)] shadow-e2 border border-border-border transition-transform duration-300 ease-out-expo"></span>
+      </button>
+      <span class="flex items-center gap-2 transition-opacity duration-300" data-bt-label="annual">
+        {t.annual}
+        <span class="text-text-sm-medium text-accent-500">{t.discount}</span>
+      </span>
+    </div>
+  </div>
+
+  <div class="grid md:grid-cols-2" data-rule="t b" data-pricing>
+    <!-- Free -->
+    <article class="flex flex-col bg-background-white-2 p-px" data-scroll-reveal>
+      <div class="flex h-16 items-center px-5">
+        <h3 class="font-display text-header-h5 text-text-black">{t.free.name}</h3>
+      </div>
+      <div class="flex flex-1 flex-col gap-4 rounded-t-16 bg-background-white p-10">
+        <div>
+          <p class="font-display text-header-h2 leading-none text-text-black">$0</p>
+          <p class="invisible mt-2 text-text-sm-regular" aria-hidden="true">&nbsp;</p>
+        </div>
+        <p class="min-h-[2lh] text-text-md-regular text-text-secondary">{t.free.description}</p>
+        <hr class="border-border-border" />
+        <div class="flex flex-col items-stretch [&_a]:w-full [&_a]:justify-center">
+          <ButtonPrimary client:visible href={SITE.installUrl} size="md">
+            {t.cta}
+            <svg width="6" height="10" viewBox="0 0 6 10" fill="none" aria-hidden="true">
+              <path d="M1 1l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+            </svg>
+          </ButtonPrimary>
+        </div>
+        <ul class="flex flex-col gap-3 text-text-sm-regular text-text-secondary">
+          {
+            t.free.features.map((f) => (
+              <li class="flex items-start gap-2">
+                <span class="mt-0.5 text-accent-500" aria-hidden="true">
+                  ✓
+                </span>
+                {f}
+              </li>
+            ))
+          }
+        </ul>
+      </div>
+    </article>
+
+    <!-- Pro: gradient header strip + raised white card -->
+    <article class="pricing-pro relative flex flex-col p-px" data-scroll-reveal>
+      <div class="pricing-pro-grain flex h-16 items-center justify-between px-5">
+        <h3 class="font-display text-header-h5 text-text-white">{t.pro.name}</h3>
+        <span class="pricing-ramp rounded-full p-px">
+          <span class="block rounded-full bg-background-white px-3 py-1 text-text-sm-medium text-text-black">{t.popular}</span>
+        </span>
+      </div>
+      <div class="flex flex-1 flex-col gap-4 rounded-t-16 bg-background-white p-10">
+        <div>
+          <p class="font-display text-header-h2 leading-none text-text-black">$<span data-price>{PRO_MONTHLY}</span></p>
+          <p class="invisible mt-2 text-text-sm-regular text-text-secondary" data-billed>{billed}</p>
+        </div>
+        <p class="min-h-[2lh] max-w-[28ch] text-text-md-regular text-text-secondary">{t.pro.description}</p>
+        <hr class="border-border-border" />
+        <div class="flex flex-col items-stretch [&_a]:w-full [&_a]:justify-center">
+          <ButtonPrimary client:visible href={SITE.installUrl} size="md">
+            {t.cta}
+            <svg width="6" height="10" viewBox="0 0 6 10" fill="none" aria-hidden="true">
+              <path d="M1 1l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+            </svg>
+          </ButtonPrimary>
+        </div>
+        <ul class="flex flex-col gap-3 text-text-sm-regular text-text-secondary">
+          {
+            t.pro.features.map((f) => (
+              <li class="flex items-start gap-2">
+                <span class="mt-0.5 text-accent-500" aria-hidden="true">
+                  ✓
+                </span>
+                {f}
+              </li>
+            ))
+          }
+        </ul>
+      </div>
+    </article>
+  </div>
+  <!-- Empty band under the cards: the cards row closes with its own rule, this row with the section rule. -->
+  <div class="h-[100px]" aria-hidden="true"></div>
+</Section>
+
+<style is:global>
+  .bt-switch[aria-checked="true"] {
+    background: linear-gradient(75deg, #3b9cd6, #0955e5 55%, #8e54c5);
+  }
+  .bt-switch[aria-checked="true"] .bt-knob {
+    transform: translateX(1.25rem);
+  }
+  /* Pro card: ONE gradient on the parent (the brand ramp reversed: pink -> blue -> cyan). It shows through as the
+     header strip and, with the 1px padding, as the card's border; the white body sits inside it. */
+  .pricing-pro,
+  .pricing-ramp {
+    background: linear-gradient(75deg, #e23f8c 0%, #8e54c5 28%, #0955e5 55%, #3b9cd6 80%, #6ff5f1 100%);
+  }
+  .pricing-pro {
+    box-shadow:
+      -53px 191px 56px 0 rgba(12, 18, 20, 0),
+      -34px 122px 51px 0 rgba(12, 18, 20, 0.01),
+      -19px 69px 43px 0 rgba(12, 18, 20, 0.05),
+      -8px 31px 32px 0 rgba(12, 18, 20, 0.09),
+      -2px 8px 17px 0 rgba(12, 18, 20, 0.1);
+  }
+  /* Fine grain over the header only. */
+  .pricing-pro-grain {
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .55 -.2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+</style>
+
+<script>
+  const root = document.querySelector<HTMLElement>("[data-billing-toggle]");
+  const btn = root?.querySelector<HTMLButtonElement>(".bt-switch");
+  const price = document.querySelector<HTMLElement>("[data-price]");
+  const billed = document.querySelector<HTMLElement>("[data-billed]");
+  if (root && btn && price && billed) {
+    const monthly = Number(root.dataset.monthly);
+    const annual = Number(root.dataset.annual);
+    const fmt = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(2));
+    const apply = (isAnnual: boolean) => {
+      btn.setAttribute("aria-checked", String(isAnnual));
+      price.textContent = fmt(isAnnual ? annual : monthly);
+      billed.classList.toggle("invisible", !isAnnual);
+      root.querySelector('[data-bt-label="monthly"]')?.classList.toggle("opacity-50", isAnnual);
+      root.querySelector('[data-bt-label="annual"]')?.classList.toggle("opacity-50", !isAnnual);
+    };
+    btn.addEventListener("click", () => apply(btn.getAttribute("aria-checked") !== "true"));
+    apply(false);
+  }
+</script>

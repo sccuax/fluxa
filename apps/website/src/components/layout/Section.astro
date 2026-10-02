@@ -18,8 +18,10 @@ interface Props {
   noTopRule?: boolean;
   /** Add a rule under the section (the last one, before the footer, which has no top rule of its own). */
   bottomRule?: boolean;
+  /** Classes for the full-width <section> itself (e.g. a background colour that reaches the viewport edges). */
+  sectionClass?: string;
 }
-const { id, class: className = "", labelledby, noTopRule = false, bottomRule = false } = Astro.props;
+const { id, class: className = "", labelledby, noTopRule = false, bottomRule = false, sectionClass = "" } = Astro.props;
 ---
 
 <!-- The rules are drawn by `[data-rule]` (styles/global.css) so lib/motion/scrollDraw.ts can draw them on scroll. -->
@@ -27,7 +29,7 @@ const { id, class: className = "", labelledby, noTopRule = false, bottomRule = f
   id={id}
   aria-labelledby={labelledby}
   data-rule={[!noTopRule && "t", bottomRule && "b"].filter(Boolean).join(" ") || undefined}
-  class="relative"
+  class:list={["relative", sectionClass]}
 >
   <div class="px-padding-global">
     <div class:list={["mx-auto w-full max-w-section", className]}>

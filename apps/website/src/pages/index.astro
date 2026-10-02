@@ -3,6 +3,8 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
 import Hero from "@/components/sections/Hero.astro";
 import HowItWorks from "@/components/sections/HowItWorks.astro";
 import FeaturesIntro from "@/components/sections/FeaturesIntro.astro";
+import Pricing from "@/components/sections/Pricing.astro";
+import Faq from "@/components/sections/Faq.astro";
 import PageGrid from "@/components/layout/PageGrid.astro";
 import { resolveLocale } from "@/i18n";
 
@@ -14,5 +16,7 @@ const locale = resolveLocale(Astro.currentLocale);
   <PageGrid>
     <HowItWorks locale={locale} />
     <FeaturesIntro locale={locale} />
+    <Pricing locale={locale} />
+    <Faq locale={locale} />
   </PageGrid>
 </BaseLayout>

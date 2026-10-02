@@ -15,8 +15,8 @@ interface Props {
   title: string;
   description: string;
   rule?: "top" | "top-mobile" | "none";
-  /** "bottom": the visual hangs from the top and runs off the bottom edge (cropped by the bar), instead of being centred. */
-  anchor?: "center" | "bottom";
+  /** "flush-bottom": the visual sits at bottom: 0 of the visual area. "bottom": the visual hangs from the top and runs off the bottom edge (cropped by the bar), instead of being centred. */
+  anchor?: "center" | "bottom" | "flush-bottom";
   /** Classes for the visual area (default height: 460px, 680px from md, as in the design). */
   visualClass?: string;
   /** Top padding of an `anchor="bottom"` visual (how far down it hangs). */
@@ -28,7 +28,7 @@ const { title, description, rule = "none", anchor = "center", visualClass = "h-[
 
 <article
   class:list={[
-    "gbar-host group/card relative flex cursor-pointer flex-col transition-colors duration-500 hover:bg-background-white-2/60",
+    "gbar-host group/card relative flex cursor-pointer flex-col bg-background-white transition-colors duration-500 hover:bg-background-white-2",
     className,
   ]}
   style="--gbar-fill: 1s; --gbar-h: 4px"
@@ -42,7 +42,7 @@ const { title, description, rule = "none", anchor = "center", visualClass = "h-[
   <div
     class:list={[
       "relative flex justify-center overflow-hidden px-8",
-      anchor === "bottom" ? `items-start ${padTop}` : "items-center",
+      anchor === "bottom" ? `items-start ${padTop}` : anchor === "flush-bottom" ? "items-end" : "items-center",
       visualClass,
     ]}
   >

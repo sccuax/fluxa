@@ -13,12 +13,15 @@
 // `[data-hr-accent]` words keep a continuous brand gradient across the accent text even though SplitText gives
 // every word its own transform (which would break one `background-clip:text` on the parent): each word paints
 // the gradient of the whole accent box, shifted by its own offset (styles/global.css `.hr-accent-word`).
+// data-hr-sweep-out (with data-hr-gradient): every line but the last is swept by the gradient completely and ends back in
+// the title's plain colour; only the last line rests on the gradient (e.g. a two-line title whose 2nd line is coloured).
 // Optional per-block attribute: data-hr-start="78%" (viewport line where the entrance fires; default 78%).
 
 import { loadGsap, loadSplitText } from "./gsap";
 
 // Hero headline gradient: resting position is --tg 0; it starts shifted left by TG_START (see global.css).
 const TG_START = -47.44;
+const TG_OUT = 56; // --tg at which the whole ramp has slid past the end of a line: it is plain dark again
 const MAX_STAGGER = 0.055; // gap between words for a short title
 const WORDS_BUDGET = 0.7; // s the words' stagger may span in total: longer titles get a smaller gap
 const VISIBLE_LAND = 0.55; // s after a word starts until expo.out has visually settled
@@ -64,6 +67,9 @@ export async function initHeadingReveal(root: ParentNode = document): Promise<vo
     let titleLines: HTMLElement[] = [];
     // data-hr-gradient: the title is painted with the hero headline gradient, which sweeps in line by line.
     const gradient = title.hasAttribute("data-hr-gradient");
+    const sweepOut = gradient && title.hasAttribute("data-hr-sweep-out");
+    // where a line's ramp rests once the entrance is done
+    const restTg = (i: number) => (sweepOut && i < titleLines.length - 1 ? TG_OUT : 0);
     const hidden = () => {
       if (badge) gsap.set(badge, { opacity: 0, y: 14, scale: 0.94, filter: "blur(6px)" });
       gsap.set(words, { yPercent: 115, rotation: 3, opacity: 0 });
@@ -74,7 +80,7 @@ export async function initHeadingReveal(root: ParentNode = document): Promise<vo
       if (badge) gsap.set(badge, { opacity: 1, y: 0, scale: 1, filter: "blur(0px)" });
       gsap.set(words, { yPercent: 0, rotation: 0, opacity: 1 });
       if (lines.length) gsap.set(lines, { yPercent: 0, opacity: 1 });
-      if (gradient && titleLines.length) gsap.set(titleLines, { "--tg": 0 });
+      if (gradient && titleLines.length) titleLines.forEach((line, i) => gsap.set(line, { "--tg": restTg(i) }));
     };
 
     SplitText.create(title, {
@@ -151,12 +157,12 @@ export async function initHeadingReveal(root: ParentNode = document): Promise<vo
           // Strictly line by line: a line's ramp starts only once the previous line's has finished (and not before
           // its own first word starts rising), and runs until its last word has visibly landed.
           let cursor = 0;
-          titleLines.forEach((line) => {
+          titleLines.forEach((line, i) => {
             const inLine = (words as HTMLElement[]).filter((w) => line.contains(w));
             if (inLine.length === 0) return;
             const start = Math.max(cursor, 0.1 + stagger * words.indexOf(inLine[0]));
             const duration = stagger * (inLine.length - 1) + VISIBLE_LAND;
-            gsap.to(line, { "--tg": 0, duration, ease: "none", delay: start, overwrite: "auto" });
+            gsap.to(line, { "--tg": restTg(i), duration, ease: "none", delay: start, overwrite: "auto" });
             cursor = start + duration;
           });
         }
