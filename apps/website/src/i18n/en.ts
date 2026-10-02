@@ -109,6 +109,13 @@ export const en = {
       { q: "What happens to my Pro gradients if I downgrade?", a: "Gradients that depend on Pro stop rendering on your published sites when your paid period ends. Everything built with Free keeps working." },
     ],
   },
+  cta: {
+    titleTop: "Add animated gradients to",
+    titleLead: "Webflow",
+    titleTail: "No-Code Required",
+    body: "Install Fluxa and add your first animated gradient in under a minute.",
+    button: "Install on Webflow",
+  },
   footer: {
     rights: "All rights reserved.",
     licenses: "Licenses",

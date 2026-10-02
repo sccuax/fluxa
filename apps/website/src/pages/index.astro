@@ -5,6 +5,7 @@ import HowItWorks from "@/components/sections/HowItWorks.astro";
 import FeaturesIntro from "@/components/sections/FeaturesIntro.astro";
 import Pricing from "@/components/sections/Pricing.astro";
 import Faq from "@/components/sections/Faq.astro";
+import Cta from "@/components/sections/Cta.astro";
 import PageGrid from "@/components/layout/PageGrid.astro";
 import { resolveLocale } from "@/i18n";
 
@@ -18,5 +19,6 @@ const locale = resolveLocale(Astro.currentLocale);
     <FeaturesIntro locale={locale} />
     <Pricing locale={locale} />
     <Faq locale={locale} />
+    <Cta locale={locale} />
   </PageGrid>
 </BaseLayout>

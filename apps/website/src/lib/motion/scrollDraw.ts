@@ -47,7 +47,7 @@ export async function initScrollDraw(root: ParentNode = document): Promise<void>
     ScrollTrigger.create({
       trigger: g,
       start: `top ${RULE_LINE}`,
-      end: `bottom ${RULE_LINE}`,
+      end: `clamp(bottom ${RULE_LINE})`, // clamp: the page cannot scroll the grid's end up to the line, so without it the rules stop short at the bottom
       refreshPriority: REFRESH_AFTER_PINS,
       onUpdate: (self) => {
         if (self.progress <= drawn) return;

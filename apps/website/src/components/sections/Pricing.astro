@@ -2,6 +2,7 @@
 // Section 4 (copy-paste/fluxa web/seccion-4.png): heading + Monthly/Annual switch (annual = 20% off) + two plan cards.
 // Prices live here, the switch is a tiny inline script (no framework): it swaps `[data-price]` and the "billed per
 // year" line. Texts come from the `pricing` dictionary (en/es).
+import Eyebrow from "@/components/ui/Eyebrow.astro";
 import Section from "@/components/layout/Section.astro";
 import { ButtonPrimary } from "@fluxa/ui";
 import { SITE, type Locale } from "@/config/site";
@@ -25,12 +26,7 @@ const billed = t.billedYearly.replace("{total}", `$${proAnnualTotal}`);
 
 <Section id="pricing" labelledby="pricing-title" noTopRule bottomRule>
   <div class="flex flex-col items-center gap-4 px-6 py-20 text-center md:px-9 md:py-24" data-heading-reveal>
-    <div class="rounded-full bg-gradient-gradient p-px" data-hr-badge>
-      <span class="flex items-center gap-2 rounded-full bg-background-white py-1 pl-1.5 pr-3 text-text-sm-medium text-text-secondary">
-        <span class="h-2.5 w-6 rounded-full bg-gradient-gradient" aria-hidden="true"></span>
-        {t.badge}
-      </span>
-    </div>
+    <Eyebrow data-hr-badge>{t.badge}</Eyebrow>
     <h2 id="pricing-title" class="font-display text-header-h2 leading-[1.05] text-text-black" data-hr-title data-hr-gradient>
       {t.titlePre}{t.titleAccent}
     </h2>

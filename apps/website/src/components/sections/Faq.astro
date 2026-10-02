@@ -2,6 +2,7 @@
 // Section 5 (copy-paste/fluxa web/seccion-5.png): FAQ. Left = heading + the liquid 3D mark (lib/faq/liquidMark.ts,
 // WebGL2, mounted lazily when the section is near the viewport); right = accordion (one open at a time, the open item
 // draws the brand gradient line with ui/GradientBar). Texts: the `faq` dictionary (en/es), DRAFT copy to review.
+import Eyebrow from "@/components/ui/Eyebrow.astro";
 import Section from "@/components/layout/Section.astro";
 import GradientBar from "@/components/ui/GradientBar.astro";
 import { MARK_PATH } from "@/config/wordmark";
@@ -21,12 +22,7 @@ const t = useTranslations(locale).faq;
     <!-- Left: heading on top, the 3D mark at the bottom edge of the section -->
     <div class="relative flex flex-col px-6 pt-20 md:px-9 lg:min-h-[985px] lg:pt-[120px]">
       <div class="flex flex-col items-start gap-4" data-heading-reveal data-hr-start="88%">
-        <div class="rounded-full bg-gradient-gradient p-px" data-hr-badge>
-          <span class="flex items-center gap-2 rounded-full bg-background-white py-1 pl-1.5 pr-3 text-text-sm-medium text-text-secondary">
-            <span class="h-2.5 w-6 rounded-full bg-gradient-gradient" aria-hidden="true"></span>
-            {t.badge}
-          </span>
-        </div>
+        <Eyebrow data-hr-badge>{t.badge}</Eyebrow>
         <h2 id="faq-title" class="font-display text-header-h2 leading-[1.05] text-text-black" data-hr-title data-hr-gradient data-hr-sweep-out>
           {t.titlePre}<br />{t.titlePost}{t.titleAccent}
         </h2>
@@ -72,20 +68,17 @@ const t = useTranslations(locale).faq;
               >
                 <span>{item.q}</span>
                 <span class="faq-icon mt-1 shrink-0 text-text-secondary" aria-hidden="true">
-                  <svg class="faq-ic-closed" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
-                    <circle cx="12" cy="12" r="9"></circle>
-                    <ellipse cx="12" cy="12" rx="4.2" ry="9"></ellipse>
-                    <ellipse cx="12" cy="12" rx="9" ry="4.2"></ellipse>
-                  </svg>
-                  <svg class="faq-ic-open" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
-                    <rect x="1.5" y="8" width="21" height="8" rx="4"></rect>
+                  <!-- A "plus" made of two outlined pills. Open: the vertical pill collapses and only the horizontal one stays. -->
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M18 6.49805C21.0374 6.49827 23.4998 8.96068 23.5 11.998C23.5 15.0356 21.0375 17.4988 18 17.499L6 17.498C2.96231 17.498 0.500001 15.0357 0.5 11.998L0.506836 11.7158C0.653905 8.80951 3.0571 6.49902 6 6.49902L18 6.49805Z" stroke="currentColor"></path>
+                    <path class="faq-ic-v" d="M6.5 6C6.50022 2.96264 8.96264 0.500224 12 0.5C15.0376 0.5 17.5008 2.9625 17.501 6L17.5 18C17.5 21.0377 15.0377 23.5 12 23.5L11.7178 23.4932C8.81146 23.3461 6.50098 20.9429 6.50098 18L6.5 6Z" stroke="currentColor"></path>
                   </svg>
                 </span>
               </button>
             </h3>
             <div id={`faq-a-${i}`} role="region" aria-labelledby={`faq-q-${i}`} class="faq-a grid">
               <div class="overflow-hidden">
-                <p class="max-w-[440px] pb-10 text-text-md-regular text-text-secondary lg:-mt-2">{item.a}</p>
+                <p class="max-w-[440px] pb-10 text-text-md-regular text-text-secondary">{item.a}</p>
               </div>
             </div>
             <GradientBar />
@@ -104,15 +97,20 @@ const t = useTranslations(locale).faq;
   .faq-item[data-active="true"] .faq-a {
     grid-template-rows: 1fr;
   }
-  .faq-ic-open,
-  .faq-item[data-active="true"] .faq-ic-closed {
-    display: none;
+  .faq-ic-v {
+    transform-box: fill-box;
+    transform-origin: center;
+    transition:
+      transform 0.5s cubic-bezier(0.16, 1, 0.3, 1),
+      opacity 0.35s ease;
   }
-  .faq-item[data-active="true"] .faq-ic-open {
-    display: block;
+  .faq-item[data-active="true"] .faq-ic-v {
+    transform: scaleY(0.05);
+    opacity: 0;
   }
   @media (prefers-reduced-motion: reduce) {
-    .faq-a {
+    .faq-a,
+    .faq-ic-v {
       transition: none;
     }
   }

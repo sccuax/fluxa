@@ -108,6 +108,13 @@ export const es: Dictionary = {
       { q: "¿Qué pasa con mis gradientes Pro si bajo de plan?", a: "Los gradientes que dependen de Pro dejan de verse en tus sitios publicados cuando termina tu periodo pagado. Lo que hiciste con Free sigue funcionando." },
     ],
   },
+  cta: {
+    titleTop: "Agrega gradientes animados a",
+    titleLead: "Webflow",
+    titleTail: "sin escribir código",
+    body: "Instala Fluxa y agrega tu primer gradiente animado en menos de un minuto.",
+    button: "Instalar en Webflow",
+  },
   footer: {
     rights: "Todos los derechos reservados.",
     licenses: "Licencias",

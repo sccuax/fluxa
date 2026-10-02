@@ -8,6 +8,7 @@
 //     <div data-hr-badge>...</div>                 optional
 //     <h2 data-hr-title>Plain <span data-hr-accent>accent words</span> more</h2>
 //     <p data-hr-body>...</p>                      optional
+//   Inside the title, <span data-hr-inline> wraps a non-text element (an inline logo) so it enters with the words.
 //   </div>
 //
 // `[data-hr-accent]` words keep a continuous brand gradient across the accent text even though SplitText gives
@@ -90,7 +91,10 @@ export async function initHeadingReveal(root: ParentNode = document): Promise<vo
       wordsClass: "hr-word",
       autoSplit: true,
       onSplit: (self: SplitSelf) => {
-        words = self.words;
+        // [data-hr-inline] elements (e.g. an inline logo) are not text, so SplitText leaves them alone: animate them
+        // with the words, in reading order.
+        const inline = Array.from(title.querySelectorAll("[data-hr-inline]"));
+        words = [...self.words, ...inline].sort((x, y) => (x.compareDocumentPosition(y) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1));
         titleLines = self.lines as HTMLElement[];
         if (gradient) {
           // Every word paints the gradient of the whole title box, shifted by its own offset, so it reads as one

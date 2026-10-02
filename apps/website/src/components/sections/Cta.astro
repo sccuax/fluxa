@@ -1,0 +1,132 @@
+---
+// Section 6 (copy-paste/fluxa web/seccion-6.png): closing call to action. A near-black panel (the width of the content
+// column) with soft colour glows rising from the bottom (cool light blue on the left, magenta in the middle, strong blue
+// on the right), a fine grain (copy-paste/fluxa web/noise-seccion-6.png -> assets/noise-grain.png) and the headline with
+// the logo inline. The glows are pre-blurred radial gradients on their own layers that only drift by transform, so the
+// motion is compositor-only (no filter, no per-frame repaint).
+import { ButtonPrimary } from "@fluxa/ui";
+import Section from "@/components/layout/Section.astro";
+import noise from "@/assets/noise-grain.png";
+import { SITE, type Locale } from "@/config/site";
+import { useTranslations } from "@/i18n";
+
+interface Props {
+  locale: Locale;
+}
+const { locale } = Astro.props;
+const t = useTranslations(locale).cta;
+
+// Colours sampled from the design (x/y are the glow's centre in % of the panel; w/h its size in %).
+const glows = [
+  { c: "#80a6d4", x: 3, y: 95, w: 75, h: 150, o: 1, drift: "a" }, // light blue, bottom-left
+  { c: "#7b6fc2", x: 35, y: 112, w: 70, h: 110, o: 0.95, drift: "b" }, // lavender, bottom
+  { c: "#8a4aa0", x: 62, y: 78, w: 64, h: 120, o: 0.85, drift: "c" }, // magenta / violet, middle
+  { c: "#2a5fe0", x: 98, y: 100, w: 70, h: 120, o: 1, drift: "a" }, // strong blue, bottom-right
+  { c: "#8a3f86", x: 90, y: 32, w: 46, h: 100, o: 0.75, drift: "b" }, // pink, right
+];
+---
+
+<Section id="cta" labelledby="cta-title" noTopRule bottomRule>
+  <div class="relative isolate flex min-h-[520px] items-center justify-center overflow-hidden bg-background-dark px-6 py-24 text-center md:min-h-[600px]">
+    <!-- glows -->
+    {
+      glows.map((g) => (
+        <div
+          class={`cta-glow cta-drift-${g.drift}`}
+          aria-hidden="true"
+          style={`left:${g.x}%;top:${g.y}%;width:${g.w}%;height:${g.h}%;opacity:${g.o};background:radial-gradient(closest-side, ${g.c} 0%, ${g.c}cc 40%, ${g.c}00 100%)`}
+        />
+      ))
+    }
+    <!-- grain: white / black specks of random low opacity, one texel per CSS pixel -->
+    <div class="pointer-events-none absolute inset-0" aria-hidden="true" style={`background-image:url(${noise.src});background-size:128px 128px`}></div>
+
+    <div class="relative flex max-w-[860px] flex-col items-center gap-6" data-heading-reveal>
+      <h2 id="cta-title" class="font-display text-header-h2 leading-[1.1] text-text-white" data-hr-title>
+        {t.titleTop}<br />{t.titleLead}
+        <!-- the logo, inline: gradient fill + a blurred copy for the glow (design SVG) -->
+        <span class="relative -top-[0.04em] mx-[0.12em] inline-block h-[1.12em] w-[1.12em] align-middle" data-hr-inline>
+          <svg class="h-full w-full" viewBox="0 0 54 54" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path d="M47.8008 36.8024C47.8008 42.3283 43.322 46.8008 37.8024 46.8008C32.2827 46.8008 27.8039 42.322 27.8039 36.8024C27.8039 42.3283 23.3251 46.8008 17.8055 46.8008C12.2859 46.8008 7.80078 42.322 7.80078 36.8024C7.80078 31.2827 12.2796 26.8039 17.7992 26.8039C12.2796 26.7976 7.80078 22.3251 7.80078 16.7992C7.80078 14.0362 8.91732 11.5382 10.7278 9.72776C12.5382 7.91732 15.0362 6.80078 17.7992 6.80078H37.796C43.3157 6.80078 47.7945 11.2796 47.7945 16.7992C47.7945 19.5622 46.6779 22.0602 44.8675 23.8706C43.057 25.6811 40.559 26.7976 37.796 26.7976C43.3157 26.7976 47.7945 31.2764 47.7945 36.796L47.8008 36.8024Z" fill="url(#cta-logo-a)"></path>
+            <g filter="url(#cta-logo-blur)">
+              <path d="M43.8008 35.3021C43.8008 39.9992 39.9938 43.8008 35.3021 43.8008C30.6104 43.8008 26.8035 39.9938 26.8035 35.3021C26.8035 39.9992 22.9965 43.8008 18.3048 43.8008C13.6131 43.8008 9.80078 39.9938 9.80078 35.3021C9.80078 30.6104 13.6078 26.8035 18.2994 26.8035C13.6078 26.7981 9.80078 22.9965 9.80078 18.2994C9.80078 15.9509 10.7498 13.8276 12.2887 12.2887C13.8276 10.7498 15.9509 9.80078 18.2994 9.80078H35.2968C39.9884 9.80078 43.7954 13.6078 43.7954 18.2994C43.7954 20.648 42.8464 22.7713 41.3075 24.3102C39.7686 25.849 37.6453 26.7981 35.2968 26.7981C39.9884 26.7981 43.7954 30.6051 43.7954 35.2968L43.8008 35.3021Z" fill="url(#cta-logo-b)"></path>
+            </g>
+            <defs>
+              <filter id="cta-logo-blur" x="0" y="0" width="53.6" height="53.6" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+                <feFlood flood-opacity="0" result="BackgroundImageFix"></feFlood>
+                <feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"></feBlend>
+                <feGaussianBlur stdDeviation="4.9" result="effect1_foregroundBlur"></feGaussianBlur>
+              </filter>
+              <linearGradient id="cta-logo-a" x1="7.80078" y1="6.80078" x2="47.8008" y2="46.8008" gradientUnits="userSpaceOnUse">
+                <stop stop-color="#6FF5F1"></stop>
+                <stop offset="0.3" stop-color="#3B9DD6"></stop>
+                <stop offset="0.504808" stop-color="#0644BB"></stop>
+                <stop offset="0.701923" stop-color="#7442A4"></stop>
+                <stop offset="1" stop-color="#E23F8C"></stop>
+              </linearGradient>
+              <linearGradient id="cta-logo-b" x1="9.80078" y1="9.80078" x2="43.8008" y2="43.8008" gradientUnits="userSpaceOnUse">
+                <stop stop-color="#6FF5F1"></stop>
+                <stop offset="0.3" stop-color="#3B9DD6"></stop>
+                <stop offset="0.504808" stop-color="#0644BB"></stop>
+                <stop offset="0.701923" stop-color="#7442A4"></stop>
+                <stop offset="1" stop-color="#E23F8C"></stop>
+              </linearGradient>
+            </defs>
+          </svg>
+        </span>
+        {t.titleTail}
+      </h2>
+      <p class="max-w-[640px] text-text-lg-regular text-text-white/80" data-hr-body>{t.body}</p>
+      <div class="mt-2" data-scroll-reveal data-scroll-reveal-delay="0.25">
+        <ButtonPrimary client:visible href={SITE.installUrl} size="md">
+          {t.button}
+          <svg width="6" height="10" viewBox="0 0 6 10" fill="none" aria-hidden="true">
+            <path d="M1 1l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+          </svg>
+        </ButtonPrimary>
+      </div>
+    </div>
+  </div>
+</Section>
+
+<style is:global>
+  /* A glow: an elliptical radial gradient centred on (left, top), pulled back by half its own size. */
+  .cta-glow {
+    position: absolute;
+    translate: -50% -50%;
+    pointer-events: none;
+    will-change: transform;
+  }
+  /* Slow drifts (transform only). Different periods so the blobs never line up. */
+  .cta-drift-a {
+    animation: cta-drift-a 26s ease-in-out infinite alternate;
+  }
+  .cta-drift-b {
+    animation: cta-drift-b 32s ease-in-out infinite alternate;
+  }
+  .cta-drift-c {
+    animation: cta-drift-c 38s ease-in-out infinite alternate;
+  }
+  @keyframes cta-drift-a {
+    to {
+      transform: translate3d(5%, -6%, 0) scale(1.08);
+    }
+  }
+  @keyframes cta-drift-b {
+    to {
+      transform: translate3d(-6%, 4%, 0) scale(0.94);
+    }
+  }
+  @keyframes cta-drift-c {
+    to {
+      transform: translate3d(4%, 7%, 0) scale(1.12);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .cta-drift-a,
+    .cta-drift-b,
+    .cta-drift-c {
+      animation: none;
+    }
+  }
+</style>
