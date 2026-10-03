@@ -1,12 +1,16 @@
-// Infinite scroll: when the visitor keeps scrolling down at the very end of the page (the footer fully open), the page
-// closes on a dark curtain, jumps back to the top, and the page-load intro plays again (Hero.astro exposes
-// `window.__fluxaHeroReplay`), which starts the hero's scenes over. The footer's and the hero's Rive scenes are the same
-// artwork, so the curtain (the footer's own colour) hides the cut.
+// Infinite scroll: when the visitor keeps scrolling down at the very end of the page (the footer fully open), the footer's
+// glass letters melt away (and its legal row fades), the page jumps to the top WITHOUT any curtain, and the page-load intro
+// plays again (Hero.astro exposes `window.__fluxaHeroReplay`): navbar drops, the mark rises and flips, the hero's wordmark
+// appears, and the hero's scenes start over. Nothing reloads and the screen never goes black, because the footer and the
+// top of the page show the same picture: the same Rive scene on the same bottom-aligned 1440px stage with the same mask and
+// overlay (sections/HeroScene.astro uses the footer's own renderer), so once the letters are gone the jump is invisible.
 //
-// Intent is required, not just reaching the end: a wheel / swipe / key that keeps pushing down, with the footer's
-// letters already revealed (`data-footer-reveal="true"`, set by lib/footer/glassFooter.ts; absent with reduced motion, where
-// there is no intro to replay, so the loop is off too).
-const CURTAIN = "#0b0d12";
+// Intent is required, not just reaching the end: a wheel / swipe / key that keeps pushing down, with the footer's letters
+// already revealed (`data-footer-reveal="true"`, set by lib/footer/glassFooter.ts; absent with reduced motion, where there is no
+// intro to replay, so the loop is off too).
+import { loadGsap } from "./gsap";
+
+const DISMISS_MS = 800; // the letters melt away (glassFooter's DISMISS_MS + a beat)
 const WHEEL_NEEDED = 90; // accumulated downward wheel delta (px) within WHEEL_WINDOW ms
 const WHEEL_WINDOW = 700;
 const SWIPE_NEEDED = 70; // upward finger travel (px)
@@ -28,26 +32,25 @@ export function initPageLoop(): void {
 
   const wait = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
-  const curtain = document.createElement("div");
-  curtain.setAttribute("aria-hidden", "true");
-  curtain.style.cssText = `position:fixed;inset:0;z-index:200;background:${CURTAIN};opacity:0;pointer-events:none;transition:opacity .7s ease`;
-
   async function loop() {
     const replay = (window as unknown as { __fluxaHeroReplay?: Replay }).__fluxaHeroReplay;
     if (!replay) return;
     busy = true;
-    document.body.append(curtain);
-    html.classList.add("hero-locked"); // no scrolling while the curtain is closing
-    curtain.style.pointerEvents = "auto";
-    requestAnimationFrame(() => (curtain.style.opacity = "1"));
-    await wait(750);
+    html.classList.add("hero-locked"); // no scrolling while the letters go
+    window.dispatchEvent(new CustomEvent("fluxa:footer-dismiss"));
+    await wait(DISMISS_MS);
+
+    // The jump. The pinned scenes are scrubbed (they lag behind the scroll position), so without help the whole page would
+    // visibly rewind: finish every scrub tween on the spot, so the top of the page is already at scene 1 when it appears.
+    const { ScrollTrigger } = await loadGsap();
+    // All in one tick, in this order: jump, finish the scrubs, THEN put the hero in its intro's start pose (letters, mark and navbar
+    // hidden) and restart the intro. The first paint at the top never shows the finished wordmark (it used to flash for a
+    // moment), and nothing the scroll timeline rewinds can undo the start pose.
     window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior });
-    await wait(1100); // the pinned scenes rewind (their scrubs lag behind the jump) while nobody can see
+    ScrollTrigger.update();
+    ScrollTrigger.getAll().forEach((st) => st.getTween?.(false)?.progress(1));
     replay();
-    curtain.style.opacity = "0";
-    await wait(800);
-    curtain.style.pointerEvents = "none";
-    curtain.remove();
+
     // the intro keeps `hero-locked` until it has finished; busy stays true until then so a stray wheel cannot restart it
     while (html.classList.contains("hero-locked")) await wait(200);
     wheelSum = 0;

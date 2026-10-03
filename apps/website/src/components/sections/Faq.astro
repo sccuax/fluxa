@@ -150,7 +150,7 @@ const t = useTranslations(locale).faq;
         if ("requestIdleCallback" in window) requestIdleCallback(() => void mount(), { timeout: 1500 });
         else setTimeout(() => void mount(), 200);
       },
-      { rootMargin: "1500px" },
+      { rootMargin: "4000px" },
     );
     io.observe(wrap);
   }

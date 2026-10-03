@@ -50,7 +50,7 @@ const liftClass =
         <a href={SITE.loginUrl} class={`${linkClass} mr-[52px] hidden md:inline`}>{t.nav.login}</a>
 
         <span class={`${liftClass} hidden md:inline-block`}>
-          <ButtonPrimary client:idle href={SITE.installUrl} size="md">
+          <ButtonPrimary lazyRipple client:idle href={SITE.installUrl} size="md">
             {t.nav.cta}
             <svg width="6" height="10" viewBox="0 0 6 10" fill="none" aria-hidden="true">
             <path d="M1 1l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
@@ -89,7 +89,7 @@ const liftClass =
         }
         <a href={SITE.loginUrl} class={linkClass}>{t.nav.login}</a>
         <span class={`${liftClass} flex justify-center`}>
-          <ButtonPrimary client:idle href={SITE.installUrl} size="md">{t.nav.cta}</ButtonPrimary>
+          <ButtonPrimary lazyRipple client:idle href={SITE.installUrl} size="md">{t.nav.cta}</ButtonPrimary>
         </span>
       </nav>
     </div>

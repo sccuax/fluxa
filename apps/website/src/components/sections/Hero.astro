@@ -358,6 +358,8 @@ import Eyebrow from "@/components/ui/Eyebrow.astro";
   // Copy entry (GSAP SplitText): the badge floats in, the headline rises word by word out of a line mask,
   // the paragraph follows line by line. Time-based (not scrubbed) and triggered by scroll position, so it
   // always plays at its own pace; going back up plays a quick exit. autoSplit re-splits on resize / font load.
+  // Instant version of showCopy(false) (no fade): the page loop needs the copy gone in the very frame it jumps to the top.
+  let hideCopyNow: () => void = () => {};
   let showCopy: (on: boolean) => void = () => {};
   async function setupCopy({ gsap }: Gsap) {
     const badge = copyEl?.querySelector<HTMLElement>("[data-copy-badge]");
@@ -453,6 +455,13 @@ import Eyebrow from "@/components/ui/Eyebrow.astro";
         });
       }
     };
+    hideCopyNow = () => {
+      gsap.killTweensOf([badge, ...words, ...lines, title]);
+      on = false;
+      hidden();
+      gsap.set(title, { "--tg": TG_START });
+      copyEl.style.visibility = "hidden";
+    };
     // Headline gradient starting position (see showCopy: it slides to 0 while the words rise).
     gsap.set(title, { "--tg": TG_START });
     hidden();
@@ -487,7 +496,7 @@ import Eyebrow from "@/components/ui/Eyebrow.astro";
     const MORPH_AT = 1.0;
     const SCENE_HIDE_AT = 2.7; // phase 3 (P3 = 1.95) fades the backdrop out over 0.7
     // The Rive backdrop stops running once phase 3 has faded it out (see HeroScene.astro / glassFooter's data-scene-hidden).
-    const sceneEl = hero.querySelector<HTMLElement>("[data-hero-scene]");
+    const sceneEl = hero.querySelector<HTMLElement>("[data-hero-stage]");
     let sceneHidden = false;
     const setSceneHidden = (on: boolean) => {
       if (!sceneEl || on === sceneHidden) return;
@@ -717,6 +726,10 @@ import Eyebrow from "@/components/ui/Eyebrow.astro";
         "scroll",
         () => {
           const y = window.scrollY;
+          if (html.classList.contains("hero-locked")) {
+            lastY = y; // the page loop is taking the navbar over (its intro drops it in)
+            return;
+          }
           if (y < gate()) setNavHidden(false);
           else if (y > lastY + 2) setNavHidden(true);
           else if (y < lastY - 2) setNavHidden(false);
@@ -784,6 +797,8 @@ import Eyebrow from "@/components/ui/Eyebrow.astro";
         // The page loop (lib/motion/pageLoop.ts) replays the intro from the top: same start pose, same timeline.
         (window as unknown as { __fluxaHeroReplay: () => void }).__fluxaHeroReplay = () => {
           html.classList.add("hero-locked");
+          hideCopyNow(); // the final scene's copy ("Motion, without the code.") must not fade out over the page
+          gsap.killTweensOf(header, "yPercent"); // the navbar's scroll show/hide may still be running (NOT the scroll timeline's own --nav-solid tween)
           gsap.set(header, { yPercent: -140, opacity: 0 });
           gsap.set(letters, { opacity: 0 });
           gsap.set(mark, { xPercent: startX, yPercent: 160, opacity: 0, rotationY: 0, transformPerspective: 0 });

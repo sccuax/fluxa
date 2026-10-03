@@ -51,11 +51,12 @@ const SM = "State Machine 1";
 // after it starts playing, then fades in.
 const MELT_MS = 2600; // letters: melted -> solid
 const ALPHA_MS = 700; // ...and they fade in over the first part of it
+const DISMISS_MS = 750; // the page loop: the letters melt away again (lib/motion/pageLoop.ts)
 const HIDE_MS = 1000;
 // The splash lives in the file's STATE MACHINE (its individual animations have none), so it cannot be skipped from code.
-// Instead the scene is pre-played, unseen, for this long as soon as it has loaded (long before the footer opens), then
+// Instead the scene is pre-played, unseen, until Rive has advanced HIDE_MS + FADE_MS, as soon as it has loaded (long before
+// the footer opens), then
 // paused on a settled frame: when the entrance runs there is no splash and no wait.
-const PREWARM_MS = 1300;
 const FADE_MS = 600;
 const PAD = 48; // css px of SDF around the wordmark (rim light + soft edge need room)
 
@@ -267,7 +268,14 @@ export function mountFooterScene(
   let revealAt = 0;
   const animated = !reducedMotion && hasGlass;
   let forced: [number, number] | null = null; // dev only: freeze [melt, alpha] to inspect a frame
+  let dismissAt = 0; // > 0 while the letters are melting away
   const pushReveal = () => {
+    if (dismissAt) {
+      const d = Math.min((performance.now() - dismissAt) / DISMISS_MS, 1);
+      gl.uniform1f(u.melt, d * d);
+      gl.uniform1f(u.alpha, 1 - d);
+      return;
+    }
     if (!hasGlass) {
       gl.uniform1f(u.melt, 0);
       gl.uniform1f(u.alpha, 0);
@@ -292,14 +300,16 @@ export function mountFooterScene(
     if (!animated || on === revealed) return;
     revealed = on;
     revealAt = performance.now();
+    dismissAt = 0;
     root.dataset.footerReveal = String(on);
     pushReveal();
     kick();
   };
   if (animated) root.dataset.footerReveal = "false";
   let prewarming = false;
-  let played = 0; // ms the animation has been playing
-  let lastTick = 0;
+  // ms of animation Rive has ACTUALLY advanced (its own `advance` events): wall-clock time is not the same thing when the main
+  // thread is busy, and the scene must stay hidden until the file's opening splash has really gone by.
+  let played = 0;
   const setGain = () => gl.uniform1f(u.gn, reducedMotion ? 1 : Math.min(Math.max((played - HIDE_MS) / FADE_MS, 0), 1));
   const wantsPlay = () => visible && !reducedMotion; // plays while the footer is on screen
 
@@ -391,9 +401,6 @@ export function mountFooterScene(
   const loop = () => {
     raf = 0;
     if (!wantsPlay() || destroyed) return;
-    const now = performance.now();
-    if (lastTick) played += Math.min(now - lastTick, 100);
-    lastTick = now;
     setGain();
     pushReveal();
     draw();
@@ -409,7 +416,6 @@ export function mountFooterScene(
       kick();
     } else if (!prewarming) {
       rive?.pause(SM);
-      lastTick = 0;
     }
   };
 
@@ -419,6 +425,13 @@ export function mountFooterScene(
     autoplay: !reducedMotion,
     stateMachines: SM,
     layout: new Layout({ fit: Fit.Cover }),
+    onAdvance: (e) => {
+      played += ((e.data as number) || 0) * 1000;
+      if (prewarming && played >= HIDE_MS + FADE_MS) {
+        prewarming = false; // past the splash, unseen: park it on a settled frame until it is needed
+        sync();
+      }
+    },
     onLoad: () => {
       sceneReady = true;
       rive?.resizeDrawingSurfaceToCanvas();
@@ -426,12 +439,7 @@ export function mountFooterScene(
       if (!visible) {
         if (reducedMotion) rive?.pause(SM);
         else {
-          prewarming = true; // keep playing, unseen: the file's opening splash goes by before anyone can see it
-          setTimeout(() => {
-            prewarming = false;
-            played = Math.max(played, HIDE_MS + FADE_MS); // already past the splash: no need to hide the scene
-            sync();
-          }, PREWARM_MS);
+          prewarming = true; // keep playing, unseen: the file's opening splash goes by before anyone can see it (see onAdvance)
         }
       }
       draw();
@@ -458,6 +466,14 @@ export function mountFooterScene(
   window.addEventListener("fluxa:footer-gate", onGate);
   window.addEventListener("fluxa:scene-gate", onGate);
   const onReveal = (e: Event) => setReveal((e as CustomEvent<boolean>).detail);
+  // The loop starts: the glass letters melt away and the legal row fades out (the page then jumps to the top).
+  const onDismiss = () => {
+    if (!hasGlass || !revealed) return;
+    dismissAt = performance.now();
+    root.dataset.footerReveal = "false";
+    kick();
+  };
+  window.addEventListener("fluxa:footer-dismiss", onDismiss);
   window.addEventListener("fluxa:footer-reveal", onReveal);
   layout();
 
@@ -488,6 +504,7 @@ export function mountFooterScene(
       window.removeEventListener("fluxa:footer-gate", onGate);
       window.removeEventListener("fluxa:scene-gate", onGate);
       window.removeEventListener("fluxa:footer-reveal", onReveal);
+      window.removeEventListener("fluxa:footer-dismiss", onDismiss);
       rive?.cleanup();
       rive = null;
     },

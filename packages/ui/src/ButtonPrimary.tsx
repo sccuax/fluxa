@@ -24,6 +24,11 @@ interface ButtonPrimaryProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   // text-text-white normally, disabled:text-text-secondary while disabled -
   // for free, the same way the label text does.
   icon?: ReactNode;
+  // The hover ripple is a WebGL canvas (a three.js renderer = a whole GL context + shader compile). By default it is created
+  // as soon as the button mounts (the Designer Extension's behaviour, unchanged). With `lazyRipple` it is only created the
+  // first time the pointer / keyboard focus reaches the button: the marketing site has several of these buttons below the
+  // fold, and creating them while they scrolled into view made the page hitch.
+  lazyRipple?: boolean;
 }
 
 // Defaults to type="button" (native <button> defaults to "submit" inside a
@@ -70,12 +75,14 @@ export function ButtonPrimary({
   className = "",
   children,
   icon,
+  lazyRipple = false,
   disabled,
   onPointerEnter,
   onPointerLeave,
   ...rest
 }: ButtonPrimaryProps) {
   const [hovered, setHovered] = useState(false);
+  const [armed, setArmed] = useState(!lazyRipple);
 
   const classes = `relative isolate overflow-hidden ${SIZE_CLASSES[size]} h-auto shrink-0 rounded-32 transition-shadow duration-300 ease-in-out bg-gradient-gradient font-sans text-text-white disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-none disabled:bg-background-white-2 disabled:border disabled:border-border-border hover:shadow-[3px_0_6px_0_rgba(0,0,0,0.25)_inset,-10px_47px_13px_0_rgba(33,33,33,0.00),-6px_30px_12px_0_rgba(33,33,33,0.01),-4px_17px_10px_0_rgba(33,33,33,0.05),-2px_7px_8px_0_rgba(33,33,33,0.09),0_2px_4px_0_rgba(33,33,33,0.10)] disabled:text-text-secondary ${className}`;
 
@@ -88,7 +95,7 @@ export function ButtonPrimary({
   // identically to plain inline content.
   const content = (
     <>
-      {!disabled && <LiquidGradientBackground active={hovered} />}
+      {!disabled && armed && <LiquidGradientBackground active={hovered} />}
       <span className="relative z-10 inline-flex items-center justify-center gap-2">
         {icon}
         {children}
@@ -102,8 +109,12 @@ export function ButtonPrimary({
       <a
         href={href}
         className={`inline-flex items-center justify-center ${classes}`}
-        onPointerEnter={() => setHovered(true)}
+        onPointerEnter={() => {
+          setArmed(true);
+          setHovered(true);
+        }}
         onPointerLeave={() => setHovered(false)}
+        onFocus={() => setArmed(true)}
         {...(rest as object)}
       >
         {content}
@@ -115,7 +126,9 @@ export function ButtonPrimary({
     <button
       type={type}
       disabled={disabled}
+      onFocus={() => setArmed(true)}
       onPointerEnter={(e) => {
+        setArmed(true);
         setHovered(true);
         onPointerEnter?.(e);
       }}

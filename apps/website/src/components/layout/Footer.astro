@@ -116,6 +116,8 @@ const year = new Date().getFullYear();
       async ([e]) => {
         if (!e.isIntersecting) return;
         io.disconnect();
+        // staggered: the FAQ's 3D object starts at the same scroll point, and two GL setups back to back are one long hitch
+        await new Promise((r) => setTimeout(r, 1500));
         const { mountFooterScene } = await import("@/lib/footer/glassFooter");
         const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
         try {
@@ -125,8 +127,11 @@ const year = new Date().getFullYear();
           root.dataset.gl = "false";
         }
       },
-      { rootMargin: "800px" },
+      { rootMargin: "4000px" },
     );
-    io.observe(root);
+    // Observe the home page's scroll stage when there is one (the footer inside it is clipped to nothing until it opens, which
+    // hides it from the observer), and start early: loading Rive + building the glass field + creating the GL context is a
+    // few hundred ms of main-thread work, so it must happen long before the pinned scenes, not while they scroll in.
+    io.observe(root.closest("[data-cta-stage]") ?? root);
   }
 </script>
