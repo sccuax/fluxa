@@ -1,5 +1,5 @@
 ---
-// Footer (copy-paste/fluxa web/footer.png): the Rive scene (assets/hero.riv) fills the footer behind a blurred mask, the
+// Footer (copy-paste/fluxa web/footer.png): the Rive scene (assets/hero-footer.riv) fills the footer behind a blurred mask, the
 // "Fluxa" wordmark is a glass layer over it, and the legal row sits at the bottom. The scene + glass are ONE WebGL2 pass
 // (lib/footer/glassFooter.ts); this file is the markup, the no-WebGL fallback and the lazy start.
 //
@@ -72,7 +72,7 @@ const year = new Date().getFullYear();
 </footer>
 
 <style is:global>
-  /* The scene is 1500x844 (hero.riv), so the footer keeps that shape; the floor keeps it usable on narrow screens. */
+  /* The scene is 1500x844 (hero-footer.riv), so the footer keeps that shape; the floor keeps it usable on narrow screens. */
   .footer-scene {
     aspect-ratio: 1500 / 844;
     min-height: 640px;

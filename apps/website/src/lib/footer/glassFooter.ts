@@ -1,4 +1,4 @@
-// Footer scene: the Rive animation (hero.riv) behind a blurred rectangular mask, with the "Fluxa" wordmark as a glass
+// Footer scene: the Rive animation (hero-footer.riv) behind a blurred rectangular mask, with the "Fluxa" wordmark as a glass
 // layer on top - all composited in ONE WebGL2 pass so the glass refracts exactly what is behind it.
 //
 //   Rive canvas (invisible, on TOP only so the pointer reaches the state machine that listens to it)
@@ -11,7 +11,7 @@
 // Figma's Glass values are the DEFAULTS below (refraction 80, depth 20, dispersion 50, frost 4, light 80%, angle -45deg,
 // layer blur 24). Figma's blur value is twice the Gaussian sigma. In dev, `window.__footerGlass.set({...})` re-tunes live.
 import { Rive, Layout, Fit } from "@rive-app/canvas";
-import riveUrl from "@/assets/hero.riv?url";
+import riveUrl from "@/assets/hero-footer.riv?url";
 import { FRAME, distanceToZeros, fillLetters } from "./wordmark";
 
 export interface GlassParams {
@@ -47,16 +47,13 @@ export const DEFAULTS: GlassParams = {
 const MASK = { w: 1097, h: 380, centerY: 0.54 } as const; // Figma px; sigma = blur / 2
 const PAGE_RGB: [number, number, number] = [11 / 255, 13 / 255, 18 / 255]; // background-dark #0b0d12
 const SM = "State Machine 1";
-// hero.riv opens with a "RIVE" splash (~0.5s) and a black beat before the scene grows in: the scene is hidden for this long
-// after it starts playing, then fades in.
 const MELT_MS = 2600; // letters: melted -> solid
 const ALPHA_MS = 700; // ...and they fade in over the first part of it
 const DISMISS_MS = 750; // the page loop: the letters melt away again (lib/motion/pageLoop.ts)
-const HIDE_MS = 1000;
-// The splash lives in the file's STATE MACHINE (its individual animations have none), so it cannot be skipped from code.
-// Instead the scene is pre-played, unseen, until Rive has advanced HIDE_MS + FADE_MS, as soon as it has loaded (long before
-// the footer opens), then
-// paused on a settled frame: when the entrance runs there is no splash and no wait.
+// hero-footer.riv (the paid-plan export) opens straight on the finished scene: no "RIVE" splash, no black beat. The old hero.riv had
+// both inside its state machine, so the scene used to be hidden for HIDE_MS of Rive's own advance time (and pre-played unseen)
+// before fading in; with this file HIDE_MS is 0 and only the fade-in remains. Raise HIDE_MS again if a file ever opens badly.
+const HIDE_MS = 0;
 const FADE_MS = 600;
 const PAD = 48; // css px of SDF around the wordmark (rim light + soft edge need room)
 
@@ -100,7 +97,7 @@ vec3 behind(vec2 p) {
   vec3 s = texture(uScene, uv).rgb;
   s = mix(s, vec3(dot(s, vec3(0.2126, 0.7152, 0.0722))), uDesat);
   s = mix(s, uPage, uOverlay);
-  s = mix(uPage, s, uGain); // hides the file's first moments (see HIDE_MS)
+  s = mix(uPage, s, uGain); // fade-in (and, if ever needed, hides the file's first moments: see HIDE_MS)
   return mix(uPage, s, maskAt(p));
 }
 // The letters "melt" in: while uMelt > 0 the field they are read from sags (more at the bottom, in waves) and wobbles.
@@ -444,7 +441,7 @@ export function mountFooterScene(
       }
       draw();
     },
-    onLoadError: (err) => console.warn("[footer] hero.riv failed to load", err),
+    onLoadError: (err) => console.warn("[footer] hero-footer.riv failed to load", err),
   });
 
   const ro = new ResizeObserver(layout);
