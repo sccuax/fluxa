@@ -1,5 +1,5 @@
 ---
-// Section 3 (mock-up from copy-paste/fluxa web/maquetar-seccion-3.png): a glow divider band, the centred
+// Section 3 (mock-up from copy-paste/fluxa web/maquetar-seccion-3.png): a divider band, the centred
 // "Features" heading (standard heading reveal with the headline gradient) and the grid of feature cards
 // (ui/FeatureCard, texts in the `featuresIntro.cards` dictionary). Each card shows a static mock-up of the extension's
 // panel built from the shared @fluxa/ui components (components/panels/*).
@@ -45,10 +45,9 @@ const presetCards: { o: number; img?: string; bg?: string }[] = [
 ];
 ---
 
-<!-- Divider band: empty row between sections whose lower rule carries a soft brand glow. -->
-<Section noTopRule bottomRule class="relative h-[104px]">
-  <span class="band-glow" aria-hidden="true"></span>
-</Section>
+<!-- Divider band: an empty row whose only content is its lower rule (drawn on scroll like every other section line). A plain
+     decorative <div>, not a <section>: an empty section has no business in the document outline. -->
+<div class="relative h-[104px]" data-rule="b" aria-hidden="true"></div>
 
 <Section id="features" labelledby="features-title" noTopRule bottomRule>
   <div class="flex flex-col items-center gap-4 px-6 py-20 text-center md:px-9 md:py-24" data-heading-reveal>

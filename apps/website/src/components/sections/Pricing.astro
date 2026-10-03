@@ -22,7 +22,7 @@ const billed = t.billedYearly.replace("{total}", `$${proAnnualTotal}`);
 ---
 
 <!-- Empty divider row between section 3 and this one (design: lineas-seccion-4.png): section 3's bottom rule, a band, and this rule. -->
-<Section noTopRule bottomRule class="h-[92px]"><span class="sr-only"></span></Section>
+<div class="relative h-[92px]" data-rule="b" aria-hidden="true"></div>
 
 <Section id="pricing" labelledby="pricing-title" noTopRule bottomRule>
   <div class="flex flex-col items-center gap-4 px-6 py-20 text-center md:px-9 md:py-24" data-heading-reveal>
@@ -127,7 +127,7 @@ const billed = t.billedYearly.replace("{total}", `$${proAnnualTotal}`);
 </Section>
 
 <!-- Empty band under the cards: the cards section closes with a full-bleed rule, this row with another one. -->
-<Section noTopRule bottomRule class="h-[100px]"><span class="sr-only"></span></Section>
+<div class="relative h-[100px]" data-rule="b" aria-hidden="true"></div>
 
 <style is:global>
   .bt-switch[aria-checked="true"] {

@@ -304,22 +304,6 @@
   }
 }
 
-/* Divider band glow (FeaturesIntro): a static soft light resting on the band's lower rule, strongest in the middle
-   and fading out towards both sides (same brand ramp as the step glow). */
-.band-glow {
-  position: absolute;
-  inset-inline: 8%;
-  bottom: 0;
-  height: 30px;
-  background: linear-gradient(90deg, transparent 0%, #6ff5f1 22%, #0955e5 50%, #e23f8c 78%, transparent 100%);
-  filter: blur(10px);
-  -webkit-mask-image: radial-gradient(ellipse 50% 100% at 50% 100%, #000 0%, transparent 100%);
-  mask-image: radial-gradient(ellipse 50% 100% at 50% 100%, #000 0%, transparent 100%);
-  clip-path: inset(-40px 0 0 0);
-  opacity: 0.85;
-  pointer-events: none;
-}
-
 /* Step screenshot entrance: when a step becomes active its image settles in (rises, un-zooms and un-blurs, out-expo)
    while the panel fades up; the one it replaces drifts back and softens as it fades. Pure CSS: it replays on every
    selection (click or autoplay) because the transition runs between the inactive and active states. */
