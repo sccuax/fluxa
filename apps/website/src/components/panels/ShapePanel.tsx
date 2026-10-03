@@ -90,8 +90,10 @@ interface ShapePanelProps {
   preview: string;
   /** The live-preview image (an Astro <Picture> passed as the child). Replaces the `preview` gradient. */
   children?: ReactNode;
-  /** Max width of the panel in px (each card has its own, from the design). */
-  maxWidth?: number;
+  /** Max width of the panel (each card has its own, from the design): a number is px, a string any CSS length (rem). */
+  maxWidth?: number | string;
+  /** Scale of the controls over the extension's real size (default ZOOM = the 19px design text). Card 1 and 3 use smaller ones. */
+  zoom?: number;
   /** Which tab is highlighted; ignored when `showTabs` is false. */
   tab?: TabId;
   showTabs?: boolean;
@@ -107,6 +109,7 @@ export function ShapePanel({
   preview,
   children,
   maxWidth,
+  zoom = ZOOM,
   tab = "shape",
   showTabs = true,
   rows = "shape",
@@ -125,7 +128,7 @@ export function ShapePanel({
       ) : (
         <div style={{ background: preview, aspectRatio: aspect }} />
       )}
-      <div style={{ zoom: ZOOM }}>
+      <div style={{ zoom }}>
         {showTabs && <PanelTabs tabs={[...TABS]} active={tab} />}
         <div className="flex flex-col gap-4 bg-background-white px-5 py-4">
           {rows === "shape" ? (

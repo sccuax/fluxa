@@ -17,13 +17,13 @@ interface Props {
   rule?: "top" | "top-mobile" | "none";
   /** "flush-bottom": the visual sits at bottom: 0 of the visual area. "bottom": the visual hangs from the top and runs off the bottom edge (cropped by the bar), instead of being centred. */
   anchor?: "center" | "bottom" | "flush-bottom";
-  /** Classes for the visual area (default height: 460px, 680px from md, as in the design). */
+  /** Classes for the visual area (default height: 460px, 680px from md, capped at max-height 25.5rem = 408px). */
   visualClass?: string;
   /** Top padding of an `anchor="bottom"` visual (how far down it hangs). */
   padTop?: string;
   class?: string;
 }
-const { title, description, rule = "none", anchor = "center", visualClass = "h-[460px] md:h-[680px]", padTop = "pt-16 md:pt-[110px]", class: className = "" } = Astro.props;
+const { title, description, rule = "none", anchor = "center", visualClass = "h-[460px] max-h-[25.5rem] md:h-[680px]", padTop = "pt-16 md:pt-[110px]", class: className = "" } = Astro.props;
 ---
 
 <article

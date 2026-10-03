@@ -1,5 +1,5 @@
 ---
-import HeroFlutes from "@/components/sections/HeroFlutes.astro";
+import HeroScene from "@/components/sections/HeroScene.astro";
 import GradientCards from "@/components/sections/GradientCards.astro";
 import HeroCtas from "@/components/sections/HeroCtas.astro";
 import InfernoConfig from "@/components/sections/InfernoConfig.astro";
@@ -44,9 +44,9 @@ import Eyebrow from "@/components/ui/Eyebrow.astro";
   if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) document.documentElement.classList.add("hero-locked");
 </script>
 <section class="relative isolate h-screen overflow-hidden" data-hero>
-  <!-- Static fluted-glass backdrop (no animation). -->
-  <div class="absolute inset-0 -z-10" data-hero-backdrop>
-    <HeroFlutes />
+  <!-- Backdrop: the Rive scene (the footer's, without the glass letters). -->
+  <div class="absolute inset-0 -z-10 bg-background-dark" data-hero-backdrop>
+    <HeroScene />
   </div>
   <!-- Fades the bottom of the hero into the next section. -->
   <div
@@ -481,6 +481,22 @@ import Eyebrow from "@/components/ui/Eyebrow.astro";
       return { top, ms, mx, my, rise, size, cx: h.width / 2, cy, height: a.height, vh: h.height };
     };
 
+    // Phase 2 (the mark -> "x" morph) is TIME-based: it fires once the letters have risen (MORPH_AT) and plays by itself,
+    // no further scrolling needed (scrolling back above MORPH_AT plays it in reverse). The scroll that remains before
+    // phase 3 is a dwell, so a fast scroller cannot outrun it.
+    const MORPH_AT = 1.0;
+    const SCENE_HIDE_AT = 2.7; // phase 3 (P3 = 1.95) fades the backdrop out over 0.7
+    // The Rive backdrop stops running once phase 3 has faded it out (see HeroScene.astro / glassFooter's data-scene-hidden).
+    const sceneEl = hero.querySelector<HTMLElement>("[data-hero-scene]");
+    let sceneHidden = false;
+    const setSceneHidden = (on: boolean) => {
+      if (!sceneEl || on === sceneHidden) return;
+      sceneHidden = on;
+      sceneEl.dataset.sceneHidden = String(on);
+      window.dispatchEvent(new CustomEvent("fluxa:scene-gate"));
+    };
+    let setMorph: (on: boolean, instant?: boolean) => void = () => {};
+
     const tl = gsap.timeline({
       defaults: { ease: "none", duration: 1 },
       scrollTrigger: {
@@ -492,9 +508,15 @@ import Eyebrow from "@/components/ui/Eyebrow.astro";
           showCopy(time >= COPY_AT);
           parallax?.setActive(time >= PARALLAX_AT);
           updateLive(time);
+          setMorph(time >= MORPH_AT);
+          setSceneHidden(time >= SCENE_HIDE_AT);
         },
         pin: true,
-        onLeaveBack: () => showCopy(false), // safety net: fully scrolled back up, the copy must be gone
+        onLeaveBack: () => {
+          showCopy(false); // safety net: fully scrolled back up, the copy must be gone
+          setMorph(false);
+          setSceneHidden(false);
+        },
         scrub: 0.6,
         invalidateOnRefresh: true,
         onRefresh: () => {
@@ -527,8 +549,18 @@ import Eyebrow from "@/components/ui/Eyebrow.astro";
     if (xPath?.dataset.wmX) {
       const morph = buildMorph(xPath, xPath.dataset.wmX);
       const m = { t: 0 };
-      tl.to(m, { t: 1, duration: 0.75, ease: "power2.inOut", onUpdate: () => xPath.setAttribute("d", morph(m.t)) }, 1.1)
-        .to(xPath, { attr: { "fill-opacity": 1 }, duration: 0.7, ease: "power1.inOut" }, 1.1);
+      const mtl = gsap.timeline({ paused: true });
+      mtl
+        .to(m, { t: 1, duration: 1.1, ease: "power2.inOut", onUpdate: () => xPath.setAttribute("d", morph(m.t)) }, 0)
+        .to(xPath, { attr: { "fill-opacity": 1 }, duration: 1, ease: "power1.inOut" }, 0);
+      let morphOn = false;
+      setMorph = (on, instant) => {
+        if (on === morphOn && !instant) return;
+        morphOn = on;
+        if (instant) mtl.progress(on ? 1 : 0);
+        else if (on) mtl.play();
+        else mtl.reverse();
+      };
     }
 
     // Phase 3 (Hero-Animation-4): the mark morphs into a rounded square, the fluted glass / dark fade / veil /
@@ -704,6 +736,7 @@ import Eyebrow from "@/components/ui/Eyebrow.astro";
         showCopy(Number(p) >= COPY_AT);
         parallax?.setActive(Number(p) >= PARALLAX_AT);
         updateLive(Number(p));
+        setMorph(Number(p) >= MORPH_AT, true);
       }
     }
 
@@ -727,12 +760,18 @@ import Eyebrow from "@/components/ui/Eyebrow.astro";
         gsap.set(letters, { opacity: 0 });
         gsap.set(mark, { xPercent: startX, yPercent: 160, opacity: 0, rotationY: 0, transformPerspective: 0 });
 
+        let setupDone = false;
         const tl = gsap.timeline({
           defaults: { ease: "power3.out" },
           onComplete: () => {
             gsap.set([header, ...letters, mark], { clearProps: "opacity,transform" });
             html.classList.add("hero-done");
             window.clearTimeout(failsafe);
+            if (setupDone) {
+              html.classList.remove("hero-locked"); // a replay (page loop): the scroll timeline already exists
+              return;
+            }
+            setupDone = true;
             // keep scrolling locked until the pinned scroll timeline exists, then release (a scroll in between would
             // otherwise be taken before the pin and jump when it appears)
             void setupCopy(g)
@@ -742,6 +781,14 @@ import Eyebrow from "@/components/ui/Eyebrow.astro";
           },
         });
         entry = tl;
+        // The page loop (lib/motion/pageLoop.ts) replays the intro from the top: same start pose, same timeline.
+        (window as unknown as { __fluxaHeroReplay: () => void }).__fluxaHeroReplay = () => {
+          html.classList.add("hero-locked");
+          gsap.set(header, { yPercent: -140, opacity: 0 });
+          gsap.set(letters, { opacity: 0 });
+          gsap.set(mark, { xPercent: startX, yPercent: 160, opacity: 0, rotationY: 0, transformPerspective: 0 });
+          tl.restart();
+        };
         tl.timeScale(1.7); // the intro plays 1.7x faster than its authored timings
         // 1. navbar drops in from the top
         tl.to(header, { yPercent: 0, opacity: 1, duration: 0.8 });
@@ -756,4 +803,8 @@ import Eyebrow from "@/components/ui/Eyebrow.astro";
       })
       .catch(done);
   }
+
+  // Infinite scroll: scrolling on past the finished footer sends the page back to the top and replays the intro.
+  import { initPageLoop } from "@/lib/motion/pageLoop";
+  initPageLoop();
 </script>

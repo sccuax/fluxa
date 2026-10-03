@@ -8,7 +8,7 @@ import Eyebrow from "@/components/ui/Eyebrow.astro";
 import Section from "@/components/layout/Section.astro";
 import FeatureCard from "@/components/ui/FeatureCard.astro";
 import { ShapePanel } from "@/components/panels/ShapePanel";
-import { ColorPanel } from "@/components/panels/ColorPanel";
+import { ColorPanel, EyedropperLoupe } from "@/components/panels/ColorPanel";
 import type { Locale } from "@/config/site";
 import { useTranslations } from "@/i18n";
 
@@ -19,15 +19,29 @@ const { locale } = Astro.props;
 const t = useTranslations(locale).featuresIntro;
 // Card art lives in src/assets/features/ and is picked up by name, no code change: card-1 / card-2 / card-3 = the previews
 // above the panels, card-4 = the Designer screenshot behind the colour picker, card-5 = the whole presets panel,
-// card-6 = the image in the last cell. For 1-3 and 6 a CSS stand-in is used until the file exists.
+// card-6-b / card-6-c = the two thumbnails in the middle of the last cell. For 1-3 and 6 a CSS stand-in is used until the file exists.
 const art = import.meta.glob<ImageMetadata>("/src/assets/features/*.{png,jpg,jpeg,webp,avif}", { eager: true, import: "default" });
 const imageFor = (name: string) => Object.entries(art).find(([path]) => path.includes(`/${name}.`))?.[1];
+
+// Panel sizes (design): card 1 = 318px (19.875rem), text 11.93px / 15.9, tab header 13.92px / 15.9 -> zoom 0.99375 over the
+// extension's 12px / 16px (tabs 14px); card 3 = 344px (21.5rem), text 12.92px / 17.2, header 15.07px / 17.2 -> zoom 1.075;
+// card 2 keeps the default 1.59375. The card's image area is capped at 25.5rem (408px) in ui/FeatureCard.
 
 // Stand-ins for the live shader canvas shown at the top of each panel mock-up (CSS gradients, no WebGL on this page).
 const previews = [
   "linear-gradient(90deg,#fff36b,#ff8a1f 55%,#ff1a00)",
   "radial-gradient(60% 80% at 70% 40%,#5ff8ff 0%,transparent 60%),linear-gradient(135deg,#ff7bff 0%,#3a1f6e 45%,#1a0a3a 100%)",
   "radial-gradient(40% 60% at 50% 50%,#1fb6ff 0%,#0a3cff 35%,#0b0d12 75%)",
+];
+
+// Last cell's thumbnails: o = resting offset from the centre (in card pitches); the two at +-2.5 sit under the top / bottom fade.
+const presetCards: { o: number; img?: string; bg?: string }[] = [
+  { o: -1.5, bg: "background:linear-gradient(100deg,#e9ebe6 0%,#eceee9 45%,#f3d9d6 72%,#cfd9e6 100%)" },
+  { o: -0.5, img: "card-6-b" },
+  { o: 0.5, img: "card-6-c" },
+  { o: 1.5, bg: "background:linear-gradient(90deg,#f6b9bf 0%,#f7e3cf 50%,#f1ece8 100%)" },
+  { o: 2.5, img: "card-6", bg: "background:linear-gradient(135deg,#e7f5d8 0%,#bfeede 45%,#8fe9dd 100%)" },
+  { o: -2.5, bg: "background:linear-gradient(135deg,#0f2a1c 0%,#2d6a4f 50%,#a7f3d0 100%)" },
 ];
 ---
 
@@ -54,12 +68,12 @@ const previews = [
         title={card.title}
         description={card.body}
         rule={i === 0 ? "none" : i === 1 ? "top-mobile" : "top"}
-        anchor={i === 0 ? "flush-bottom" : i === 4 ? "bottom" : "center"}
-        padTop={i === 4 ? "pt-6 md:pt-8" : undefined}
+        anchor={i === 0 ? "flush-bottom" : i === 3 || i === 4 ? "bottom" : "center"}
+        padTop={i === 3 ? "pt-[3.75rem]" : i === 4 ? "pt-6 md:pt-8" : undefined}
       >
         {i === 0 && (
-          <ShapePanel preview={previews[0]} maxWidth={509} cropBottom>
-            {imageFor("card-1") && <Picture src={imageFor("card-1")!} formats={["avif", "webp"]} alt="" widths={[509, 1018]} sizes="509px" />}
+          <ShapePanel preview={previews[0]} maxWidth="19.875rem" zoom={0.99375} cropBottom>
+            {imageFor("card-1") && <Picture src={imageFor("card-1")!} formats={["avif", "webp"]} alt="" widths={[318, 636]} sizes="318px" />}
           </ShapePanel>
         )}
         {i === 1 && (
@@ -68,41 +82,73 @@ const previews = [
           </ShapePanel>
         )}
         {i === 2 && (
-          <ShapePanel preview={previews[2]} tab="camera" rows="camera" aspect="16 / 8" maxWidth={518}>
-            {imageFor("card-3") && <Picture src={imageFor("card-3")!} formats={["avif", "webp"]} alt="" widths={[518, 1036]} sizes="518px" />}
+          <ShapePanel preview={previews[2]} tab="camera" rows="camera" aspect="16 / 8" maxWidth="21.5rem" zoom={1.075}>
+            {imageFor("card-3") && <Picture src={imageFor("card-3")!} formats={["avif", "webp"]} alt="" widths={[344, 688]} sizes="344px" />}
           </ShapePanel>
         )}
         {i === 3 && (
-          <div class="relative w-full max-w-[620px]">
+          <div class="relative h-[28rem] w-full max-w-[30.3125rem]">
             {imageFor("card-4") && (
               <Picture
                 src={imageFor("card-4")!}
                 formats={["avif", "webp"]}
                 alt=""
-                widths={[620, 1240]}
-                sizes="620px"
-                class="ml-[14%] block h-auto w-[86%] rounded-16 shadow-2xl"
+                widths={[485, 970]}
+                sizes="485px"
+                class="absolute left-0 top-[1.625rem] block h-auto w-full rounded-8 shadow-2xl"
               />
             )}
-            <div class:list={["flex w-full max-w-[320px] items-center", imageFor("card-4") ? "absolute left-0 top-1/2 -translate-y-1/2" : ""]}>
-              <ColorPanel />
-            </div>
+            <ColorPanel className="absolute left-0 top-0 z-10" />
+            <EyedropperLoupe className="absolute left-[18.9rem] top-[13rem] z-20 h-[4.5625rem] w-[4.5625rem]" />
           </div>
         )}
         {i === 4 && imageFor("card-5") && (
-          <Picture src={imageFor("card-5")!} formats={["avif", "webp"]} alt="" widths={[727, 1454]} sizes="(min-width: 1024px) 656px, 100vw" class="block h-auto w-full max-w-[727px]" />
+          <Picture src={imageFor("card-5")!} formats={["avif", "webp"]} alt="" widths={[361, 722]} sizes="361px" class="block h-auto w-full max-w-[22.5625rem]" />
         )}
       </FeatureCard>
     ))
   }
-  <!-- Last cell: an image (design: a soft mint gradient); same top rule as the other cards of its row. -->
-  <div class="relative hidden min-h-[420px] items-center justify-center lg:flex" data-rule="t" data-scroll-reveal aria-hidden="true">
-    {
-      imageFor("card-6") ? (
-        <Picture src={imageFor("card-6")!} formats={["avif", "webp"]} alt="" widths={[517]} sizes="517px" class="block h-auto w-full max-w-[517px]" />
-      ) : (
-        <div class="h-[260px] w-[340px] rounded-16" style="background:linear-gradient(135deg,#e7f5d8 0%,#bfeede 45%,#8fe9dd 100%);box-shadow:0 14px 34px rgb(0 0 0 / 0.12)" />
-      )
-    }
+  <!-- Last cell (card-6-seccion-2.png): a column of preset thumbnails, 262px x 147px, 40px apart, centred and cropped by the
+       cell with a fade at the top and the bottom. Resting offsets (--o, in card pitches) put four of the six in view; the
+       other two wait above / below the fade. On hover the column turns into a vertical 3D carousel (lib/motion/presetCarousel.ts).
+       The two middle ones are real art (assets/features/card-6-b / card-6-c), the rest are stand-ins (CSS / the old card-6),
+       mostly faded out anyway. The column is absolutely placed so it never sets the row's height. Same top rule as the
+       other cards of its row. -->
+  <div class="relative hidden min-h-[420px] overflow-hidden lg:block" data-rule="t" data-scroll-reveal aria-hidden="true" data-pcar>
+    <div class="pcar-stage absolute inset-0" data-pcar-stage>
+      {
+        presetCards.map((c) => (
+          <div class="pcar-card overflow-hidden rounded-[0.75rem]" data-pcar-card style={`--o:${c.o};${c.bg ?? ""}`}>
+            {c.img && imageFor(c.img) && (
+              <Picture src={imageFor(c.img)!} formats={["avif", "webp"]} alt="" widths={[262, 524]} sizes="262px" class="block h-full w-full object-cover" />
+            )}
+          </div>
+        ))
+      }
+    </div>
   </div>
 </Section>
+
+<style is:global>
+  /* Last cell: flat column at rest (placed from --o), 3D carousel on hover (presetCarousel.ts overwrites the transform). */
+  .pcar-stage {
+    perspective: 1100px;
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 21%, #000 80%, transparent 100%);
+    mask-image: linear-gradient(to bottom, transparent 0%, #000 21%, #000 80%, transparent 100%);
+  }
+  .pcar-card {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 16.375rem;
+    height: 9.1875rem;
+    margin: -4.59375rem 0 0 -8.1875rem;
+    transform: translate3d(0, calc(var(--o) * 11.65rem), 0);
+    will-change: transform;
+  }
+</style>
+
+<script>
+  import { initPresetCarousel } from "@/lib/motion/presetCarousel";
+  initPresetCarousel();
+</script>

@@ -1,0 +1,21 @@
+---
+// Archived: the home hero's former backdrop (a static fluted-glass wall drawn on 2D canvases, recreated from
+// copy-paste/fluxa web/flutes.png). The hero now runs the Rive scene (components/sections/HeroScene.astro); this page keeps
+// the old look alive, like /experiments/webgpu-particle-field does for the particle field. Code: src/archive/flutes/.
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import HeroFlutes from "@/archive/flutes/HeroFlutes.astro";
+---
+
+<BaseLayout title="Fluted glass backdrop (archived) — Fluxa" description="The former hero backdrop." noindex>
+  <section class="relative h-screen overflow-hidden bg-background-dark">
+    <div class="absolute inset-0">
+      <HeroFlutes />
+    </div>
+    <div class="relative z-10 flex h-full items-end px-8 pb-16">
+      <p class="max-w-xl text-text-md-regular text-text-white/70">
+        Archived hero backdrop: static fluted glass (seams at 53°, blue / pink edges, grain). In dev,
+        <code>__flutes.set(&#123; angleDeg, period, navBottom &#125;)</code> re-renders it from the console.
+      </p>
+    </div>
+  </section>
+</BaseLayout>

@@ -1,0 +1,38 @@
+---
+// The hero's backdrop: the Rive scene (assets/hero.riv, the same one as the footer) behind a blurred mask, drawn by
+// lib/footer/glassFooter.ts WITHOUT the glass letters (`glass: false`). It replaces the old fluted-glass backdrop
+// (kept in src/archive/flutes, see /experiments/fluted-glass). The scene is faded out by the hero's scroll timeline in
+// phase 3 (Hero.astro); once it is gone the hero puts `data-scene-hidden` on this element so the scene stops running.
+//
+// The Rive canvas is invisible and only there so the pointer reaches the scene's state machine; the GL canvas shows it.
+// Without WebGL2 / JS only the near-black base shows.
+---
+
+<div class="hero-scene absolute inset-0 overflow-hidden bg-background-dark" aria-hidden="true" data-hero-scene>
+  <canvas class="absolute inset-0 h-full w-full" data-hs-gl></canvas>
+  <canvas class="absolute inset-0 h-full w-full opacity-0" data-hs-rive></canvas>
+</div>
+
+<script>
+  const root = document.querySelector<HTMLElement>("[data-hero-scene]");
+  const gl = root?.querySelector<HTMLCanvasElement>("[data-hs-gl]");
+  const rv = root?.querySelector<HTMLCanvasElement>("[data-hs-rive]");
+  if (root && gl && rv) {
+    // After the page has settled: the intro owns the first seconds, and the scene hides its own opening for another second.
+    const start = async () => {
+      try {
+        const { mountFooterScene } = await import("@/lib/footer/glassFooter");
+        const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+        mountFooterScene(root, gl, rv, root, reduced, {
+          glass: false,
+          mask: { w: 1320, h: 700, centerY: 0.5, blur: 180 },
+          params: { overlay: 0.4, desaturate: 0.1 },
+        });
+      } catch (err) {
+        console.warn("[hero] scene failed", err);
+      }
+    };
+    if ("requestIdleCallback" in window) requestIdleCallback(() => void start(), { timeout: 1500 });
+    else setTimeout(() => void start(), 400);
+  }
+</script>

@@ -52,6 +52,10 @@ const SM = "State Machine 1";
 const MELT_MS = 2600; // letters: melted -> solid
 const ALPHA_MS = 700; // ...and they fade in over the first part of it
 const HIDE_MS = 1000;
+// The splash lives in the file's STATE MACHINE (its individual animations have none), so it cannot be skipped from code.
+// Instead the scene is pre-played, unseen, for this long as soon as it has loaded (long before the footer opens), then
+// paused on a settled frame: when the entrance runs there is no splash and no wait.
+const PREWARM_MS = 1300;
 const FADE_MS = 600;
 const PAD = 48; // css px of SDF around the wordmark (rim light + soft edge need room)
 
@@ -178,6 +182,14 @@ export interface FooterScene {
   destroy(): void;
 }
 
+export interface SceneOptions {
+  /** false: just the masked Rive scene (the home hero's backdrop), no glass letters. Default true (the footer). */
+  glass?: boolean;
+  /** The blurred mask box (css px, Figma blur) and where its centre sits (fraction of the height). */
+  mask?: Partial<{ w: number; h: number; centerY: number; blur: number }>;
+  params?: Partial<GlassParams>;
+}
+
 /** Returns null when WebGL2 (or float-texture upload) is unavailable: the caller shows the CSS fallback. */
 export function mountFooterScene(
   root: HTMLElement,
@@ -185,7 +197,10 @@ export function mountFooterScene(
   riveCanvas: HTMLCanvasElement,
   wordmark: HTMLElement,
   reducedMotion: boolean,
+  options: SceneOptions = {},
 ): FooterScene | null {
+  const hasGlass = options.glass !== false;
+  const mask = { ...MASK, ...options.mask };
   const gl = glCanvas.getContext("webgl2", { alpha: false, antialias: false, powerPreference: "high-performance" });
   if (!gl) return null;
 
@@ -233,7 +248,7 @@ export function mountFooterScene(
   gl.uniform1i(u.sdf, 1);
   gl.uniform3f(u.page, ...PAGE_RGB);
 
-  const params: GlassParams = { ...DEFAULTS };
+  const params: GlassParams = { ...DEFAULTS, ...options.params, ...(options.mask?.blur ? { maskBlur: options.mask.blur } : {}) };
   let width = 0;
   let height = 0;
   let dpr = 1;
@@ -241,7 +256,8 @@ export function mountFooterScene(
   let intersecting = false;
   // On the home page the footer is revealed by a scroll animation (lib/motion/ctaStage.ts): until it opens, the scene sleeps.
   const gateEl = root.closest<HTMLElement>("[data-cta-footer]");
-  const gateOpen = () => gateEl?.dataset.gate !== "closed";
+  // `data-scene-hidden` on the root: the home page puts it on the hero's scene once the hero has faded it out.
+  const gateOpen = () => gateEl?.dataset.gate !== "closed" && root.dataset.sceneHidden !== "true";
   let raf = 0;
   let destroyed = false;
   let sceneReady = false;
@@ -249,9 +265,14 @@ export function mountFooterScene(
   // footer first showing on screen when there is no entrance (mobile / reduced layout).
   let revealed = false;
   let revealAt = 0;
-  const animated = !reducedMotion;
+  const animated = !reducedMotion && hasGlass;
   let forced: [number, number] | null = null; // dev only: freeze [melt, alpha] to inspect a frame
   const pushReveal = () => {
+    if (!hasGlass) {
+      gl.uniform1f(u.melt, 0);
+      gl.uniform1f(u.alpha, 0);
+      return;
+    }
     if (forced) {
       gl.uniform1f(u.melt, forced[0]);
       gl.uniform1f(u.alpha, forced[1]);
@@ -276,6 +297,7 @@ export function mountFooterScene(
     kick();
   };
   if (animated) root.dataset.footerReveal = "false";
+  let prewarming = false;
   let played = 0; // ms the animation has been playing
   let lastTick = 0;
   const setGain = () => gl.uniform1f(u.gn, reducedMotion ? 1 : Math.min(Math.max((played - HIDE_MS) / FADE_MS, 0), 1));
@@ -346,9 +368,9 @@ export function mountFooterScene(
     gl.uniform2f(u.wmS, wo.w, wo.h);
     gl.uniform1f(u.pad, PAD);
     // The mask box is a fixed 1097x380 (Figma px), centred horizontally and MASK.centerY down the footer (footer.png).
-    gl.uniform2f(u.mc, w / 2, h * MASK.centerY);
-    gl.uniform2f(u.mh, MASK.w / 2, MASK.h / 2);
-    buildSdf(wo.w, wo.h);
+    gl.uniform2f(u.mc, w / 2, h * mask.centerY);
+    gl.uniform2f(u.mh, mask.w / 2, mask.h / 2);
+    if (hasGlass) buildSdf(wo.w, wo.h);
     pushParams();
     setGain();
     pushReveal();
@@ -385,7 +407,7 @@ export function mountFooterScene(
     if (wantsPlay()) {
       rive?.play(SM);
       kick();
-    } else {
+    } else if (!prewarming) {
       rive?.pause(SM);
       lastTick = 0;
     }
@@ -401,7 +423,17 @@ export function mountFooterScene(
       sceneReady = true;
       rive?.resizeDrawingSurfaceToCanvas();
       root.dataset.ready = "true";
-      if (!visible) rive?.pause(SM);
+      if (!visible) {
+        if (reducedMotion) rive?.pause(SM);
+        else {
+          prewarming = true; // keep playing, unseen: the file's opening splash goes by before anyone can see it
+          setTimeout(() => {
+            prewarming = false;
+            played = Math.max(played, HIDE_MS + FADE_MS); // already past the splash: no need to hide the scene
+            sync();
+          }, PREWARM_MS);
+        }
+      }
       draw();
     },
     onLoadError: (err) => console.warn("[footer] hero.riv failed to load", err),
@@ -424,12 +456,13 @@ export function mountFooterScene(
     sync();
   };
   window.addEventListener("fluxa:footer-gate", onGate);
+  window.addEventListener("fluxa:scene-gate", onGate);
   const onReveal = (e: Event) => setReveal((e as CustomEvent<boolean>).detail);
   window.addEventListener("fluxa:footer-reveal", onReveal);
   layout();
 
   if (import.meta.env.DEV) {
-    (window as unknown as { __footerGlass: unknown }).__footerGlass = {
+    (window as unknown as Record<string, unknown>)[hasGlass ? "__footerGlass" : "__heroGlass"] = {
       params,
       rive: () => rive,
       freeze(melt: number, alpha = 1) {
@@ -453,6 +486,7 @@ export function mountFooterScene(
       ro.disconnect();
       io.disconnect();
       window.removeEventListener("fluxa:footer-gate", onGate);
+      window.removeEventListener("fluxa:scene-gate", onGate);
       window.removeEventListener("fluxa:footer-reveal", onReveal);
       rive?.cleanup();
       rive = null;
