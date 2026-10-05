@@ -5,11 +5,10 @@
 // the logo inline. The glows are pre-blurred radial gradients on their own layers that only drift by transform, so the
 // motion is compositor-only (no filter, no per-frame repaint).
 //
-// Two layouts of the same markup (the "sheet"):
-//  - static (mobile / reduced motion): top gap (its bottom rule = the panel's top edge), the panel, in normal flow.
-//  - stage (from lg, with motion): lib/motion/ctaStage.ts pins the FAQ at the end of its scroll; this sheet (the FAQ's own
-//    background colour, so it is seamless) fades in over it, the panel grows from a small rounded card to the full row
-//    between the page paddings, the lines under / over it draw, and the headline comes in. The gaps keep the lines visible.
+// Layout: a plain section in normal flow - a top gap (its bottom rule is the panel's top edge), the panel (content column
+// width, NOT full screen) and a bottom gap. Only the text animates, like the other sections: the headline rises word by
+// word (heading reveal), the body by line, the button fades in (scroll reveal). lib/motion/ctaStage.ts only pins the
+// stage for the footer hand-over (the footer rises over the finished CTA).
 import { ButtonPrimary } from "@fluxa/ui";
 import noise from "@/assets/noise-grain.png";
 import { SITE, type Locale } from "@/config/site";
@@ -31,7 +30,7 @@ const glows = [
 ];
 ---
 
-<div class="cta-sheet" data-cta-sheet>
+<div class="cta-sheet">
   <!-- top gap: its bottom rule is the panel's top edge -->
   <div class="cta-gap" aria-hidden="true"></div>
 
@@ -39,8 +38,7 @@ const glows = [
     <div class="h-full px-padding-global">
       <div class="mx-auto h-full w-full max-w-section">
         <div
-          class="cta-panel relative isolate flex h-full min-h-[520px] items-center justify-center overflow-hidden bg-background-dark px-6 py-24 text-center md:min-h-[600px]"
-          data-cta-panel
+          class="cta-panel relative isolate flex h-full min-h-[360px] items-center justify-center overflow-hidden bg-background-dark px-6 py-30 text-center md:min-h-[308px]"
         >
           <!-- glows -->
           {
@@ -55,11 +53,11 @@ const glows = [
           <!-- grain: white / black specks of random low opacity, one texel per CSS pixel -->
           <div class="pointer-events-none absolute inset-0" aria-hidden="true" style={`background-image:url(${noise.src});background-size:128px 128px`}></div>
 
-          <div class="relative flex max-w-[860px] flex-col items-center gap-6" data-cta-content>
-            <h2 id="cta-title" class="font-display text-header-h2 leading-[1.1] text-text-white">
+          <div class="relative flex max-w-[860px] flex-col items-center gap-4" data-heading-reveal data-hr-start="85%">
+            <h2 id="cta-title" class="font-display text-header-h2 leading-[1.1] text-text-white" data-hr-title>
               {t.titleTop}<br />{t.titleLead}
               <!-- the logo, inline: gradient fill + a blurred copy for the glow (design SVG) -->
-              <span class="relative -top-[0.04em] mx-[0.12em] inline-block h-[1.12em] w-[1.12em] align-middle">
+              <span class="relative -top-[0.04em] mx-[0.12em] inline-block h-[1.12em] w-[1.12em] align-middle" data-hr-inline>
                 <svg class="h-full w-full" viewBox="0 0 54 54" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                   <path d="M47.8008 36.8024C47.8008 42.3283 43.322 46.8008 37.8024 46.8008C32.2827 46.8008 27.8039 42.322 27.8039 36.8024C27.8039 42.3283 23.3251 46.8008 17.8055 46.8008C12.2859 46.8008 7.80078 42.322 7.80078 36.8024C7.80078 31.2827 12.2796 26.8039 17.7992 26.8039C12.2796 26.7976 7.80078 22.3251 7.80078 16.7992C7.80078 14.0362 8.91732 11.5382 10.7278 9.72776C12.5382 7.91732 15.0362 6.80078 17.7992 6.80078H37.796C43.3157 6.80078 47.7945 11.2796 47.7945 16.7992C47.7945 19.5622 46.6779 22.0602 44.8675 23.8706C43.057 25.6811 40.559 26.7976 37.796 26.7976C43.3157 26.7976 47.7945 31.2764 47.7945 36.796L47.8008 36.8024Z" fill="url(#cta-logo-a)"></path>
                   <g filter="url(#cta-logo-blur)">
@@ -90,8 +88,8 @@ const glows = [
               </span>
               {t.titleTail}
             </h2>
-            <p class="max-w-[640px] text-text-lg-regular text-text-white/80">{t.body}</p>
-            <div class="mt-2">
+            <p class="max-w-[640px] text-text-lg-regular text-text-white/80" data-hr-body>{t.body}</p>
+            <div class="mt-2" data-scroll-reveal data-scroll-reveal-delay="0.25">
               <ButtonPrimary lazyRipple client:visible href={SITE.installUrl} size="md">
                 {t.button}
                 <svg width="6" height="10" viewBox="0 0 6 10" fill="none" aria-hidden="true">
@@ -105,7 +103,7 @@ const glows = [
     </div>
   </section>
 
-  <!-- bottom gap: only in the stage layout (it leaves room under the panel's bottom rule) -->
+  <!-- bottom gap: room under the panel's bottom rule -->
   <div class="cta-gap-bottom" aria-hidden="true"></div>
 </div>
 
@@ -131,46 +129,18 @@ const glows = [
     z-index: 3;
     height: 1px;
     background: theme("colors.border.border");
+    opacity: 0.2;
     transform-origin: left;
     transform: scaleX(var(--cta-line, 1));
     pointer-events: none;
   }
   .cta-gap-bottom {
-    display: none;
+    height: 92px;
   }
 
-  /* ---- stage layout (lg + motion; the class is added by lib/motion/ctaStage.ts) -------------------------------------- */
+  /* ---- stage (lg + motion; the class is added by lib/motion/ctaStage.ts): only the footer hand-over needs it ---------- */
   .cta-stage.is-stage {
-    min-height: 100vh;
-    overflow: clip; /* the sheet waits below the stage's bottom edge: do not let it stretch the page */
-  }
-  .cta-stage.is-stage .cta-sheet {
-    --cta-gap: clamp(48px, 8vh, 92px); /* the margin above and below the panel (the lines stay visible in them) */
-    position: absolute;
-    inset-inline: 0;
-    bottom: 0;
-    z-index: 1; /* above the FAQ, below the page grid's vertical rules (z-index 2) */
-    display: flex;
-    flex-direction: column;
-    height: 100vh;
-    visibility: hidden; /* until the timeline brings it in (lib/motion/ctaStage.ts) */
-  }
-  .cta-stage.is-stage .cta-gap,
-  .cta-stage.is-stage .cta-gap-bottom {
-    display: block;
-    flex: none;
-    height: var(--cta-gap);
-  }
-  .cta-stage.is-stage .cta-main {
-    flex: 1 1 0;
-    min-height: 0;
-  }
-  .cta-stage.is-stage .cta-panel {
-    min-height: 0;
-  }
-  /* the glows only drift while the CTA is on screen */
-  .cta-stage.is-stage:not(.cta-live) .cta-glow {
-    animation-play-state: paused;
+    overflow: clip; /* the footer waits below the stage's bottom edge: do not let it stretch the page */
   }
 
   /* ---- footer hand-over: the footer is the last layer of the stage (see lib/motion/ctaStage.ts) ---------------------- */

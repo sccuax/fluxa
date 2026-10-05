@@ -1,47 +1,30 @@
-// Section 5 -> 6 transition, in the spirit of the hero's scene hand-overs: the old scene dims, the background changes,
-// then the letters come in. Pinned and scrubbed.
+// Section 6 -> footer hand-over. The CTA itself is a plain section now (only its text animates, see Cta.astro); this module
+// only pins the stage (FAQ + CTA) when its bottom reaches the bottom of the viewport and plays the footer entrance: the
+// footer rises over the finished CTA through the logo-shaped clip, dimming it.
 //
-// Markup (components/sections/Cta.astro, wrapped with the FAQ in pages/index.astro):
-//   <div data-cta-stage>                 FAQ section + the CTA "sheet"
-//     <section id="faq">...</section>
-//     <div data-cta-sheet> [top gap] [<section id="cta"> <div data-cta-panel> <div data-cta-content> ] [bottom gap] </div>
-//   </div>
-//
-// From `lg` and with motion allowed, the stage gets `.is-stage`: the sheet leaves the flow and becomes a viewport-sized
-// overlay (hidden) anchored to the stage's bottom. The stage is pinned when its bottom reaches the bottom of the
-// viewport (the whole FAQ has been read) and the scroll then drives one timeline (units, ~1.35 in total):
-//   0.00 - 0.20  hold: the FAQ stays as it is (a little slack before anything moves)
-//   0.20 - 0.50  the sheet fades in over the FAQ. It has the FAQ's own background colour, so the FAQ just dims away
-//   0.45 - 0.90  the dark panel (the new background) grows from a small rounded card to the full row between the page
-//                paddings and the top / bottom gaps, fading in
-//   0.62 - 0.87  the two section lines draw, as the panel passes the middle of its growth
-//   0.80 - 1.20  headline, body and button come in
-// Once the sheet fully covers the FAQ (0.50) the FAQ's 3D object is paused (event `fluxa:faq-covered`, same idea as pausing the
-// shader behind a modal in the extension's editor).
-// Below `lg` / with reduced motion nothing runs: the CTA is a plain section after the FAQ.
+// Markup (pages/index.astro): <div data-cta-stage> FAQ, CTA, [data-cta-dim], [data-cta-footer] </div>
+// From `lg` and with motion allowed the stage gets `.is-stage` (the footer leaves the flow and waits hidden). Below `lg` /
+// with reduced motion nothing runs and the footer is a normal section after the CTA.
+// Once the footer entrance starts the FAQ's 3D object is paused (event `fluxa:faq-covered`).
 import { loadGsap } from "./gsap";
 import { MARK_PATH } from "@/config/wordmark";
 
 const COVERED_EVENT = "fluxa:faq-covered";
 const GATE_EVENT = "fluxa:footer-gate";
-const COVER_AT = 0.5; // timeline time at which the sheet fully covers the FAQ
-const VP_PER_UNIT = 2.1 / 1.35; // scroll length (viewports) per timeline unit: the CTA part alone is 1.35 units over 2.1 viewports
-const CTA_DWELL = 0.55; // extra scroll the finished CTA stays on screen before the footer can fire (fast scrollers)
+const VP_PER_UNIT = 2.1 / 1.35; // scroll length (viewports) per timeline unit
+const CTA_DWELL = 0.8; // scroll the finished CTA stays on screen before the footer can fire (fast scrollers)
 const FOOTER_HOLD = 0.35; // scroll left after the CTA settles: crossing the threshold plays the whole footer entrance
 const REVEAL_EVENT = "fluxa:footer-reveal";
 const FOOTER_SECONDS = 1.5; // the entrance is TIME-based: one scroll gesture past the threshold plays it all
 
 export async function initCtaStage(): Promise<void> {
   const stage = document.querySelector<HTMLElement>("[data-cta-stage]");
-  const sheet = stage?.querySelector<HTMLElement>("[data-cta-sheet]");
-  const panel = stage?.querySelector<HTMLElement>("[data-cta-panel]");
-  const content = stage?.querySelector<HTMLElement>("[data-cta-content]");
   const footer = stage?.querySelector<HTMLElement>("[data-cta-footer]");
   const dim = stage?.querySelector<HTMLElement>("[data-cta-dim]");
   // the var goes on the grid's PARENT: scrollDraw owns tweens (overwrite) on the grid element itself and would kill ours
   const grid = stage?.closest<HTMLElement>(".page-grid")?.parentElement;
   const clip = document.getElementById("footer-reveal-path");
-  if (!stage || !sheet || !panel || !content || !footer || !dim || !grid || !clip) return;
+  if (!stage || !footer || !dim || !grid || !clip) return;
 
   let mods: Awaited<ReturnType<typeof loadGsap>>;
   try {
@@ -63,7 +46,6 @@ export async function initCtaStage(): Promise<void> {
   const mm = gsap.matchMedia();
   mm.add("(min-width: 1024px) and (prefers-reduced-motion: no-preference)", () => {
     stage.classList.add("is-stage");
-    const parts = Array.from(content.children) as HTMLElement[]; // headline, body, button
 
     // The footer entrance: a circle that starts complete at the bottom of the viewport and grows; its lower left / right
     // points stay on the bottom edge of the screen (the centre is fixed, so the circle just outgrows the viewport).
@@ -144,29 +126,16 @@ export async function initCtaStage(): Promise<void> {
         refreshPriority: -1, // measured after the hero's pin spacer exists (see scrollDraw.ts)
         onUpdate: (self) => {
           const time = self.progress * (self.animation?.duration() ?? 1);
-          setCovered(time >= COVER_AT);
-          stage.classList.toggle("cta-live", time >= 0.3);
+          setCovered(time >= footerAt);
           setFooter(time >= footerAt);
         },
         onLeaveBack: () => {
           setFooter(false);
           setCovered(false);
-          stage.classList.remove("cta-live");
         },
       },
     });
-    tl.set(sheet, { "--cta-line": 0 }, 0)
-      .fromTo(sheet, { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.3 }, 0.2)
-      .fromTo(
-        panel,
-        { clipPath: "inset(30% 32% 30% 32% round 36px)", opacity: 0 },
-        { clipPath: "inset(0% 0% 0% 0% round 0px)", opacity: 1, duration: 0.45, ease: "power2.inOut" },
-        0.45,
-      )
-      .to(sheet, { "--cta-line": 1, duration: 0.25, ease: "power2.out" }, 0.62)
-      .fromTo(parts, { y: 34, opacity: 0 }, { y: 0, opacity: 1, duration: 0.3, stagger: 0.1, ease: "power2.out" }, 0.8)
-      .to({}, { duration: 0.15 }) // the CTA settles
-      .to({}, { duration: CTA_DWELL }); // ...and stays: a fast scroller does not skip straight to the footer
+    tl.to({}, { duration: CTA_DWELL }); // the finished CTA stays: a fast scroller does not skip straight to the footer
     footerAt = tl.duration();
     tl.to({}, { duration: FOOTER_HOLD }); // scroll left for the footer: it plays by itself once footerAt is crossed
 
@@ -179,7 +148,7 @@ export async function initCtaStage(): Promise<void> {
       window.dispatchEvent(new CustomEvent(REVEAL_EVENT, { detail: true })); // plain layout: the footer simply shows
       delete footer.dataset.gate;
       window.dispatchEvent(new CustomEvent(GATE_EVENT));
-      stage.classList.remove("is-stage", "cta-live");
+      stage.classList.remove("is-stage");
       setCovered(false);
       requestAnimationFrame(() => ScrollTrigger.refresh());
     };

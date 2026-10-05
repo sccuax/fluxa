@@ -92,6 +92,8 @@ interface ShapePanelProps {
   children?: ReactNode;
   /** Max width of the panel (each card has its own, from the design): a number is px, a string any CSS length (rem). */
   maxWidth?: number | string;
+  /** Fixed panel height (CSS length / px): the preview image fills what the controls leave (cover). Default: natural height. */
+  height?: number | string;
   /** Scale of the controls over the extension's real size (default ZOOM = the 19px design text). Card 1 and 3 use smaller ones. */
   zoom?: number;
   /** Which tab is highlighted; ignored when `showTabs` is false. */
@@ -109,6 +111,7 @@ export function ShapePanel({
   preview,
   children,
   maxWidth,
+  height,
   zoom = ZOOM,
   tab = "shape",
   showTabs = true,
@@ -118,17 +121,25 @@ export function ShapePanel({
 }: ShapePanelProps) {
   return (
     <div
-      className={`panel-mock w-full overflow-hidden bg-background-white shadow-2xl ring-1 ring-black/5 ${
+      className={`panel-mock mx-auto w-full overflow-hidden bg-background-white ${height ? "flex flex-col" : ""} shadow-2xl ring-1 ring-black/5 ${
         cropBottom ? "rounded-t-16 rounded-b-none" : "rounded-16"
       }`}
-      style={{ maxWidth }}
+      style={{ maxWidth, height }}
     >
       {children ? (
-        <div className="[&_img]:block [&_img]:h-auto [&_img]:w-full">{children}</div>
+        <div
+          className={
+            height
+              ? "min-h-0 flex-1 [&_picture]:block [&_picture]:h-full [&_img]:block [&_img]:h-full [&_img]:w-full [&_img]:object-cover"
+              : "[&_img]:block [&_img]:h-auto [&_img]:w-full"
+          }
+        >
+          {children}
+        </div>
       ) : (
         <div style={{ background: preview, aspectRatio: aspect }} />
       )}
-      <div style={{ zoom }}>
+      <div className="shrink-0" style={{ zoom }}>
         {showTabs && <PanelTabs tabs={[...TABS]} active={tab} />}
         <div className="flex flex-col gap-4 bg-background-white px-5 py-4">
           {rows === "shape" ? (

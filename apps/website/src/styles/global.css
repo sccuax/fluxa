@@ -148,7 +148,7 @@
   width: min(100% - 2 * var(--padding-global) + 2px, 1440px + 2px);
   z-index: 2;
   pointer-events: none;
-  opacity: var(--grid-fade, 1); /* the footer entrance fades the rules out (lib/motion/ctaStage.ts) */
+  opacity: calc(var(--grid-fade, 1) * 0.2); /* 20% (owner); the footer entrance fades the rules out (lib/motion/ctaStage.ts) */
   background:
     linear-gradient(theme("colors.border.border"), theme("colors.border.border")) 0 0 / 1px var(--grid-draw, 100%) no-repeat,
     linear-gradient(theme("colors.border.border"), theme("colors.border.border")) 100% 0 / 1px var(--grid-draw, 100%) no-repeat;
@@ -179,6 +179,13 @@
 [data-rule~="b"]::after {
   bottom: 0;
   transform: scaleX(var(--rule-b, 1));
+}
+/* Section-boundary rules (between sections, full-bleed) are at 20%; rules INSIDE a section stay full strength. */
+.page-grid > [data-rule]::before,
+.page-grid > [data-rule]::after,
+.cta-stage > [data-rule]::before,
+.cta-stage > [data-rule]::after {
+  opacity: 0.2;
 }
 .rule-line {
   position: absolute;
