@@ -1,5 +1,10 @@
 ---
 import HeroScene from "@/components/sections/HeroScene.astro";
+import cut1 from "@/assets/hero-cuts/perspectiva-1.webp";
+import cut2 from "@/assets/hero-cuts/perspectiva-2.webp";
+import cut3 from "@/assets/hero-cuts/perspectiva-3.webp";
+import cut4 from "@/assets/hero-cuts/perspectiva-4.webp";
+import cut5 from "@/assets/hero-cuts/perspectiva-5.webp";
 import GradientCards from "@/components/sections/GradientCards.astro";
 import HeroCtas from "@/components/sections/HeroCtas.astro";
 import InfernoConfig from "@/components/sections/InfernoConfig.astro";
@@ -20,6 +25,7 @@ interface Props {
 const { locale } = Astro.props;
 const copy = useTranslations(locale).hero.reveal;
 
+const cutUrls = [cut1, cut2, cut3, cut4, cut5].map((c) => c.src);
 const [vbW, vbH] = WORDMARK_VIEWBOX;
 // The logo mark is an HTML element (not SVG) so its animated CSS gradient can live inside it:
 // the mark's outline is applied as a CSS mask. Position/size are % of the wordmark box.
@@ -47,6 +53,9 @@ import Eyebrow from "@/components/ui/Eyebrow.astro";
   <!-- Backdrop: the Rive scene (the footer's, without the glass letters). -->
   <div class="absolute inset-0 -z-10 bg-background-dark" data-hero-backdrop>
     <HeroScene />
+    <!-- Camera orbit: once the scroll starts, this WebGL canvas takes over from the Rive scene and orbits through 5 stills of it
+         (lib/motion/heroOrbit.ts, driven by the "orbit" block of the timeline). -->
+    <canvas class="hero-scene__stage pointer-events-none absolute inset-x-0 bottom-0 mx-auto w-full max-w-[1440px] opacity-0" aria-hidden="true" data-hero-orbit data-urls={JSON.stringify(cutUrls)}></canvas>
   </div>
   <!-- Fades the bottom of the hero into the next section. -->
   <div
@@ -555,6 +564,20 @@ import Eyebrow from "@/components/ui/Eyebrow.astro";
         .to(xPath, { attr: { "fill-opacity": 1 }, duration: 0.7, ease: "power1.inOut" }, 1.1);
     }
 
+    // Camera orbit (Apple-style scroll scrubbing, faked between 5 stills - lib/motion/heroOrbit.ts): from the first scroll the
+    // canvas fades in over the Rive scene and the camera moves through the five angles; the last lands just before phase 3
+    // (P3) fades the backdrop (canvas included, it lives inside it) to the white page. No WebGL = the Rive scene just stays.
+    const orbitEl = hero.querySelector<HTMLCanvasElement>("[data-hero-orbit]");
+    const orbit = orbitEl ? createHeroOrbit(orbitEl, JSON.parse(orbitEl.dataset.urls ?? "[]")) : null;
+    if (orbitEl && orbit) {
+      const o = { p: 0 };
+      tl.fromTo(orbitEl, { opacity: 0 }, { opacity: 1, duration: 0.3, ease: "power1.out", immediateRender: false }, 0.05).to(
+        o,
+        { p: 4, duration: 1.75, ease: "none", onUpdate: () => orbit.render(o.p) },
+        0.1,
+      );
+    }
+
     // Phase 3 (Hero-Animation-4): the mark morphs into a rounded square, the fluted glass / dark fade / veil /
     // wordmark all dissolve so the page background (background-white) takes over, and the copy enters.
     const P3 = 1.95;
@@ -803,5 +826,6 @@ import Eyebrow from "@/components/ui/Eyebrow.astro";
 
   // Infinite scroll: scrolling on past the finished footer sends the page back to the top and replays the intro.
   import { initPageLoop } from "@/lib/motion/pageLoop";
+  import { createHeroOrbit } from "@/lib/motion/heroOrbit";
   initPageLoop();
 </script>
