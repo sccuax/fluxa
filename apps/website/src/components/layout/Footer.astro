@@ -6,7 +6,7 @@
 // Layering (bottom -> top): page colour, GL canvas (pointer-events none), the Rive canvas (opacity 0, ONLY there so the
 // pointer reaches the animation's state machine; the GL canvas shows its pixels), the legal row.
 import { SITE, type Locale } from "@/config/site";
-import { localizedPath, useTranslations } from "@/i18n";
+import { useTranslations } from "@/i18n";
 import { FALLBACK_PATHS, FRAME } from "@/lib/footer/wordmark";
 import { MARK_PATH } from "@/config/wordmark";
 
@@ -49,9 +49,9 @@ const year = new Date().getFullYear();
       class="mx-auto grid max-w-section grid-cols-1 items-center gap-4 px-padding-global py-6 text-center text-text-md-regular text-[#5C647A] md:h-[78px] md:grid-cols-[1fr_auto_1fr] md:py-0 md:text-left"
     >
       <nav aria-label="Legal" data-footer-in style="--i:0" class="flex flex-wrap justify-center gap-x-4 gap-y-1 md:justify-start">
-        <a class="footer-link" href={localizedPath("/legal/terms", locale)}>{t.footer.terms}</a>
-        <a class="footer-link" href={localizedPath("/legal/privacy", locale)}>{t.footer.privacy}</a>
-        <a class="footer-link" href={localizedPath("/legal/licenses", locale)}>{t.footer.licenses}</a>
+        <a class="footer-link" href={SITE.termsUrl} target="_blank" rel="noopener noreferrer">{t.footer.terms}</a>
+        <a class="footer-link" href={SITE.privacyUrl} target="_blank" rel="noopener noreferrer">{t.footer.privacy}</a>
+        <a class="footer-link" href={SITE.licensesUrl} target="_blank" rel="noopener noreferrer">{t.footer.licenses}</a>
       </nav>
       <div class="flex items-center justify-center gap-3" data-footer-in style="--i:1">
         <a class="footer-link" href={SITE.socialX} target="_blank" rel="noopener noreferrer" aria-label="X">
