@@ -71,6 +71,7 @@ const KNOWN_EXTENSION_EVENTS = [
   "open_plan_billing_modal",
   "open_support_modal",
   "click_email_support",
+  "click_documentation",
   "click_report_bug",
   "click_request_feature",
   "select_service",

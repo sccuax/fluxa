@@ -4,10 +4,12 @@ import { trackEvent } from "../services/analytics";
 
 const REPORT_BUG_URL = "https://forms.cloud.microsoft/r/acxA3Y92YJ";
 const REQUEST_FEATURE_URL = "https://forms.cloud.microsoft/r/Z6j28m5pHs";
+const DOCUMENTATION_URL = "https://sweltering-list-18f.notion.site/Fluxa-Documentation-3e5f1890e7c0816cbe4dfbd131c3391b";
+const CONTACT_SUPPORT_URL = "https://mail.google.com/mail/?view=cm&fs=1&to=jojanmartinez533@gmail.com";
 
 const SUPPORT_LINKS: Array<{ label: string; icon: IconName; href?: string; trackAs?: string }> = [
-  { label: "Documentation", icon: "documentation" },
-  { label: "Contact support", icon: "chat" },
+  { label: "Documentation", icon: "documentation", href: DOCUMENTATION_URL, trackAs: "click_documentation" },
+  { label: "Contact support", icon: "chat", href: CONTACT_SUPPORT_URL, trackAs: "click_email_support" },
   { label: "Report a bug", icon: "bug", href: REPORT_BUG_URL, trackAs: "click_report_bug" },
   { label: "Request a feature", icon: "lightbulb", href: REQUEST_FEATURE_URL, trackAs: "click_request_feature" },
 ];
@@ -80,7 +82,7 @@ export function SupportModal({ onClose }: { onClose: () => void }) {
           <div className="pointer-events-none absolute inset-0 bg-gradient-gradient opacity-10" />
           <div className="relative flex flex-col gap-2">
             <span className="font-sans text-text-sm-medium text-text-black">Email support</span>
-            <span className="font-sans text-mobile-text-sm-regular text-text-secondary">support@fluxa.app</span>
+            <span className="font-sans text-mobile-text-sm-regular text-text-secondary">jojanmartinez533@gmail.com</span>
           </div>
           <Icon name="mail" className="relative w-8 h-8 shrink-0 text-text-black" />
         </a>
