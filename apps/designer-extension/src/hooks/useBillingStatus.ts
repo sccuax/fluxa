@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { fetchBillingStatus, createCheckoutSession, type BillingStatus } from "../services/billing";
+import { planCache } from "../services/planCache";
 
 // Promoted straight to hooks/ (not colocated in a component) - unlike
 // PlanCard.tsx's own usePresetUsage, which only promotes itself "if a second
@@ -18,8 +19,9 @@ const POLL_INTERVAL_MS = 2000;
 const POLL_TIMEOUT_MS = 3 * 60 * 1000;
 
 export function useBillingStatus() {
-  const [status, setStatus] = useState<BillingStatus | null>(null);
-  const [loading, setLoading] = useState(true);
+  // Starts from the session cache (services/planCache.ts), then revalidates.
+  const [status, setStatus] = useState<BillingStatus | null>(planCache.billing);
+  const [loading, setLoading] = useState(planCache.billing === null);
   const [upgrading, setUpgrading] = useState(false);
   // Latest-value refs so the interval/timeout closures below always see
   // current state without needing to be recreated every render (same
@@ -29,12 +31,14 @@ export function useBillingStatus() {
   const refresh = useCallback(async () => {
     try {
       const next = await fetchBillingStatus();
+      planCache.billing = next;
       setStatus(next);
       return next;
     } catch {
       // No real session / not connected (sandbox, plain-browser dev) - same
       // "fail into a harmless default" precedent as PlanCard's own
       // usePresetUsage, nothing further to surface differently here.
+      planCache.billing = null;
       setStatus(null);
       return null;
     } finally {

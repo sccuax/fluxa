@@ -8,6 +8,7 @@ import { SuccessModal } from "../components/SuccessModal";
 import { ConfirmDeleteAccountModal } from "../components/ConfirmDeleteAccountModal";
 import { useAvatarUpload } from "../hooks/useAvatarUpload";
 import { apiFetch } from "../services/apiClient";
+import { clearPlanCache } from "../services/planCache";
 import { getPasswordErrorMessage, getEmailErrorMessage } from "../helpers/formRegex";
 import type { AccountUser } from "../hooks/useAccountUser";
 
@@ -192,6 +193,7 @@ export function ManageProfileScreen({
     }
     setIsDeleting(false);
     setShowDeleteConfirm(false);
+    clearPlanCache();
     onSignOut();
   }
 

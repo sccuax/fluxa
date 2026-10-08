@@ -1,4 +1,4 @@
-import { apiFetch } from "./apiClient";
+import { siteApiFetch } from "./siteAccess";
 
 // "Webflow Solutions" feature #3: reuse a single CMS image (any `Image`-
 // type field - the OTHER feature, the multi-image gallery, is `MultiImage`
@@ -133,7 +133,7 @@ export function fetchCollectionImageItems(
   params: { limit: number; offset: number },
 ): Promise<CmsImageItemsPage> {
   const query = new URLSearchParams({ limit: String(params.limit), offset: String(params.offset) });
-  return apiFetch<CmsImageItemsPage>(
+  return siteApiFetch<CmsImageItemsPage>(
     `/api/cms-images/${siteId}/collections/${collectionId}/image-items?${query.toString()}`,
   );
 }
@@ -156,7 +156,7 @@ export interface CmsImageReuseConfig {
 }
 
 export function fetchImageReuses(siteId: string): Promise<CmsImageReuseConfig[]> {
-  return apiFetch<CmsImageReuseConfig[]>(`/api/cms-images/${siteId}/image-reuses`);
+  return siteApiFetch<CmsImageReuseConfig[]>(`/api/cms-images/${siteId}/image-reuses`);
 }
 
 export interface ImageReuseBody {
@@ -172,7 +172,7 @@ export function createImageReuse(
   siteId: string,
   body: ImageReuseBody & { collectionId: string },
 ): Promise<CmsImageReuseConfig> {
-  return apiFetch<CmsImageReuseConfig>(`/api/cms-images/${siteId}/image-reuses`, {
+  return siteApiFetch<CmsImageReuseConfig>(`/api/cms-images/${siteId}/image-reuses`, {
     method: "POST",
     body: JSON.stringify(body),
   });
@@ -183,12 +183,12 @@ export function updateImageReuse(
   id: string,
   body: ImageReuseBody,
 ): Promise<CmsImageReuseConfig> {
-  return apiFetch<CmsImageReuseConfig>(`/api/cms-images/${siteId}/image-reuses/${id}`, {
+  return siteApiFetch<CmsImageReuseConfig>(`/api/cms-images/${siteId}/image-reuses/${id}`, {
     method: "PATCH",
     body: JSON.stringify(body),
   });
 }
 
 export function deleteImageReuse(siteId: string, id: string): Promise<{ ok: true }> {
-  return apiFetch<{ ok: true }>(`/api/cms-images/${siteId}/image-reuses/${id}`, { method: "DELETE" });
+  return siteApiFetch<{ ok: true }>(`/api/cms-images/${siteId}/image-reuses/${id}`, { method: "DELETE" });
 }

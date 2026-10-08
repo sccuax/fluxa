@@ -2,7 +2,7 @@ import { ButtonPrimary } from "./ButtonPrimary";
 import { ButtonSecondary } from "./ButtonSecondary";
 import { FullViewModal } from "./FullViewModal";
 import { Icon } from "./Icon";
-import { PlanCard } from "./PlanCard";
+import { PlanCard, useShaderUsage } from "./PlanCard";
 import { trackEvent } from "../services/analytics";
 import { useBillingStatus } from "../hooks/useBillingStatus";
 
@@ -10,17 +10,19 @@ interface PlanFeature {
   label: string;
   included: boolean;
   comingSoon?: boolean;
+  // Unlocked (check instead of lock) once the account is on Pro.
+  proUnlocks?: boolean;
 }
 
 const FEATURES: PlanFeature[] = [
-  { label: "3 presets", included: true },
+  { label: "Up to 3 shaders", included: true },
   { label: "Unlimited static gradients", included: true },
-  { label: "Unlimited presets", included: false },
-  { label: "Unlimited animated gradients", included: false },
+  { label: "Unlimited shaders", included: false, proUnlocks: true },
+  { label: "Unlimited animated gradients", included: false, proUnlocks: true },
   { label: "Team library", included: false, comingSoon: true },
 ];
 
-function PlanFeatureRow({ label, included, comingSoon, last = false }: PlanFeature & { last?: boolean }) {
+function PlanFeatureRow({ label, included, comingSoon, last = false }: Omit<PlanFeature, "proUnlocks"> & { last?: boolean }) {
   return (
     <div className={`flex items-center justify-between pb-3 ${last ? "" : "border-b border-border-border"}`}>
       <div className="flex items-center gap-2">
@@ -57,8 +59,12 @@ function PlanFeatureRow({ label, included, comingSoon, last = false }: PlanFeatu
 // "Upgrade to Pro" - a second, independent useBillingStatus() instance here
 // is fine (each polls only while its own `upgrading` is true).
 export function PlanBillingModal({ onClose }: { onClose: () => void }) {
-  const { status, upgrading, startUpgrade } = useBillingStatus();
-  const isPro = status?.plan === "pro";
+  const { status, loading: statusLoading, upgrading, startUpgrade } = useBillingStatus();
+  // Same Pro check PlanCard uses (billing status OR shader-usage plan), so the
+  // card above and the checklist below can never disagree.
+  const { usage, loaded: usageLoaded } = useShaderUsage();
+  const isPro = status?.plan === "pro" || usage?.plan === "pro";
+  const planKnown = isPro || (usageLoaded && !statusLoading);
 
   function handleUpgradeClick() {
     trackEvent("click_upgrade_to_pro");
@@ -73,7 +79,13 @@ export function PlanBillingModal({ onClose }: { onClose: () => void }) {
           <h3 className="font-display text-mobile-text-md-medium text-text-black">What's included</h3>
       <div className="flex flex-col gap-3">
             {FEATURES.map((feature, index) => (
-              <PlanFeatureRow key={feature.label} {...feature} last={index === FEATURES.length - 1} />
+              <PlanFeatureRow
+                key={feature.label}
+                label={feature.label}
+                comingSoon={feature.comingSoon}
+                included={feature.included || (isPro && !!feature.proUnlocks)}
+                last={index === FEATURES.length - 1}
+              />
             ))}
           </div>
         </div>
@@ -90,7 +102,7 @@ export function PlanBillingModal({ onClose }: { onClose: () => void }) {
               </p>
             )}
           </div>
-        ) : (
+        ) : !planKnown ? null : (
           <ButtonPrimary icon={<Icon name="sparkle" />} onClick={handleUpgradeClick} disabled={upgrading}>
             {upgrading ? "Waiting for payment…" : "Upgrade to Pro"}
           </ButtonPrimary>

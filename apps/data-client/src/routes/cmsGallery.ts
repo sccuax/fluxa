@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
-import { and, eq, gt, inArray } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import type { AppEnv } from "../types";
 import type { Database } from "../db/client";
@@ -73,32 +73,61 @@ export type VerifiedInstallation =
   | { status: "not_installed" }
   | { status: "not_verified" };
 
+// A verification is a SLIDING window: every use pushes `expiresAt` out to
+// now + SITE_VERIFICATION_IDLE_MS, so someone actively working never
+// re-verifies, while 30 idle minutes still lapse it. It is capped at
+// SITE_VERIFICATION_MAX_MS after the last REAL proof (an idToken checked
+// against Webflow in POST /:siteId/verify), so even a session that never goes
+// idle must re-prove access to the site periodically. `createdAt` doubles as
+// "last proven at": the /verify upsert rewrites it, nothing else does (avoids
+// a schema change; the column is not otherwise read).
+//
+// Keep SITE_VERIFICATION_IDLE_MS / SITE_VERIFICATION_MAX_MS in sync by hand
+// with the Designer Extension's services/siteAccess.ts, which uses them to
+// re-verify BEFORE a call instead of paying for a 403 first.
+export const SITE_VERIFICATION_IDLE_MS = 30 * 60 * 1000;
+export const SITE_VERIFICATION_MAX_MS = 8 * 60 * 60 * 1000;
+// The sliding write is skipped while more than half the idle window is left,
+// so a busy session costs at most one extra UPDATE per IDLE/2, not one per call.
+const SLIDE_WRITE_THRESHOLD_MS = SITE_VERIFICATION_IDLE_MS / 2;
+
 export async function getVerifiedInstallation(
   db: Database,
   siteId: string,
   userId: string,
 ): Promise<VerifiedInstallation> {
-  const [installation] = await db
-    .select({ accessToken: installations.accessToken })
+  // One query for installation + verification (was two sequential ones).
+  const [row] = await db
+    .select({
+      accessToken: installations.accessToken,
+      expiresAt: siteVerifications.expiresAt,
+      provenAt: siteVerifications.createdAt,
+    })
     .from(installations)
+    .leftJoin(
+      siteVerifications,
+      and(eq(siteVerifications.siteId, installations.siteId), eq(siteVerifications.userId, userId)),
+    )
     .where(eq(installations.siteId, siteId))
     .limit(1);
-  if (!installation) return { status: "not_installed" };
+  if (!row) return { status: "not_installed" };
 
-  const [verification] = await db
-    .select({ id: siteVerifications.id })
-    .from(siteVerifications)
-    .where(
-      and(
-        eq(siteVerifications.siteId, siteId),
-        eq(siteVerifications.userId, userId),
-        gt(siteVerifications.expiresAt, new Date()),
-      ),
-    )
-    .limit(1);
-  if (!verification) return { status: "not_verified" };
+  const now = Date.now();
+  if (!row.expiresAt || row.expiresAt.getTime() <= now) return { status: "not_verified" };
 
-  return { status: "ok", accessToken: installation.accessToken };
+  const remainingMs = row.expiresAt.getTime() - now;
+  if (remainingMs < SLIDE_WRITE_THRESHOLD_MS) {
+    const cap = (row.provenAt?.getTime() ?? now) + SITE_VERIFICATION_MAX_MS;
+    const nextExpiry = Math.min(now + SITE_VERIFICATION_IDLE_MS, cap);
+    if (nextExpiry > row.expiresAt.getTime()) {
+      await db
+        .update(siteVerifications)
+        .set({ expiresAt: new Date(nextExpiry) })
+        .where(and(eq(siteVerifications.siteId, siteId), eq(siteVerifications.userId, userId)));
+    }
+  }
+
+  return { status: "ok", accessToken: row.accessToken };
 }
 
 // Small shared responder for the 8 call sites below - every one of them
@@ -170,19 +199,13 @@ export function isConfigOwner(config: { createdByUserId: string | null }, userId
   return config.createdByUserId === null || config.createdByUserId === userId;
 }
 
-// 15 minutes - long enough that a normal Webflow Solutions session (open
-// the panel, run the wizard, tweak settings) never re-verifies mid-task,
-// short enough that a siteId leaking outside the Designer entirely stays
-// useless to an unrelated account within a bounded window rather than
-// forever. Purely a DB-row TTL, nothing to rotate/revoke elsewhere.
-const SITE_VERIFICATION_TTL_MS = 15 * 60 * 1000;
-
-// Called once per Designer session (WebflowSolutionsScreen.tsx's own mount
-// effect, right where linkCurrentInstallation() already runs) - proves,
+// Called when the Designer Extension needs a (re-)verification (services/
+// siteAccess.ts: on screen mount, proactively before the sliding window
+// lapses, or reactively after a not_verified) - proves,
 // via a FRESH webflow.getIdToken() resolved server-side against Webflow
 // itself, that the caller's own Designer session is genuinely looking at
-// this exact siteId right now, then remembers that for
-// SITE_VERIFICATION_TTL_MS so every other route in this router
+// this exact siteId right now, then remembers that (a sliding
+// SITE_VERIFICATION_IDLE_MS window, see getVerifiedInstallation) so every other route in this router
 // (getVerifiedInstallation) can check a cheap DB row instead of repeating
 // this real network round-trip (~400-700ms observed) on every click. This
 // closes the actual gap the simplified 2026-09-15 model left open: siteId
@@ -228,13 +251,15 @@ cmsGalleryRoutes.post(
       return c.json({ error: "site_mismatch" }, 403);
     }
 
-    const expiresAt = new Date(Date.now() + SITE_VERIFICATION_TTL_MS);
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + SITE_VERIFICATION_IDLE_MS);
     await db
       .insert(siteVerifications)
-      .values({ siteId, userId, expiresAt })
+      .values({ siteId, userId, expiresAt, createdAt: now })
       .onConflictDoUpdate({
         target: [siteVerifications.siteId, siteVerifications.userId],
-        set: { expiresAt },
+        // createdAt = "last proven at" - the cap in getVerifiedInstallation counts from here.
+        set: { expiresAt, createdAt: now },
       });
 
     return c.json({ verified: true, expiresAt });

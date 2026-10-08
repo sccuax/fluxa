@@ -28,12 +28,12 @@ import {
   createGalleryConfig,
   updateGalleryConfigSettings,
   deleteGalleryConfig,
-  verifySiteAccess,
   DEFAULT_GALLERY_SETTINGS,
   type MultiImageField,
   type CmsGalleryConfig,
   type CmsGallerySettings,
 } from "../services/cmsGallery";
+import { verifySite } from "../services/siteAccess";
 import { canApplyPreset } from "../services/applyGradient";
 import { applyCmsGalleryRuntime, upgradeCmsGalleryRuntimeEmbeds } from "../services/applyCmsGalleryEmbed";
 import { ApiRequestError } from "../services/apiClient";
@@ -459,8 +459,7 @@ export function WebflowSolutionsScreen({ onSwitchToShaders }: { onSwitchToShader
   // fix, same day).
   async function verifyThisSite(forSiteId: string) {
     try {
-      const idToken = await getWebflowDesigner().getIdToken();
-      await verifySiteAccess(forSiteId, idToken);
+      await verifySite(forSiteId);
       setVerifyError(null);
     } catch (error) {
       // Real bug, found 2026-09-16: this used to be a bare `catch {}` - a

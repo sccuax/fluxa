@@ -1,4 +1,4 @@
-import { apiFetch } from "./apiClient";
+import { siteApiFetch } from "./siteAccess";
 
 // "Webflow Solutions" feature #1: multi-image CMS fields inside a Collection
 // List. Webflow has no native way to bind a multi-image field to anything
@@ -79,7 +79,7 @@ export interface CmsSiteCollection {
 }
 
 export async function fetchSiteCollections(siteId: string): Promise<CmsSiteCollection[]> {
-  const { collections } = await apiFetch<{ collections: CmsSiteCollection[] }>(
+  const { collections } = await siteApiFetch<{ collections: CmsSiteCollection[] }>(
     `/api/cms-gallery/${siteId}/collections`,
   );
   return collections;
@@ -271,31 +271,18 @@ export interface CmsGalleryConfig extends CmsGallerySettings {
   imageCount: number | null;
 }
 
-// Proves this session's own Designer really is looking at `siteId` right
-// now (a fresh webflow.getIdToken(), resolved server-side against Webflow
-// itself) and has the backend remember that for ~15 minutes
-// (data-client's routes/cmsGallery.ts, SITE_VERIFICATION_TTL_MS) - every
-// other cms-gallery call below 403s with "not_verified" until this has run
-// at least once. Called once per WebflowSolutionsScreen mount, not per
-// request - see that screen's own mount effect for why (the Webflow round
-// trip this makes is real, ~400-700ms observed, not worth repeating per
-// click).
-export function verifySiteAccess(siteId: string, idToken: string): Promise<{ verified: true; expiresAt: string }> {
-  return apiFetch(`/api/cms-gallery/${siteId}/verify`, {
-    method: "POST",
-    body: JSON.stringify({ idToken }),
-  });
-}
+// Site verification (POST /:siteId/verify) lives in siteAccess.ts - every call
+// in this file goes through siteApiFetch, which verifies/re-verifies on demand.
 
 export function fetchGalleryConfigs(siteId: string): Promise<CmsGalleryConfig[]> {
-  return apiFetch<CmsGalleryConfig[]>(`/api/cms-gallery/${siteId}/gallery-configs`);
+  return siteApiFetch<CmsGalleryConfig[]>(`/api/cms-gallery/${siteId}/gallery-configs`);
 }
 
 export function createGalleryConfig(
   siteId: string,
   body: { collectionId: string; fieldSlug: string },
 ): Promise<CmsGalleryConfig> {
-  return apiFetch<CmsGalleryConfig>(`/api/cms-gallery/${siteId}/gallery-configs`, {
+  return siteApiFetch<CmsGalleryConfig>(`/api/cms-gallery/${siteId}/gallery-configs`, {
     method: "POST",
     body: JSON.stringify(body),
   });
@@ -309,14 +296,14 @@ export function updateGalleryConfigSettings(
   id: string,
   settings: Partial<CmsGallerySettings>,
 ): Promise<CmsGalleryConfig> {
-  return apiFetch<CmsGalleryConfig>(`/api/cms-gallery/${siteId}/gallery-configs/${id}`, {
+  return siteApiFetch<CmsGalleryConfig>(`/api/cms-gallery/${siteId}/gallery-configs/${id}`, {
     method: "PATCH",
     body: JSON.stringify({ settings }),
   });
 }
 
 export function deleteGalleryConfig(siteId: string, id: string): Promise<{ ok: true }> {
-  return apiFetch<{ ok: true }>(`/api/cms-gallery/${siteId}/gallery-configs/${id}`, {
+  return siteApiFetch<{ ok: true }>(`/api/cms-gallery/${siteId}/gallery-configs/${id}`, {
     method: "DELETE",
   });
 }
@@ -350,7 +337,7 @@ export function fetchGalleryItems(
   params: { limit: number; offset: number },
 ): Promise<GalleryPickerPage> {
   const query = new URLSearchParams({ limit: String(params.limit), offset: String(params.offset) });
-  return apiFetch<GalleryPickerPage>(
+  return siteApiFetch<GalleryPickerPage>(
     `/api/cms-gallery/${siteId}/gallery-configs/${configId}/items?${query.toString()}`,
   );
 }
@@ -364,7 +351,7 @@ export function saveGalleryItemOverride(
   itemSlug: string,
   override: { hidden: boolean; hiddenImageIds: string[] },
 ): Promise<{ hidden: boolean; hiddenImageIds: string[] }> {
-  return apiFetch(
+  return siteApiFetch(
     `/api/cms-gallery/${siteId}/gallery-configs/${configId}/items/${encodeURIComponent(itemSlug)}/override`,
     { method: "PUT", body: JSON.stringify(override) },
   );
@@ -431,7 +418,7 @@ export function fetchCollectionVisibilityItems(
   params: { limit: number; offset: number },
 ): Promise<CmsVisibilityPage> {
   const query = new URLSearchParams({ limit: String(params.limit), offset: String(params.offset) });
-  return apiFetch<CmsVisibilityPage>(
+  return siteApiFetch<CmsVisibilityPage>(
     `/api/cms-gallery/${siteId}/collections/${collectionId}/items?${query.toString()}`,
   );
 }
@@ -442,7 +429,7 @@ export function saveCollectionItemVisibility(
   itemSlug: string,
   hidden: boolean,
 ): Promise<{ hidden: boolean }> {
-  return apiFetch(
+  return siteApiFetch(
     `/api/cms-gallery/${siteId}/collections/${collectionId}/items/${encodeURIComponent(itemSlug)}/visibility`,
     { method: "PUT", body: JSON.stringify({ hidden }) },
   );
@@ -453,14 +440,14 @@ export function saveCollectionItemVisibility(
 // the override semantics (it forces every post hidden without touching any
 // individual post's own stored state).
 export function fetchCmsVisibilitySettings(siteId: string): Promise<{ hideAllPosts: boolean }> {
-  return apiFetch(`/api/cms-gallery/${siteId}/visibility-settings`);
+  return siteApiFetch(`/api/cms-gallery/${siteId}/visibility-settings`);
 }
 
 export function saveCmsVisibilitySettings(
   siteId: string,
   hideAllPosts: boolean,
 ): Promise<{ hideAllPosts: boolean }> {
-  return apiFetch(`/api/cms-gallery/${siteId}/visibility-settings`, {
+  return siteApiFetch(`/api/cms-gallery/${siteId}/visibility-settings`, {
     method: "PUT",
     body: JSON.stringify({ hideAllPosts }),
   });

@@ -1,4 +1,4 @@
-import { apiFetch } from "./apiClient";
+import { siteApiFetch } from "./siteAccess";
 
 // "Blog to staging" (Webflow Solutions feature #4) - see data-client's
 // db/app-schema.ts blogStagingItems comment for the full architecture (a
@@ -29,7 +29,7 @@ export function fetchBlogStagingItems(
   params: { limit: number; offset: number },
 ): Promise<BlogStagingItemsPage> {
   const query = new URLSearchParams({ limit: String(params.limit), offset: String(params.offset) });
-  return apiFetch<BlogStagingItemsPage>(
+  return siteApiFetch<BlogStagingItemsPage>(
     `/api/blog-staging/${siteId}/collections/${collectionId}/items?${query.toString()}`,
   );
 }
@@ -40,7 +40,7 @@ export function saveItemStaging(
   itemSlug: string,
   stagingOnly: boolean,
 ): Promise<{ stagingOnly: boolean }> {
-  return apiFetch(
+  return siteApiFetch(
     `/api/blog-staging/${siteId}/collections/${collectionId}/items/${encodeURIComponent(itemSlug)}/staging`,
     { method: "PUT", body: JSON.stringify({ stagingOnly }) },
   );
@@ -55,7 +55,7 @@ export function saveAllItemsStaging(
   stagingOnly: boolean,
   itemSlugs: string[],
 ): Promise<{ stagingOnly: boolean; count: number }> {
-  return apiFetch(`/api/blog-staging/${siteId}/collections/${collectionId}/items/staging-all`, {
+  return siteApiFetch(`/api/blog-staging/${siteId}/collections/${collectionId}/items/staging-all`, {
     method: "PUT",
     body: JSON.stringify({ stagingOnly, itemSlugs }),
   });
@@ -69,7 +69,7 @@ export function saveAllItemsStaging(
 export function fetchBlogStagingScriptStatus(
   siteId: string,
 ): Promise<{ installed: boolean; publishNeeded: boolean }> {
-  return apiFetch(`/api/blog-staging/${siteId}/script-status`);
+  return siteApiFetch(`/api/blog-staging/${siteId}/script-status`);
 }
 
 // "Publish your draft post." - `itemId` is Webflow's own CMS item id (from
@@ -81,7 +81,7 @@ export function saveItemPublishState(
   itemId: string,
   publish: boolean,
 ): Promise<{ isDraft: boolean }> {
-  return apiFetch(`/api/blog-staging/${siteId}/collections/${collectionId}/items/${itemId}/publish-state`, {
+  return siteApiFetch(`/api/blog-staging/${siteId}/collections/${collectionId}/items/${itemId}/publish-state`, {
     method: "PUT",
     body: JSON.stringify({ publish }),
   });

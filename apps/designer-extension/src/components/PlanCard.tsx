@@ -2,49 +2,54 @@ import { useEffect, useState } from "react";
 import { ButtonPrimary } from "./ButtonPrimary";
 import { Icon } from "./Icon";
 import { ACTIVE_FILL_GRADIENT } from "./RangeSlider";
-import { apiFetch } from "../services/apiClient";
-import { getWebflowDesigner } from "../services/webflowDesigner";
+import { fetchShaderUsage, onShaderUsageChanged, type ShaderUsage } from "../services/shaderUsage";
 import { trackEvent } from "../services/analytics";
 import { useBillingStatus } from "../hooks/useBillingStatus";
+import { planCache } from "../services/planCache";
 
-// Free plan's preset ceiling - not read from any backend "plans" row (that
-// table exists but has no routes yet, see CLAUDE.md's Database section), so
-// this is the one place that number lives for now.
-const FREE_PLAN_PRESET_LIMIT = 3;
-
-// Real usage, not a placeholder count: resolves the current site's id via
-// the Designer API and counts that site's actual saved presets through the
-// already-existing GET /api/presets/:siteId route. Falls back to 0 (not an
-// error state) on any failure - no real Designer connection (sandbox/plain
-// browser dev), no installation for this site yet, or a request failure all
-// land here, and this card is shown disabled regardless during this beta
-// pass, so there's nothing useful to surface differently for each case.
-// Kept local to this file (not hooks/) since PlanCard is its only consumer -
-// promote it to hooks/ if a second one ever needs it.
-function usePresetUsage() {
-  const [count, setCount] = useState(0);
+// Real usage: how many of the Free plan's 3 lifetime shaders this account has
+// spent (editor shaders and gallery presets share one pool; deleting a shader
+// does not give it back), tracked server-side by the Data Client's
+// routes/shaderUsage.ts. Falls back to an empty card on any failure.
+export function useShaderUsage() {
+  // Starts from the session cache (services/planCache.ts) so a remount doesn't
+  // begin as "unknown". `loaded` flips true after the first response OR failure,
+  // so a failed fetch settles on Free instead of showing the skeleton forever.
+  const [usage, setUsage] = useState<ShaderUsage | null>(planCache.usage);
+  const [loaded, setLoaded] = useState(planCache.usage !== null);
 
   useEffect(() => {
     let cancelled = false;
     async function load() {
       try {
-        const { siteId } = await getWebflowDesigner().getSiteInfo();
-        const list = await apiFetch<unknown[]>(`/api/presets/${siteId}`);
-        if (!cancelled) setCount(list.length);
+        const next = await fetchShaderUsage();
+        planCache.usage = next;
+        if (!cancelled) setUsage(next);
       } catch {
-        if (!cancelled) setCount(0);
+        // Keep whatever loaded; the card stays harmless without a session.
+      } finally {
+        if (!cancelled) setLoaded(true);
       }
     }
     load();
+    const off = onShaderUsageChanged(() => {
+      fetchShaderUsage()
+        .then((next) => {
+          planCache.usage = next;
+          if (!cancelled) setUsage(next);
+        })
+        .catch(() => undefined);
+    });
     return () => {
       cancelled = true;
+      off();
     };
   }, []);
 
-  return count;
+  return { usage, loaded };
 }
 
-// Plan/usage row - built with real data (usePresetUsage above). Used both
+// Plan/usage row - built with real data (useShaderUsage above). Used both
 // inline in AccountTab and as PlanBillingModal.tsx's own top "Free plan"
 // box - a single shared component so both places always show identical
 // usage/progress data and stay in sync automatically, never two copies
@@ -63,21 +68,37 @@ function usePresetUsage() {
 // caller renders its own button separately after the checklist rather than
 // this one.
 export function PlanCard({ showUpgradeButton = true }: { showUpgradeButton?: boolean }) {
-  const usedPresets = usePresetUsage();
-  const percent = Math.min(100, (usedPresets / FREE_PLAN_PRESET_LIMIT) * 100);
-  const { status, upgrading, startUpgrade } = useBillingStatus();
-  const isPro = status?.plan === "pro";
+  const { usage, loaded: usageLoaded } = useShaderUsage();
+  const used = usage?.used ?? 0;
+  const limit = usage?.limit ?? 3;
+  const percent = Math.min(100, (used / limit) * 100);
+  const { status, loading: statusLoading, upgrading, startUpgrade } = useBillingStatus();
+  const isPro = status?.plan === "pro" || usage?.plan === "pro";
+  // Pro as soon as either source says so; Free only once BOTH have answered.
+  // Until then the plan is unknown - render a neutral skeleton, never "Free".
+  const planKnown = isPro || (usageLoaded && !statusLoading);
 
   function handleUpgradeClick() {
     trackEvent("click_upgrade_to_pro");
     startUpgrade();
   }
 
+  if (!planKnown) {
+    // Same box as the real card (3 rows: title, subtitle, bar) so nothing jumps.
+    return (
+      <div aria-busy="true" className="flex border-border-border border rounded-8 flex-col gap-3 p-3">
+        <div className="h-5 w-20 animate-pulse rounded-4 bg-border-border" />
+        <div className="h-5 w-32 animate-pulse rounded-4 bg-border-border" />
+        <div className="h-1 w-full animate-pulse rounded-[4px] bg-border-border" />
+      </div>
+    );
+  }
+
   if (isPro) {
     return (
       <div className="flex border-border-border border rounded-8 flex-col gap-3 p-3">
         <span className="font-sans text-text-sm-medium text-text-black">Pro plan</span>
-        <span className="font-sans text-mobile-text-md-regular text-text-secondary">Unlimited shaders and presets.</span>
+        <span className="font-sans text-mobile-text-md-regular text-text-secondary">Unlimited shaders.</span>
       </div>
     );
   }
@@ -86,7 +107,7 @@ export function PlanCard({ showUpgradeButton = true }: { showUpgradeButton?: boo
     <div className="flex border-border-border border rounded-8 flex-col gap-3 p-3">
       <span className="font-sans text-text-sm-medium text-text-black">Free plan</span>
       <span className="font-sans text-mobile-text-md-regular text-text-secondary">
-        {usedPresets} of {FREE_PLAN_PRESET_LIMIT} presets used
+        {used} of {limit} shaders used
       </span>
       <div className="h-1 w-full overflow-hidden rounded-[4px] bg-border-border">
         <div className="h-full rounded-[4px]" style={{ width: `${percent}%`, background: ACTIVE_FILL_GRADIENT }} />

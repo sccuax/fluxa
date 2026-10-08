@@ -1,6 +1,7 @@
 import { ButtonSecondary } from "./ButtonSecondary";
 import { Icon } from "./Icon";
 import { apiFetch } from "../services/apiClient";
+import { clearPlanCache } from "../services/planCache";
 
 // A real ButtonSecondary call site, not a stub: hits better-auth's own
 // POST /api/auth/sign-out (the same raw-fetch-to-a-better-auth-endpoint
@@ -18,6 +19,7 @@ export function LogoutButton({ onSignOut }: { onSignOut: () => void }) {
     } catch {
       // best-effort - see comment above.
     }
+    clearPlanCache();
     onSignOut();
   }
 
