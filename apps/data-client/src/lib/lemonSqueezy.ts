@@ -14,7 +14,9 @@ interface CheckoutResponse {
   data: { attributes: { url: string } };
 }
 
-// Creates a hosted Checkout for the one Pro variant, tagged with our own
+export type BillingIntervalChoice = "monthly" | "yearly";
+
+// Creates a hosted Checkout for the monthly or yearly Pro variant, tagged with our own
 // userId via checkout_data.custom so the eventual webhook can resolve
 // ownership directly - no nonce/correlation table needed (see billing.ts's
 // own top comment for why: Lemon Squeezy's webhook is an independent,
@@ -23,8 +25,9 @@ interface CheckoutResponse {
 // there).
 export async function createProCheckout(
   env: Bindings,
-  args: { userId: string; userEmail: string; redirectUrl: string },
+  args: { userId: string; userEmail: string; redirectUrl: string; interval: BillingIntervalChoice },
 ): Promise<{ url: string }> {
+  const variantId = args.interval === "yearly" ? env.LEMONSQUEEZY_VARIANT_YEARLY : env.LEMONSQUEEZY_VARIANT_MONTHLY;
   const response = await fetch(`${LEMONSQUEEZY_API_BASE}/checkouts`, {
     method: "POST",
     headers: {
@@ -46,7 +49,7 @@ export async function createProCheckout(
         },
         relationships: {
           store: { data: { type: "stores", id: env.LEMONSQUEEZY_STORE_ID } },
-          variant: { data: { type: "variants", id: env.LEMONSQUEEZY_VARIANT_ID } },
+          variant: { data: { type: "variants", id: variantId } },
         },
       },
     }),

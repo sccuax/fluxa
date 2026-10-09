@@ -71,7 +71,11 @@ interface PickedImage {
   alt: string | null;
 }
 
-export function useCmsImagesFeature(siteId: string | null, selected: AnyElement | null) {
+export function useCmsImagesFeature(
+  siteId: string | null,
+  selected: AnyElement | null,
+  ensurePro: () => Promise<boolean>,
+) {
   const [wizardOpen, setWizardOpen] = useState(false);
   const [step, setStep] = useState<ImageWizardStep>("collection");
   const [busy, setBusy] = useState(false);
@@ -274,6 +278,7 @@ export function useCmsImagesFeature(siteId: string | null, selected: AnyElement 
       setWizardError("Select an Image element in the Designer first.");
       return;
     }
+    if (!(await ensurePro())) return;
     setBusy(true);
     setWizardError(null);
     try {

@@ -1,0 +1,12 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import LoginPage from "@/components/sections/LoginPage.astro";
+import { resolveLocale, useTranslations } from "@/i18n";
+
+const locale = resolveLocale(Astro.currentLocale);
+const t = useTranslations(locale);
+---
+
+<BaseLayout title={t.login.metaTitle} noindex footer={false}>
+  <LoginPage locale={locale} />
+</BaseLayout>

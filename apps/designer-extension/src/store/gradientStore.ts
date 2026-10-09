@@ -25,11 +25,21 @@ interface GradientStore {
   setColorModalOpen: (open: boolean) => void;
 }
 
+// What the editor starts with (and reset() returns to): the schema's own
+// defaults, except the Noise (`grain`) effect starts ON - the user decides
+// whether to turn it off. Deliberately NOT changed in gradient-core's schema:
+// that default also validates/fills stored presets and backend requests, where
+// a preset saved without a `grain` field must keep meaning "off".
+const EDITOR_DEFAULT_CONFIG: GradientConfig = {
+  ...DEFAULT_GRADIENT_CONFIG,
+  grain: "on",
+};
+
 export const useGradientStore = create<GradientStore>((set) => ({
-  config: DEFAULT_GRADIENT_CONFIG,
+  config: EDITOR_DEFAULT_CONFIG,
   setConfig: (patch) =>
     set((state) => ({ config: { ...state.config, ...patch } })),
-  reset: () => set({ config: DEFAULT_GRADIENT_CONFIG }),
+  reset: () => set({ config: EDITOR_DEFAULT_CONFIG }),
   colorModalOpen: false,
   setColorModalOpen: (open) => set({ colorModalOpen: open }),
 }));

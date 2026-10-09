@@ -1,0 +1,11 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import LoginPage from "@/components/sections/LoginPage.astro";
+import { useTranslations } from "@/i18n";
+
+const t = useTranslations("es");
+---
+
+<BaseLayout title={t.login.metaTitle} noindex footer={false}>
+  <LoginPage locale="es" />
+</BaseLayout>

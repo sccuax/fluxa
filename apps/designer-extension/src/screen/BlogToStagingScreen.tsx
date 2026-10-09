@@ -39,7 +39,7 @@ const BLOG_STAGING_STEPS: BlogStagingStep[] = ["collection", "posts"];
 
 const PAGE_SIZE = 24;
 
-export function useBlogStagingFeature(siteId: string | null) {
+export function useBlogStagingFeature(siteId: string | null, ensurePro: () => Promise<boolean>) {
   const [step, setStep] = useState<BlogStagingStep>("collection");
   const [busy, setBusy] = useState(false);
   const [stepError, setStepError] = useState<string | null>(null);
@@ -127,10 +127,11 @@ export function useBlogStagingFeature(siteId: string | null) {
 
   async function handleToggleStaging(item: BlogStagingItem, stagingOnly: boolean) {
     if (!siteId || !selectedCollectionId) return;
+    if (stagingOnly && !(await ensurePro())) return;
     setSavingSlug(item.slug);
     setItemsError(null);
     try {
-      await saveItemStaging(siteId, selectedCollectionId, item.slug, stagingOnly);
+      await saveItemStaging(siteId, selectedCollectionId, item.slug, stagingOnly, item.name);
       setItems((prev) => prev.map((it) => (it.slug === item.slug ? { ...it, stagingOnly } : it)));
       refreshScriptStatus();
     } catch (err) {
@@ -142,6 +143,7 @@ export function useBlogStagingFeature(siteId: string | null) {
 
   async function handleTogglePublish(item: BlogStagingItem, publish: boolean) {
     if (!siteId || !selectedCollectionId) return;
+    if (publish && !(await ensurePro())) return;
     setSavingSlug(item.slug);
     setItemsError(null);
     try {
@@ -164,11 +166,13 @@ export function useBlogStagingFeature(siteId: string | null) {
 
   async function handleToggleAllStaging(stagingOnly: boolean) {
     if (!siteId || !selectedCollectionId || items.length === 0) return;
+    if (stagingOnly && !(await ensurePro())) return;
     setAllStagingBusy(true);
     setItemsError(null);
     try {
       const slugs = items.map((item) => item.slug);
-      await saveAllItemsStaging(siteId, selectedCollectionId, stagingOnly, slugs);
+      const names = Object.fromEntries(items.map((item) => [item.slug, item.name]));
+      await saveAllItemsStaging(siteId, selectedCollectionId, stagingOnly, slugs, names);
       setItems((prev) => prev.map((it) => ({ ...it, stagingOnly })));
       refreshScriptStatus();
     } catch (err) {

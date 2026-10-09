@@ -7,7 +7,17 @@ compatibility_flags = ["nodejs_compat"]
 # itself was left alone in Cloudflare (not deleted); remove it manually via
 # `wrangler d1 delete fluxa-db` if you're sure you don't need it.
 
+# Same Worker, second hostname: the website (fluxa.agency) calls the API from the browser with a session cookie,
+# which only works first-party-style when both share the registrable domain. The Designer Extension keeps using the
+# workers.dev hostname (its cookies are partitioned per host, so the two never collide).
+routes = [{ pattern = "api.fluxa.agency", custom_domain = true }]
+# Adding `routes` makes wrangler DISABLE the workers.dev hostname unless this is explicit - and the Designer Extension,
+# the Webflow OAuth redirect and Google sign-in all still use it. Keep it on.
+workers_dev = true
+
 [vars]
+# Where the website lives - /billing/start sends logged-out visitors to its /login page.
+WEB_APP_URL = "https://fluxa.agency"
 WEBFLOW_CLIENT_ID = "69de87bde618fafc0c3c4571eaf4f8c917b54bd9d4c140dcf806b8a0fa79211e"
 WEBFLOW_REDIRECT_URI = "https://fluxa-data-client.jojanmartinez533.workers.dev/auth/callback"
 BETTER_AUTH_URL = "https://fluxa-data-client.jojanmartinez533.workers.dev"
@@ -21,8 +31,9 @@ CLOUDFLARE_ACCOUNT_ID = "2137e37d161abba0e634109cfde544f1"
 # still required to act on them - see the secrets list below). PLACEHOLDER
 # VALUES - fill in with the real Store ID / Variant ID from the Lemon
 # Squeezy dashboard (Test mode first) before billing/checkout will work.
-LEMONSQUEEZY_STORE_ID = ""
-LEMONSQUEEZY_VARIANT_ID = ""
+LEMONSQUEEZY_STORE_ID = "484741"
+LEMONSQUEEZY_VARIANT_MONTHLY = "2218936"
+LEMONSQUEEZY_VARIANT_YEARLY = "2218946"
 
 # Secrets, do NOT put real values here - set them with:
 #   wrangler secret put WEBFLOW_CLIENT_SECRET

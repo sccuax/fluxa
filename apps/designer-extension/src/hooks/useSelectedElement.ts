@@ -49,6 +49,10 @@ export async function resolveLabel(element: AnyElement): Promise<string | null> 
   return null;
 }
 
+function elementKey(element: AnyElement | null): string | null {
+  return element ? `${element.id.component}:${element.id.element}` : null;
+}
+
 // Polls the Designer's current selection. The Designer API has no
 // selection-change event as of this writing, so a short interval is the
 // pragmatic option - swap for a subscription if/when Webflow adds one.
@@ -63,16 +67,35 @@ export function useSelectedElement(pollIntervalMs = 500) {
   useEffect(() => {
     let cancelled = false;
 
+    // Every poll yields a brand-new element object (a fresh Designer proxy)
+    // even when the selection didn't change, and a plain `setState({...})`
+    // with a new object always re-renders every consumer - twice a second,
+    // per hook instance, for EditorTab (ControlPanel + the live WebGL
+    // preview underneath it) and DashboardHeader. So a poll that lands on the
+    // same element with the same label/error keeps the previous state object
+    // (React bails out on an identical reference). Elements are compared by
+    // their id; their capability flags and getters are fixed per element.
+    function applyPoll(next: SelectedElementState) {
+      setState((prev) =>
+        !prev.loading &&
+        prev.label === next.label &&
+        prev.error === next.error &&
+        elementKey(prev.element) === elementKey(next.element)
+          ? prev
+          : next,
+      );
+    }
+
     async function poll() {
       try {
         const element = await getWebflowDesigner().getSelectedElement();
         const label = element ? await resolveLabel(element) : null;
         if (!cancelled) {
-          setState({ element, label, loading: false, error: null });
+          applyPoll({ element, label, loading: false, error: null });
         }
       } catch (error) {
         if (!cancelled) {
-          setState({
+          applyPoll({
             element: null,
             label: null,
             loading: false,

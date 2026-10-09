@@ -14,6 +14,88 @@ export const en = {
     login: "Login",
     cta: "Try Fluxa free",
     menu: "Menu",
+    // Mega menus (components/layout/MegaMenu.astro): hovering "Shaders gradients" / "Webflow solutions" opens them. Tab and card
+    // copy marked DRAFT is a placeholder (only the first tab of each menu is in the design).
+    menus: {
+      shaders: {
+        title: "Shaders gradients",
+        tabs: [
+          {
+            label: "Features",
+            heading: "What Fluxa can do",
+            more: "Explore all features",
+            cards: [
+              { title: "Gradient type", body: "Linear, radial, or conic. Pick the shape that fits your layout." },
+              { title: "Shapes", body: "Plane, sphere, liquid. Real depth, not flat noise." },
+              { title: "Color control", body: "HEX, RGB, HSL, or the eyedropper. Match your brand exact." },
+              { title: "Preset library", body: "Start from a preset instead of a blank canvas." },
+            ],
+          },
+          {
+            label: "How it works",
+            heading: "From install to a live gradient",
+            more: "See the steps",
+            cards: [
+              { title: "Install the app", body: "Add Fluxa from the Webflow Apps panel." }, // DRAFT
+              { title: "Design the shader", body: "Pick shape, colors and motion in the editor." }, // DRAFT
+              { title: "Apply to a section", body: "One click puts it behind any element." }, // DRAFT
+            ],
+          },
+          {
+            label: "Presets",
+            heading: "Start from a preset",
+            more: "Browse presets",
+            cards: [
+              { title: "Free presets", body: "A handful of ready-made looks to get going." }, // DRAFT
+              { title: "Pro presets", body: "The full library, with new looks added over time." }, // DRAFT
+              { title: "Your own presets", body: "Save your favourite settings and reuse them." }, // DRAFT
+            ],
+          },
+        ],
+      },
+      solutions: {
+        title: "Webflow solutions",
+        tabs: [
+          {
+            label: "CMS",
+            heading: "What Fluxa can solve",
+            more: "Explore all solutions",
+            cards: [
+              {
+                title: "Multi-image CMS gallery",
+                body: "Show every image from a multi-image field. Turn Webflow's multi-image fields into reusable galleries.",
+              },
+              {
+                title: "CMS images in Designer",
+                body: "See real CMS images while you design. Preview your actual CMS images directly in the Webflow Designer.",
+              },
+              {
+                title: "Blog to staging",
+                body: "Preview and publish draft posts to staging without affecting your live site.",
+              },
+            ],
+          },
+          {
+            label: "What's new",
+            heading: "Latest from Fluxa",
+            more: "Explore all solutions",
+            cards: [
+              { title: "Blog to staging", body: "Draft posts stay hidden on your live domain until you publish them." }, // DRAFT
+              { title: "Gallery fixes", body: "Fixes to the gallery ship from our side: no republish needed." }, // DRAFT
+            ],
+          },
+          {
+            label: "Coming soon",
+            heading: "On the way",
+            more: "Explore all solutions",
+            cards: [
+              { title: "More CMS solutions", body: "More Webflow gaps filled, one tool at a time." }, // DRAFT
+              { title: "Have an idea?", body: "Tell us which Webflow limit we should solve next." }, // DRAFT
+            ],
+          },
+        ],
+      },
+    },
   },
   hero: {
     eyebrow: "Webflow Designer Extension",
@@ -115,6 +197,36 @@ export const en = {
     titleTail: "No-Code Required",
     body: "Install Fluxa and add your first animated gradient in under a minute.",
     button: "Install on Webflow",
+  },
+  login: {
+    metaTitle: "Sign in — Fluxa",
+    heroTitle: "Motion, without the code.",
+    title: "It's time to Fluxa",
+    titleSignUp: "Create your Fluxa account",
+    name: "Your name",
+    namePlaceholder: "Name",
+    email: "Your email",
+    emailPlaceholder: "name@email.com",
+    password: "Password",
+    showPassword: "Show password",
+    hidePassword: "Hide password",
+    signIn: "Sign in",
+    signingIn: "Signing in…",
+    signUp: "Create account",
+    signingUp: "Creating account…",
+    noAccount: "Not registered?",
+    haveAccount: "Already have an account?",
+    toSignUp: "Create account",
+    toSignIn: "Sign in",
+    checkoutHint: "Sign in to continue to checkout.",
+    errors: {
+      invalidCredentials: "Incorrect email or password.",
+      emailInvalid: "Enter a valid email.",
+      nameRequired: "Enter your name.",
+      passwordShort: "Use at least 8 characters.",
+      emailTaken: "An account with this email already exists.",
+      generic: "Something went wrong. Please try again.",
+    },
   },
   footer: {
     rights: "All rights reserved.",

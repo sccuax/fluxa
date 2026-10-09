@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { memo, useRef } from "react";
 import { ShaderGradientCanvas, ShaderGradient } from "@shadergradient/react";
 import { getEffectiveGradientColors, type GradientConfig } from "@fluxa/gradient-core";
 import { useGradientStore } from "../store/gradientStore";
@@ -23,7 +23,7 @@ import { useAdaptivePixelDensity } from "../hooks/useAdaptivePixelDensity";
 // clobber) EditorTab's own in-progress gradientStore. Every existing caller
 // (EditorTab.tsx, apps/preset-admin) omits this prop and keeps reading the
 // store exactly as before.
-export function GradientCanvas({
+function GradientCanvasImpl({
   preserveDrawingBuffer,
   config: configProp,
 }: { preserveDrawingBuffer?: boolean; config?: GradientConfig } = {}) {
@@ -80,3 +80,8 @@ export function GradientCanvas({
     </div>
   );
 }
+
+// Memoized so a parent re-render (EditorTab) with unchanged props never
+// reconciles the live R3F scene again - it re-renders only on its own store
+// subscription or a real prop change.
+export const GradientCanvas = memo(GradientCanvasImpl);

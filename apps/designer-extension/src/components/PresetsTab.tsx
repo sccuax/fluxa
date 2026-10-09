@@ -11,6 +11,10 @@ import { useSelectedElement } from "../hooks/useSelectedElement";
 import { applyGradientToElement, canApplyPreset } from "../services/applyGradient";
 import { applyGlassLiquidToElement } from "../services/applyGlassLiquid";
 import { applyRuidoEvolutivoToElement } from "../services/applyRuidoEvolutivo";
+import { claimShaderSlot } from "../services/shaderUsage";
+import { ShaderLimitModal } from "./ShaderLimitModal";
+import { ProPresetModal } from "./ProPresetModal";
+import { useBillingStatus } from "../hooks/useBillingStatus";
 import { getWebflowDesigner } from "../services/webflowDesigner";
 import { trackEvent } from "../services/analytics";
 
@@ -60,6 +64,9 @@ export function PresetsTab() {
   const [resultsDismissed, setResultsDismissed] = useState(false);
   const [filters, setFilters] = useState<PresetFilters>(DEFAULT_PRESET_FILTERS);
   const [filterModalOpen, setFilterModalOpen] = useState(false);
+  const [showLimit, setShowLimit] = useState(false);
+  const [showProRestriction, setShowProRestriction] = useState(false);
+  const { status: billingStatus, upgrading, startUpgrade } = useBillingStatus();
 
   const [allPresets, setAllPresets] = useState<GalleryPresetDisplay[]>([]);
   const [loading, setLoading] = useState(true);
@@ -87,7 +94,19 @@ export function PresetsTab() {
       });
       return;
     }
+    // Pro presets are locked for anyone without an active Pro plan.
+    if (preset.license === "pro" && billingStatus?.plan !== "pro") {
+      setPreviewPreset(null);
+      setShowProRestriction(true);
+      return;
+    }
     try {
+      const kind = preset.kind === "glassLiquid" || preset.kind === "ruidoEvolutivo" ? preset.kind : "shaderGradient";
+      if (!(await claimShaderSlot(element, kind))) {
+        setPreviewPreset(null);
+        setShowLimit(true);
+        return;
+      }
       if (preset.kind === "glassLiquid") {
         await applyGlassLiquidToElement(element, preset.config);
       } else if (preset.kind === "ruidoEvolutivo") {
@@ -288,6 +307,14 @@ export function PresetsTab() {
           }}
         />
       )}
+
+      <ProPresetModal
+        open={showProRestriction}
+        onClose={() => setShowProRestriction(false)}
+        onUpgrade={startUpgrade}
+        upgrading={upgrading}
+      />
+      <ShaderLimitModal open={showLimit} onClose={() => setShowLimit(false)} />
 
       {previewPreset && (
         <PresetPreviewModal

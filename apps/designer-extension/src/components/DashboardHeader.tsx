@@ -111,6 +111,19 @@ export function truncateLabel(label: string): string {
   return label.length > LABEL_MAX_CHARS ? `${label.slice(0, LABEL_MAX_CHARS)}…` : label;
 }
 
+// The selected-element name lives in its own component (not inline in
+// DashboardHeader) so `useSelectedElement`'s Designer poll only runs while
+// it's actually rendered - it isn't shown under Webflow solutions, and that
+// screen already polls the selection itself.
+function SelectedElementLabel() {
+  const { label } = useSelectedElement();
+  return (
+    <span className="text-md-regular text-text-secondary font-sans">
+      {label ? truncateLabel(label) : "No selection"}
+    </span>
+  );
+}
+
 export function DashboardHeader({
   activeService,
   onSelectShaders,
@@ -120,7 +133,6 @@ export function DashboardHeader({
   onSelectShaders: () => void;
   onSelectWebflowSolutions: () => void;
 }) {
-  const { label } = useSelectedElement();
   const [gradientsMenuOpen, setGradientsMenuOpen] = useState(false);
   const [appMenuOpen, setAppMenuOpen] = useState(false);
   const [serviceMenuOpen, setServiceMenuOpen] = useState(false);
@@ -189,23 +201,26 @@ export function DashboardHeader({
       </Dropdown>
 
       <div className="flex items-center gap-[16px]">
-        <div className="flex items-center gap-[4px] text-text-white">
-          <span className="text-md-regular text-text-secondary font-sans">
-            {label ? truncateLabel(label) : "No selection"}
-          </span>
-          <button
-            ref={chevronButtonRef}
-            type="button"
-            onClick={() => setGradientsMenuOpen((current) => !current)}
-            aria-label="Show gradients applied on this page"
-          >
-            <Icon
-              name="chevronDown"
-              className={`cursor-pointer transition-transform duration-200 ease-out ${gradientsMenuOpen ? "rotate-180" : "rotate-0"
-                }`}
-            />
-          </button>
-        </div>
+        {/* Selected-element name + its "gradients applied on this page"
+            chevron: shader-gradients only - hidden under Webflow solutions,
+            per explicit direction. */}
+        {activeService === "shaders" && (
+          <div className="flex items-center gap-[4px] text-text-white">
+            <SelectedElementLabel />
+            <button
+              ref={chevronButtonRef}
+              type="button"
+              onClick={() => setGradientsMenuOpen((current) => !current)}
+              aria-label="Show gradients applied on this page"
+            >
+              <Icon
+                name="chevronDown"
+                className={`cursor-pointer transition-transform duration-200 ease-out ${gradientsMenuOpen ? "rotate-180" : "rotate-0"
+                  }`}
+              />
+            </button>
+          </div>
+        )}
 
         <button
           ref={appMenuButtonRef}
@@ -222,11 +237,13 @@ export function DashboardHeader({
           component) so it can stay mounted briefly after `open` goes false
           to actually play its exit animation instead of vanishing
           instantly. See Dropdown.tsx's own comment for the full reasoning. */}
-      <AppliedGradientsMenu
-        open={gradientsMenuOpen}
-        onCloseRequest={() => setGradientsMenuOpen(false)}
-        triggerRef={chevronButtonRef}
-      />
+      {activeService === "shaders" && (
+        <AppliedGradientsMenu
+          open={gradientsMenuOpen}
+          onCloseRequest={() => setGradientsMenuOpen(false)}
+          triggerRef={chevronButtonRef}
+        />
+      )}
       <HeaderAppMenu
         open={appMenuOpen}
         onCloseRequest={() => setAppMenuOpen(false)}

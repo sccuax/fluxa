@@ -39,10 +39,11 @@ export function saveItemStaging(
   collectionId: string,
   itemSlug: string,
   stagingOnly: boolean,
+  itemName?: string,
 ): Promise<{ stagingOnly: boolean }> {
   return siteApiFetch(
     `/api/blog-staging/${siteId}/collections/${collectionId}/items/${encodeURIComponent(itemSlug)}/staging`,
-    { method: "PUT", body: JSON.stringify({ stagingOnly }) },
+    { method: "PUT", body: JSON.stringify({ stagingOnly, itemName: itemName || undefined }) },
   );
 }
 
@@ -54,10 +55,11 @@ export function saveAllItemsStaging(
   collectionId: string,
   stagingOnly: boolean,
   itemSlugs: string[],
+  itemNames?: Record<string, string>,
 ): Promise<{ stagingOnly: boolean; count: number }> {
   return siteApiFetch(`/api/blog-staging/${siteId}/collections/${collectionId}/items/staging-all`, {
     method: "PUT",
-    body: JSON.stringify({ stagingOnly, itemSlugs }),
+    body: JSON.stringify({ stagingOnly, itemSlugs, itemNames }),
   });
 }
 

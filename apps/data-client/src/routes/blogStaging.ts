@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import type { AppEnv } from "../types";
 import type { Database } from "../db/client";
@@ -242,6 +242,30 @@ blogStagingRoutes.get(
         : [];
       const stagingBySlug = new Map(overrides.map((row) => [row.itemSlug, row.stagingOnly]));
 
+      // Self-heal the stored display name (see db/app-schema.ts's itemName
+      // comment): rows toggled before that column existed, or whose item was
+      // renamed since, get it refreshed the next time the collection lists.
+      const nameBySlug = new Map(pageItems.map((item) => [item.slug, item.name]));
+      const staleNames = overrides.filter((row) => {
+        const name = nameBySlug.get(row.itemSlug);
+        return row.stagingOnly && name && row.itemName !== name;
+      });
+      if (staleNames.length) {
+        try {
+          await Promise.all(
+            staleNames.map((row) =>
+              db
+                .update(blogStagingItems)
+                .set({ itemName: nameBySlug.get(row.itemSlug) })
+                .where(eq(blogStagingItems.id, row.id)),
+            ),
+          );
+        } catch (err) {
+          // Best effort - the list itself must still load.
+          console.error("blog-staging itemName backfill failed", err);
+        }
+      }
+
       const itemsWithStaging = pageItems.map((item) => ({
         ...item,
         stagingOnly: stagingBySlug.get(item.slug) ?? false,
@@ -272,7 +296,7 @@ blogStagingRoutes.put(
       return c.json(verifiedInstallationError(access), 403);
     }
 
-    const { stagingOnly } = setBlogStagingItemSchema.parse(await c.req.json());
+    const { stagingOnly, itemName } = setBlogStagingItemSchema.parse(await c.req.json());
 
     if (stagingOnly) {
       try {
@@ -295,10 +319,10 @@ blogStagingRoutes.put(
 
     await db
       .insert(blogStagingItems)
-      .values({ siteId, collectionId, itemSlug, stagingOnly: true })
+      .values({ siteId, collectionId, itemSlug, itemName, stagingOnly: true })
       .onConflictDoUpdate({
         target: [blogStagingItems.siteId, blogStagingItems.itemSlug],
-        set: { collectionId, stagingOnly: true, updatedAt: new Date() },
+        set: { collectionId, stagingOnly: true, updatedAt: new Date(), ...(itemName ? { itemName } : {}) },
       });
 
     return c.json({ itemSlug, stagingOnly: true });
@@ -322,7 +346,7 @@ blogStagingRoutes.put(
       return c.json(verifiedInstallationError(access), 403);
     }
 
-    const { stagingOnly, itemSlugs } = setAllBlogStagingItemsSchema.parse(await c.req.json());
+    const { stagingOnly, itemSlugs, itemNames } = setAllBlogStagingItemsSchema.parse(await c.req.json());
 
     if (stagingOnly) {
       try {
@@ -347,10 +371,25 @@ blogStagingRoutes.put(
     // app's own "prefer a batch write over many small ones" convention.
     await db
       .insert(blogStagingItems)
-      .values(itemSlugs.map((itemSlug) => ({ siteId, collectionId, itemSlug, stagingOnly: true })))
+      .values(
+        itemSlugs.map((itemSlug) => ({
+          siteId,
+          collectionId,
+          itemSlug,
+          itemName: itemNames?.[itemSlug],
+          stagingOnly: true,
+        })),
+      )
       .onConflictDoUpdate({
         target: [blogStagingItems.siteId, blogStagingItems.itemSlug],
-        set: { collectionId, stagingOnly: true, updatedAt: new Date() },
+        // excluded.item_name is NULL when the caller sent no name for that
+        // slug - COALESCE keeps whatever name is already stored.
+        set: {
+          collectionId,
+          stagingOnly: true,
+          updatedAt: new Date(),
+          itemName: sql`COALESCE(excluded.item_name, ${blogStagingItems.itemName})`,
+        },
       });
 
     return c.json({ stagingOnly: true, count: itemSlugs.length });

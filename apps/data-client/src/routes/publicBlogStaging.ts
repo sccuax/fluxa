@@ -53,14 +53,19 @@ publicBlogStagingRoutes.get(
     const db = createDb(c.env.DATABASE_URL);
 
     const rows = await db
-      .select({ itemSlug: blogStagingItems.itemSlug })
+      .select({ itemSlug: blogStagingItems.itemSlug, itemName: blogStagingItems.itemName })
       .from(blogStagingItems)
       .where(and(eq(blogStagingItems.siteId, siteId), eq(blogStagingItems.stagingOnly, true)));
 
     // no-store: a toggle in the extension must show up on the very next
     // page load of the live site.
     c.header("Cache-Control", "no-store");
-    return c.json({ slugs: rows.map((row) => row.itemSlug) });
+    return c.json({
+      slugs: rows.map((row) => row.itemSlug),
+      // Fallback identifier for a rendered item that shows neither its slug
+      // nor a link to its detail page (see lib/blogStagingRuntime.ts).
+      names: rows.map((row) => row.itemName).filter((name): name is string => !!name),
+    });
   },
 );
 

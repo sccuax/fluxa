@@ -24,7 +24,9 @@ import { publicRuntimeAssetRoutes } from "./routes/runtimeAssets";
 import { profileRoutes } from "./routes/profile";
 import { oauthPopupRoutes } from "./routes/oauthPopup";
 import { oauthPopupExchangeRoutes } from "./routes/oauthPopupExchange";
-import { billingRoutes } from "./routes/billing";
+import { billingRoutes, billingStartRoutes } from "./routes/billing";
+import { shaderUsageRoutes } from "./routes/shaderUsage";
+import { isWebOrigin } from "./lib/webOrigins";
 import { billingCheckoutCompleteRoutes } from "./routes/billingCheckoutComplete";
 
 const app = new Hono<AppEnv>();
@@ -86,7 +88,7 @@ app.use(
         // stopped - remove this line once the demo is done.
         "https://bon-recommends-todd-robbie.trycloudflare.com",
       ];
-      return allowed.includes(origin) ? origin : undefined;
+      return allowed.includes(origin) || isWebOrigin(origin) ? origin : undefined;
     },
     credentials: true,
   }),
@@ -151,6 +153,10 @@ app.on(["POST", "GET"], "/api/auth/*", async (c) => {
     // Google account). Stripping/expiring it here closes this for good.
     return stripPopupSessionCookie(response);
   }
+  // The website (same-site with this API on api.fluxa.agency) needs a plain cookie: a Partitioned one is keyed to
+  // the top-level site, so it would not follow the navigation from fluxa.agency/login to api.fluxa.agency/billing/start.
+  // Only the extension iframe (a different, third-party context) needs CHIPS.
+  if (isWebOrigin(c.req.header("origin"))) return response;
   return addPartitionedAttribute(response);
 });
 
@@ -199,6 +205,9 @@ app.route("/api/oauth-popup-exchange", oauthPopupExchangeRoutes);
 // this codebase has a real documented 404 bug from confusing the two, see
 // the data-client CLAUDE.md's "Multi-person site access" section).
 app.route("/api/billing", billingRoutes);
+app.route("/api/shader-usage", shaderUsageRoutes);
+// Top-level browser navigation (session cookie, redirects), not JSON - the website's "Upgrade to Pro" link.
+app.route("/billing", billingStartRoutes);
 app.route("/billing-checkout-complete", billingCheckoutCompleteRoutes);
 
 export default app;

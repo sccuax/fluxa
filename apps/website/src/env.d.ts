@@ -7,8 +7,6 @@ interface ImportMetaEnv {
   readonly PUBLIC_API_URL?: string;
   /** Where "Try Fluxa free" points (Webflow Marketplace listing or app install). */
   readonly PUBLIC_INSTALL_URL?: string;
-  /** Where "Login" points (no web app yet). */
-  readonly PUBLIC_LOGIN_URL?: string;
 }
 
 interface ImportMeta {

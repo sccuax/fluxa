@@ -4,16 +4,16 @@ import { PlanBillingModal } from "./PlanBillingModal";
 import { SupportModal } from "./SupportModal";
 import { trackEvent } from "../services/analytics";
 
-// Preferences/Plan & billing/Support, each a full-width row (logo + label on
-// the left via its own gap-2 div, a right-pointing chevron on the right -
-// reuses the same chevronDown -rotate-90 trick ProfileCard's own edit button
-// already uses, at its native 12x12 size, no override needed) inside one
-// bordered/rounded card. Each label's icon is its own real Figma asset
-// (Icon.tsx's gear/billing/support entries) - "gear" is deliberately
-// distinct from the existing "preferences" icon (HeaderAppMenu's 12x12
-// gear), not a reuse at a different size.
+// Plan & billing/Support, each a full-width row (logo + label on the left via
+// its own gap-2 div, a right-pointing chevron on the right - reuses the same
+// chevronDown -rotate-90 trick ProfileCard's own edit button already uses, at
+// its native 12x12 size, no override needed) inside one bordered/rounded
+// card. Each label's icon is its own real Figma asset (Icon.tsx's
+// billing/support entries). A "Preferences" row (icon "gear") used to lead
+// this list as a no-op stub - removed 2026-09-24 for Marketplace
+// submission, same as HeaderAppMenu's own Preferences row; re-add it here
+// once a real Preferences screen exists.
 const LINK_ITEMS: Array<{ label: string; icon: IconName }> = [
-  { label: "Preferences", icon: "gear" },
   { label: "Plan & billing", icon: "billing" },
   { label: "Support", icon: "support" },
 ];
@@ -21,11 +21,9 @@ const LINK_ITEMS: Array<{ label: string; icon: IconName }> = [
 // The Tooltip "Locked. Will be available soon." hint every row used to
 // carry was removed (2026-09-14, per explicit direction) - same stance
 // HeaderAppMenu.tsx's own menu already took on this exact pattern. Plan &
-// billing and Support now open real modals (mirrors HeaderAppMenu's own
+// billing and Support open real modals (mirrors HeaderAppMenu's own
 // About/Cookies rows: local open-state booleans + rendering the modal
-// alongside this card rather than inside it). Preferences still has no
-// destination screen (same as HeaderAppMenu's own Preferences row) - stays
-// a no-op click, per explicit direction not to fake a modal for it yet.
+// alongside this card rather than inside it).
 export function LinksCard() {
   const [planBillingOpen, setPlanBillingOpen] = useState(false);
   const [supportOpen, setSupportOpen] = useState(false);

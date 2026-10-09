@@ -5,6 +5,7 @@ export interface Bindings {
   WEBFLOW_REDIRECT_URI: string;
   BETTER_AUTH_SECRET: string;
   BETTER_AUTH_URL: string;
+  WEB_APP_URL: string;
   DESIGNER_EXTENSION_ORIGIN: string;
   GOOGLE_CLIENT_ID: string;
   GOOGLE_CLIENT_SECRET: string;
@@ -54,10 +55,11 @@ export interface Bindings {
   CLOUDFLARE_ANALYTICS_API_TOKEN: string;
   // Lemon Squeezy (payment gateway, routes/billing.ts + lib/lemonSqueezy.ts).
   // API_KEY/WEBHOOK_SECRET are real secrets (wrangler secret put); STORE_ID/
-  // VARIANT_ID just identify the already-created "Pro" product/variant in
+  // VARIANT_MONTHLY/VARIANT_YEARLY just identify the already-created "Pro" variants in
   // the dashboard - not sensitive, plain [vars] in wrangler.toml.
   LEMONSQUEEZY_API_KEY: string;
   LEMONSQUEEZY_WEBHOOK_SECRET: string;
   LEMONSQUEEZY_STORE_ID: string;
-  LEMONSQUEEZY_VARIANT_ID: string;
+  LEMONSQUEEZY_VARIANT_MONTHLY: string;
+  LEMONSQUEEZY_VARIANT_YEARLY: string;
 }

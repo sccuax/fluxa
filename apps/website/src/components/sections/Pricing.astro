@@ -101,8 +101,8 @@ const billed = t.billedYearly.replace("{total}", `$${proAnnualTotal}`);
         </div>
         <p class="min-h-[2lh] max-w-[28ch] text-text-md-regular text-text-secondary">{t.pro.description}</p>
         <hr class="border-border-border" />
-        <div class="flex flex-col items-stretch [&_a]:w-full [&_a]:justify-center">
-          <ButtonPrimary lazyRipple client:visible href={SITE.installUrl} size="md">
+        <div class="flex flex-col items-stretch [&_a]:w-full [&_a]:justify-center" data-pro-cta data-checkout-url={SITE.checkoutUrl}>
+          <ButtonPrimary lazyRipple client:visible href={`${SITE.checkoutUrl}?interval=monthly`} size="md">
             {t.cta}
             <svg width="6" height="10" viewBox="0 0 6 10" fill="none" aria-hidden="true">
               <path d="M1 1l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
@@ -175,4 +175,15 @@ const billed = t.billedYearly.replace("{total}", `$${proAnnualTotal}`);
     btn.addEventListener("click", () => apply(btn.getAttribute("aria-checked") !== "true"));
     apply(false);
   }
+
+  // The Pro button's href is the monthly checkout (works with no JS). On click, pick the interval from the switch
+  // instead of rewriting the href: the button is a React island and a re-render would reset an edited attribute.
+  const proCta = document.querySelector<HTMLElement>("[data-pro-cta]");
+  proCta?.addEventListener("click", (event) => {
+    const link = (event.target as HTMLElement).closest("a");
+    if (!link) return;
+    event.preventDefault();
+    const yearly = btn?.getAttribute("aria-checked") === "true";
+    window.location.href = `${proCta.dataset.checkoutUrl}?interval=${yearly ? "yearly" : "monthly"}`;
+  });
 </script>

@@ -4,6 +4,7 @@ import { bearer, emailOTP, oauthPopup } from "better-auth/plugins";
 import { createDb } from "../db/client";
 import { ensureDestinationVerified } from "./emailRoutingGuard";
 import type { Bindings } from "../types/env";
+import { WEB_ORIGINS } from "./webOrigins";
 
 // Sender for the emailOTP plugin below - fluxa.agency is onboarded onto
 // Cloudflare Email Service (see wrangler.toml's send_email binding). Not a
@@ -240,6 +241,7 @@ export function createAuth(env: Bindings) {
       // origin here once that app exists.
       env.DESIGNER_EXTENSION_ORIGIN,
       "http://localhost:1337",
+      ...WEB_ORIGINS,
       // TEMPORARY - see matching note in index.ts's CORS config. Remove once
       // the live demo over the Cloudflare quick tunnel is done.
       "https://bon-recommends-todd-robbie.trycloudflare.com",

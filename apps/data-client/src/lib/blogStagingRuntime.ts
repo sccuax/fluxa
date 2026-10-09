@@ -12,7 +12,12 @@
 // - every rendered Collection Item for it, on any page, is hidden - matched
 //   by the Multi-image gallery's own Slug mark if present, else by the
 //   item's link to its own detail page (Webflow renders no slug on an item
-//   otherwise). An item with neither can't be identified and stays visible.
+//   otherwise);
+// - a card that exposes neither (e.g. an Authors list: image + name + bio, no
+//   link) is matched by the item's display name as a last resort: any leaf
+//   element whose whole text equals a staging-only item's name. Coarser than
+//   a slug (two items sharing a name both hide). An item showing none of
+//   slug, link or name can't be identified and stays visible.
 // The staging-only slug list is fetched fresh (no-store) on every page load,
 // so a toggle in the extension shows up on the next reload, no publish.
 // Known limitation: slugs are site-wide here (a rendered list item doesn't
@@ -35,6 +40,18 @@ export function buildBlogStagingRuntime(publicBaseUrl: string, siteId: string): 
     return parts.length >= 2 ? parts[parts.length - 1] : null;
   }
 
+  // Last resort: an element with no children whose whole text is a
+  // staging-only item's name (a heading, a title div...).
+  function matchesName(item, names) {
+    var nodes = item.querySelectorAll("*");
+    for (var i = 0; i < nodes.length; i++) {
+      if (nodes[i].children.length) continue;
+      var text = nodes[i].textContent.trim();
+      if (text && names[text]) return true;
+    }
+    return false;
+  }
+
   function itemSlug(item, set) {
     var mark = item.querySelector("[data-fluxa-gallery-slug]");
     var marked = mark ? mark.textContent.trim() : "";
@@ -50,9 +67,11 @@ export function buildBlogStagingRuntime(publicBaseUrl: string, siteId: string): 
     return null;
   }
 
-  function run(slugs) {
+  function run(slugs, nameList) {
     var set = {};
     for (var i = 0; i < slugs.length; i++) set[slugs[i]] = true;
+    var names = Object.create(null);
+    for (var n = 0; n < nameList.length; n++) names[nameList[n]] = true;
 
     var current = detailSlug(location.pathname);
     if (current && set[current]) {
@@ -65,7 +84,7 @@ export function buildBlogStagingRuntime(publicBaseUrl: string, siteId: string): 
     function scan() {
       var items = document.querySelectorAll(".w-dyn-item:not([" + HIDDEN_ATTR + "])");
       for (var j = 0; j < items.length; j++) {
-        if (itemSlug(items[j], set)) {
+        if (itemSlug(items[j], set) || matchesName(items[j], names)) {
           items[j].style.display = "none";
           items[j].setAttribute(HIDDEN_ATTR, "true");
         }
@@ -86,7 +105,7 @@ export function buildBlogStagingRuntime(publicBaseUrl: string, siteId: string): 
     fetch(SLUGS_URL, { cache: "no-store" })
       .then(function (res) { return res.ok ? res.json() : null; })
       .then(function (data) {
-        if (data && data.slugs && data.slugs.length) run(data.slugs);
+        if (data && data.slugs && data.slugs.length) run(data.slugs, data.names || []);
       })
       .catch(function () {});
   }

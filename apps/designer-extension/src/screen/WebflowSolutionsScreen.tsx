@@ -48,6 +48,7 @@ import { UnmaskReveal } from "../components/UnmaskReveal";
 import { NavigatorMarkGuide } from "../components/NavigatorMarkGuide";
 import { WizardStepIndicator } from "../components/WizardStepIndicator";
 import { PillDropdown } from "../components/PillDropdown";
+import { useProSolutionGate } from "../hooks/useProSolutionGate";
 
 // One Arrows/Dots/Autoplay row: label + the exact same on/off switch
 // CookiesModal.tsx's toggles use (ToggleSwitch.tsx - already extracted to
@@ -340,6 +341,9 @@ export function WebflowSolutionsScreen({ onSwitchToShaders }: { onSwitchToShader
 
   const [activeTab, setActiveTab] = useState<WebflowSolutionsTab>("multiImage");
 
+  // Webflow Solutions are Pro-only: each solution's final step asks this first.
+  const { ensurePro, modal: proModal } = useProSolutionGate();
+
   const { element: selected } = useSelectedElement();
 
   const [siteId, setSiteId] = useState<string | null>(null);
@@ -351,11 +355,11 @@ export function WebflowSolutionsScreen({ onSwitchToShaders }: { onSwitchToShader
   // and its fixed footer button are two separate sibling slots below (so
   // the footer stays pinned above DashboardNav instead of scrolling away),
   // both needing the same state.
-  const cmsImages = useCmsImagesFeature(siteId, selected);
+  const cmsImages = useCmsImagesFeature(siteId, selected, ensurePro);
 
   // "Blog to staging" tab's own state (BlogToStagingScreen.tsx) - same
   // lifted-hook reasoning as cmsImages above.
-  const blogStaging = useBlogStagingFeature(siteId);
+  const blogStaging = useBlogStagingFeature(siteId, ensurePro);
 
   const [configs, setConfigs] = useState<CmsGalleryConfig[] | null>(null);
   const [configsError, setConfigsError] = useState<string | null>(null);
@@ -651,6 +655,7 @@ export function WebflowSolutionsScreen({ onSwitchToShaders }: { onSwitchToShader
       setWizardError("Select an element OUTSIDE the Collection List to host the gallery script.");
       return;
     }
+    if (!(await ensurePro())) return;
     setBusy(true);
     setWizardError(null);
     // Morph the file/code icon into a "send" icon (GradientFileIcon's own
@@ -1160,6 +1165,7 @@ export function WebflowSolutionsScreen({ onSwitchToShaders }: { onSwitchToShader
         title="Delete gallery?"
         description="The gallery will be permanently removed from your account."
       />
+      {proModal}
     </div>
   );
 }

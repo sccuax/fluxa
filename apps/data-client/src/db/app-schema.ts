@@ -691,6 +691,12 @@ export const blogStagingItems = pgTable(
 // registered + applied to this site, so a second toggle doesn't try to
 // re-register it (Custom Code script VERSIONS are immutable by design, per
 // Webflow's own docs - re-registering the same version would fail) or
+    // The item's display name - the runtime's fallback for hiding a rendered
+    // Collection Item that exposes neither its slug nor a link to its detail
+    // page (e.g. a plain Authors list: image + name + bio). Nullable: rows
+    // written before this column existed are backfilled the next time the
+    // Blog to staging screen lists the collection (routes/blogStaging.ts).
+    itemName: text("item_name"),
 // re-PUT the site's custom-code list needlessly. One row per site;
 // `scriptVersion` is what to bump (registering a genuinely new version) if
 // this script's own source ever needs a real fix - never edit
@@ -702,3 +708,30 @@ export const blogStagingSiteSettings = pgTable("blog_staging_site_settings", {
   scriptVersion: text("script_version"),
   installedAt: timestamp("installed_at"),
 });
+
+// Free-plan shader allowance: a permanent ledger with one row per element an
+// account has ever applied a Fluxa shader to (routes/shaderUsage.ts). Rows are
+// never deleted when the shader is removed in the Designer - the Free plan's 3
+// shaders are a lifetime allowance, spent on first use and only lifted by
+// upgrading. Editor shaders and free gallery presets draw from the same pool,
+// summed across all of the account's sites. (userId, siteId, elementId) is
+// unique so re-applying/tweaking the same element never spends a second one.
+export const shaderUsage = pgTable(
+  "shader_usage",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    siteId: text("site_id").notNull(),
+    elementId: text("element_id").notNull(),
+    kind: text("kind").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("shader_usage_user_site_element_idx").on(table.userId, table.siteId, table.elementId),
+    index("shader_usage_user_idx").on(table.userId),
+  ],
+);

@@ -10,12 +10,13 @@ export const SITE = {
   url: import.meta.env.PUBLIC_SITE_URL ?? "https://fluxa.agency",
   // Same Worker the Designer Extension talks to. Only the public, unauthenticated
   // routes (/api/public/*) may ever be called from the website.
-  apiUrl:
-    import.meta.env.PUBLIC_API_URL ?? "https://fluxa-data-client.jojanmartinez533.workers.dev",
+  // api.fluxa.agency is the SAME Worker as the workers.dev hostname the Designer Extension uses. The website must use
+  // this one: it is same-site with fluxa.agency, which is what lets the login session cookie work from the browser.
+  apiUrl: import.meta.env.PUBLIC_API_URL ?? "https://api.fluxa.agency",
+  // The Pro card's "Upgrade to Pro" (append ?interval=monthly|yearly): the Worker sends logged-out visitors to /login,
+  // then creates the Lemon Squeezy checkout for the signed-in account - see data-client routes/billing.ts.
+  checkoutUrl: `${import.meta.env.PUBLIC_API_URL ?? "https://api.fluxa.agency"}/billing/start`,
   installUrl: import.meta.env.PUBLIC_INSTALL_URL ?? "#",
-  // Where "Login" points. There is no web app yet (auth lives in the Designer
-  // Extension), so this is a placeholder until that exists.
-  loginUrl: import.meta.env.PUBLIC_LOGIN_URL ?? "#",
   // Footer social links: placeholders until the real profiles exist.
   socialX: import.meta.env.PUBLIC_SOCIAL_X ?? "#",
   socialLinkedin: import.meta.env.PUBLIC_SOCIAL_LINKEDIN ?? "#",
@@ -34,8 +35,8 @@ export interface NavItem {
 
 // Hrefs are locale-less paths; `localizedPath()` (i18n) prefixes them.
 export const NAV: readonly NavItem[] = [
-  { key: "shaders", href: "/shaders" },
+  { key: "shaders", href: "/#features" },
   { key: "solutions", href: "/webflow-solutions" },
-  { key: "pricing", href: "/pricing" },
+  { key: "pricing", href: "/#pricing" },
   { key: "about", href: "/about" },
 ];

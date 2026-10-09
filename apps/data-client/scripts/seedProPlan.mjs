@@ -10,20 +10,26 @@
 // db/app-schema.ts's Drizzle table objects, since those are TypeScript and
 // this script isn't compiled.
 //
+// Seeds BOTH Pro rows ("pro" = monthly $5, "pro_yearly" = yearly $48, 20% off),
+// each tagged with its Lemon Squeezy variant id (the webhook resolves the plan
+// by that id).
+//
 // Usage (from apps/data-client):
-//   node scripts/seedProPlan.mjs <lemonsqueezy-variant-id>
-// or set a real LEMONSQUEEZY_VARIANT_ID in .dev.vars first and omit the arg.
+//   node scripts/seedProPlan.mjs <monthly-variant-id> <yearly-variant-id>
+// or set LEMONSQUEEZY_VARIANT_MONTHLY / LEMONSQUEEZY_VARIANT_YEARLY in .dev.vars
+// and omit the args.
 import { randomUUID } from "node:crypto";
 import { config } from "dotenv";
 import { neon } from "@neondatabase/serverless";
 
 config({ path: ".dev.vars" });
 
-const variantId = process.argv[2] ?? process.env.LEMONSQUEEZY_VARIANT_ID;
-if (!variantId || variantId.startsWith("REPLACE_WITH")) {
+const monthlyVariantId = process.argv[2] ?? process.env.LEMONSQUEEZY_VARIANT_MONTHLY;
+const yearlyVariantId = process.argv[3] ?? process.env.LEMONSQUEEZY_VARIANT_YEARLY;
+if (!monthlyVariantId || !yearlyVariantId || monthlyVariantId.startsWith("REPLACE_WITH") || yearlyVariantId.startsWith("REPLACE_WITH")) {
   console.error(
-    "Usage: node scripts/seedProPlan.mjs <lemonsqueezy-variant-id>\n" +
-      "(or set a real LEMONSQUEEZY_VARIANT_ID in .dev.vars first)",
+    "Usage: node scripts/seedProPlan.mjs <monthly-variant-id> <yearly-variant-id>\n" +
+      "(or set LEMONSQUEEZY_VARIANT_MONTHLY / LEMONSQUEEZY_VARIANT_YEARLY in .dev.vars first)",
   );
   process.exit(1);
 }
@@ -34,16 +40,21 @@ if (!process.env.DATABASE_URL) {
 }
 
 const sql = neon(process.env.DATABASE_URL);
-const id = randomUUID();
+const plans = [
+  { code: "pro", name: "Pro", priceCents: 500, interval: "month", variantId: monthlyVariantId },
+  { code: "pro_yearly", name: "Pro (yearly)", priceCents: 4800, interval: "year", variantId: yearlyVariantId },
+];
 
-const [row] = await sql`
-  INSERT INTO plans (id, code, name, description, price_cents, currency, billing_interval, provider_price_id, active)
-  VALUES (${id}, 'pro', 'Pro', 'Unlimited shaders, Pro presets, and all Webflow Solutions.', 500, 'usd', 'month', ${variantId}, true)
-  ON CONFLICT (code) DO UPDATE SET
-    provider_price_id = EXCLUDED.provider_price_id,
-    price_cents = EXCLUDED.price_cents,
-    updated_at = now()
-  RETURNING id, code, name, price_cents, currency, billing_interval, provider_price_id, active;
-`;
-
-console.log("Seeded plan:", row);
+for (const plan of plans) {
+  const [row] = await sql`
+    INSERT INTO plans (id, code, name, description, price_cents, currency, billing_interval, provider_price_id, active)
+    VALUES (${randomUUID()}, ${plan.code}, ${plan.name}, 'Unlimited shaders, Pro presets, and all Webflow Solutions.', ${plan.priceCents}, 'usd', ${plan.interval}, ${plan.variantId}, true)
+    ON CONFLICT (code) DO UPDATE SET
+      provider_price_id = EXCLUDED.provider_price_id,
+      price_cents = EXCLUDED.price_cents,
+      billing_interval = EXCLUDED.billing_interval,
+      updated_at = now()
+    RETURNING id, code, name, price_cents, currency, billing_interval, provider_price_id, active;
+  `;
+  console.log("Seeded plan:", row);
+}

@@ -14,6 +14,86 @@ export const es: Dictionary = {
     login: "Iniciar sesión",
     cta: "Prueba Fluxa gratis",
     menu: "Menú",
+    menus: {
+      shaders: {
+        title: "Gradientes de shaders",
+        tabs: [
+          {
+            label: "Funciones",
+            heading: "Lo que Fluxa puede hacer",
+            more: "Ver todas las funciones",
+            cards: [
+              { title: "Tipo de gradiente", body: "Lineal, radial o cónico. Elige la forma que encaja con tu layout." },
+              { title: "Formas", body: "Plano, esfera, líquido. Profundidad real, no ruido plano." },
+              { title: "Control de color", body: "HEX, RGB, HSL o el cuentagotas. Iguala tu marca al detalle." },
+              { title: "Biblioteca de presets", body: "Empieza desde un preset en vez de un lienzo en blanco." },
+            ],
+          },
+          {
+            label: "Cómo funciona",
+            heading: "De la instalación a un gradiente vivo",
+            more: "Ver los pasos",
+            cards: [
+              { title: "Instala la app", body: "Añade Fluxa desde el panel de Apps de Webflow." },
+              { title: "Diseña el shader", body: "Elige forma, colores y movimiento en el editor." },
+              { title: "Aplícalo a una sección", body: "Un clic lo pone detrás de cualquier elemento." },
+            ],
+          },
+          {
+            label: "Presets",
+            heading: "Empieza desde un preset",
+            more: "Ver presets",
+            cards: [
+              { title: "Presets gratis", body: "Unos cuantos looks listos para empezar." },
+              { title: "Presets Pro", body: "La biblioteca completa, con looks nuevos con el tiempo." },
+              { title: "Tus propios presets", body: "Guarda tus ajustes favoritos y reutilízalos." },
+            ],
+          },
+        ],
+      },
+      solutions: {
+        title: "Soluciones Webflow",
+        tabs: [
+          {
+            label: "CMS",
+            heading: "Lo que Fluxa puede resolver",
+            more: "Ver todas las soluciones",
+            cards: [
+              {
+                title: "Galería CMS multi-imagen",
+                body: "Muestra todas las imágenes de un campo multi-imagen. Convierte los campos multi-imagen de Webflow en galerías reutilizables.",
+              },
+              {
+                title: "Imágenes del CMS en el Designer",
+                body: "Ve las imágenes reales del CMS mientras diseñas, directamente en el Webflow Designer.",
+              },
+              {
+                title: "Blog a staging",
+                body: "Previsualiza y publica borradores en staging sin afectar tu sitio en vivo.",
+              },
+            ],
+          },
+          {
+            label: "Novedades",
+            heading: "Lo último de Fluxa",
+            more: "Ver todas las soluciones",
+            cards: [
+              { title: "Blog a staging", body: "Los borradores siguen ocultos en tu dominio en vivo hasta que los publiques." },
+              { title: "Arreglos de la galería", body: "Los arreglos de la galería llegan de nuestro lado: sin republicar." },
+            ],
+          },
+          {
+            label: "Próximamente",
+            heading: "En camino",
+            more: "Ver todas las soluciones",
+            cards: [
+              { title: "Más soluciones CMS", body: "Más huecos de Webflow cubiertos, una herramienta a la vez." },
+              { title: "¿Tienes una idea?", body: "Cuéntanos qué límite de Webflow debemos resolver después." },
+            ],
+          },
+        ],
+      },
+    },
   },
   hero: {
     eyebrow: "Extensión del Webflow Designer",
@@ -114,6 +194,36 @@ export const es: Dictionary = {
     titleTail: "sin escribir código",
     body: "Instala Fluxa y agrega tu primer gradiente animado en menos de un minuto.",
     button: "Instalar en Webflow",
+  },
+  login: {
+    metaTitle: "Iniciar sesión — Fluxa",
+    heroTitle: "Movimiento, sin código.",
+    title: "Es hora de Fluxa",
+    titleSignUp: "Crea tu cuenta de Fluxa",
+    name: "Tu nombre",
+    namePlaceholder: "Nombre",
+    email: "Tu correo",
+    emailPlaceholder: "nombre@correo.com",
+    password: "Contraseña",
+    showPassword: "Mostrar contraseña",
+    hidePassword: "Ocultar contraseña",
+    signIn: "Iniciar sesión",
+    signingIn: "Entrando…",
+    signUp: "Crear cuenta",
+    signingUp: "Creando cuenta…",
+    noAccount: "¿No tienes cuenta?",
+    haveAccount: "¿Ya tienes cuenta?",
+    toSignUp: "Crear cuenta",
+    toSignIn: "Iniciar sesión",
+    checkoutHint: "Inicia sesión para continuar al pago.",
+    errors: {
+      invalidCredentials: "Correo o contraseña incorrectos.",
+      emailInvalid: "Introduce un correo válido.",
+      nameRequired: "Introduce tu nombre.",
+      passwordShort: "Usa al menos 8 caracteres.",
+      emailTaken: "Ya existe una cuenta con este correo.",
+      generic: "Algo salió mal. Inténtalo de nuevo.",
+    },
   },
   footer: {
     rights: "Todos los derechos reservados.",

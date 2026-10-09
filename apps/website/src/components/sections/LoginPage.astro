@@ -1,0 +1,65 @@
+---
+// Web login (copy-paste/fluxa web/Login.png): a dark gradient panel with the headline on the left, the form on the
+// right. The page itself is static; only the form is an island. Google sign-in and "forgot password" are in the
+// design but NOT built yet - they are left out instead of shipped as dead controls.
+import AuthForm from "@/components/islands/AuthForm";
+import { SITE, type Locale } from "@/config/site";
+import { localizedPath, useTranslations } from "@/i18n";
+
+interface Props {
+  locale: Locale;
+}
+const { locale } = Astro.props;
+const t = useTranslations(locale);
+---
+
+<!-- Same container as the floating navbar (Header.astro: px-3 md:px-8, max 1440px) so the card lines up with it. -->
+<div class="mx-auto max-w-[1440px] px-3 pb-10 pt-[132px] md:px-8">
+  <section
+    class="grid min-h-[692px] overflow-hidden border border-border-border md:grid-cols-[2fr_1fr]"
+    aria-label={t.login.title}
+  >
+    <div class="login-art relative hidden p-10 md:block">
+      <p class="relative z-10 max-w-[9ch] font-display text-header-h1 leading-[1.02] text-text-white/85">
+        {t.login.heroTitle}
+      </p>
+    </div>
+    <div class="flex items-center justify-center bg-background-white px-6 py-16">
+      <AuthForm
+        client:load
+        t={t.login}
+        apiUrl={SITE.apiUrl}
+        homeHref={localizedPath("/", locale)}
+        privacyUrl={SITE.privacyUrl}
+        termsUrl={SITE.termsUrl}
+        privacyLabel={t.footer.privacy}
+        termsLabel={t.footer.terms}
+      />
+    </div>
+  </section>
+</div>
+
+<style is:global>
+  /* The navbar is dark glass over the hero; on this light page it must be the solid dark pill from the design
+     (--nav-solid is the same variable the hero timeline tweens once the home page turns light). */
+  [data-site-header] {
+    --nav-solid: 1;
+  }
+  /* Dark base, a pink/violet band across the middle, blue at the bottom - approximates Login.png with plain CSS
+     (no shader on this page: it must paint instantly and work without WebGL). */
+  .login-art {
+    background:
+      radial-gradient(110% 70% at 88% 100%, #1f55da 0%, rgba(31, 85, 218, 0) 62%),
+      radial-gradient(80% 60% at 8% 100%, #7390cf 0%, rgba(115, 144, 207, 0) 58%),
+      radial-gradient(95% 40% at 68% 56%, rgba(190, 72, 160, 0.78) 0%, rgba(190, 72, 160, 0) 72%),
+      #0b0c0f;
+  }
+  .login-art::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    opacity: 0.35;
+    mix-blend-mode: overlay;
+    background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  }
+</style>

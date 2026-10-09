@@ -10,6 +10,8 @@ import { ControlPanel } from "./ControlPanel";
 import { GradientCanvas } from "./GradientCanvas";
 import { ButtonPrimary } from "./ButtonPrimary";
 import { BetaFeedbackModal } from "./BetaFeedbackModal";
+import { ShaderLimitModal } from "./ShaderLimitModal";
+import { claimShaderSlot } from "../services/shaderUsage";
 import { Icon } from "./Icon";
 
 // Editor tab content: DashboardScreen renders this inside its flex-1
@@ -56,6 +58,7 @@ export function EditorTab({
   // actually succeeds (not on a no-op/error), per explicit direction that
   // this is the beta's main channel for gathering user feedback.
   const [showBetaFeedback, setShowBetaFeedback] = useState(false);
+  const [showLimit, setShowLimit] = useState(false);
 
   async function handleApplyGradient() {
     if (!canApplyPreset(element)) {
@@ -67,6 +70,10 @@ export function EditorTab({
     }
     setApplying(true);
     try {
+      if (!(await claimShaderSlot(element, "shaderGradient"))) {
+        setShowLimit(true);
+        return;
+      }
       await applyGradientToElement(element, config);
       getWebflowDesigner().notify({type: "Success", message: "Gradient applied!"});
       trackEvent("apply_gradient");
@@ -112,6 +119,7 @@ export function EditorTab({
       </div>
 
       <BetaFeedbackModal open={showBetaFeedback} onClose={() => setShowBetaFeedback(false)} />
+      <ShaderLimitModal open={showLimit} onClose={() => setShowLimit(false)} />
     </div>
   );
 }

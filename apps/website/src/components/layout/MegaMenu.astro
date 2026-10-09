@@ -1,0 +1,269 @@
+---
+// Mega menus of the navbar (designs: copy-paste/fluxa web/mega-menu-shaders.pdf, mega-menu-webflow-solutions.pdf). One dark panel per
+// menu, dropped under the glass pill at the same width: a title + a list of tabs on the left, the active tab's cards on the right.
+// Opened by hovering (or focusing / tapping) the matching nav item; Header.astro owns the triggers, this file owns the panels and the
+// behaviour (script at the bottom). Copy lives in i18n (`nav.menus`), the structure (icons, links) here.
+import { localizedPath, useTranslations } from "@/i18n";
+import type { Locale } from "@/config/site";
+
+interface Props {
+  locale: Locale;
+}
+const { locale } = Astro.props;
+const t = useTranslations(locale).nav.menus;
+
+type IconName = "layout" | "cube" | "palette" | "grid" | "download" | "sliders" | "cursor" | "stack" | "database" | "chat" | "sparkle" | "bulb";
+// icon tile colours (text colour on a tinted square), from the design
+const TONES = [
+  "bg-[#3a1d36] text-[#e5388a]",
+  "bg-[#2c2250] text-[#9b7bf0]",
+  "bg-[#1f2b5c] text-[#4f7cf0]",
+  "bg-[#1b3a3a] text-[#3fae9a]",
+] as const;
+
+const home = (hash: string) => `${localizedPath("/", locale)}#${hash}`;
+const menus = [
+  {
+    key: "shaders" as const,
+    copy: t.shaders,
+    tabs: [
+      { href: home("features"), more: home("features"), icons: ["layout", "cube", "palette", "grid"] as IconName[] },
+      { href: home("how-it-works"), more: home("how-it-works"), icons: ["download", "sliders", "cursor"] as IconName[] },
+      { href: home("features"), more: home("features"), icons: ["sparkle", "grid", "palette"] as IconName[] },
+    ],
+  },
+  {
+    key: "solutions" as const,
+    copy: t.solutions,
+    tabs: [
+      { href: localizedPath("/webflow-solutions", locale), more: localizedPath("/webflow-solutions", locale), icons: ["stack", "database", "chat"] as IconName[] },
+      { href: localizedPath("/webflow-solutions", locale), more: localizedPath("/webflow-solutions", locale), icons: ["chat", "stack"] as IconName[] },
+      { href: localizedPath("/webflow-solutions", locale), more: localizedPath("/webflow-solutions", locale), icons: ["stack", "bulb"] as IconName[] },
+    ],
+  },
+];
+---
+
+{
+  menus.map((menu) => (
+    <div class="mega" id={`mega-${menu.key}`} data-mega={menu.key} role="region" aria-label={menu.copy.title}>
+      <div class="grid gap-x-9 md:grid-cols-[minmax(0,293px)_minmax(0,1fr)]">
+        <div class="flex flex-col pb-4 pt-[38px]">
+          <p class="font-display text-header-h5 text-text-white/90">{menu.copy.title}</p>
+          <ul class="mt-9 flex flex-col" role="tablist" aria-orientation="vertical">
+            {menu.copy.tabs.map((tab, i) => (
+              <li class="mega-tab-row">
+                <a
+                  href={menu.tabs[i].href}
+                  role="tab"
+                  data-mega-tab={i}
+                  aria-selected={i === 0 ? "true" : "false"}
+                  class="mega-tab flex items-center justify-between py-[18px] text-text-lg-medium text-text-white/90"
+                >
+                  <span>{tab.label}</span>
+                  <svg width="6" height="10" viewBox="0 0 6 10" fill="none" aria-hidden="true" class="mega-chev">
+                    <path d="M1 1l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                  </svg>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div class="relative border-text-white/10 py-9 md:border-l md:pl-9">
+          {menu.copy.tabs.map((tab, i) => (
+            <div class="mega-pane" data-mega-pane={i} role="tabpanel" hidden={i !== 0}>
+              <p class="text-text-md-regular text-text-white/40">{tab.heading}</p>
+              <div class={`mt-5 grid gap-4 ${tab.cards.length === 3 ? "md:grid-cols-3" : "md:grid-cols-2"}`}>
+                {tab.cards.map((card, c) => (
+                  <div class="mega-card flex min-h-[142px] flex-col rounded-16 bg-text-white/[0.07] p-5">
+                    <span class={`mega-icon flex h-9 w-9 items-center justify-center rounded-8 ${TONES[(c + i) % TONES.length]}`} data-icon={menu.tabs[i].icons[c] ?? "grid"} />
+                    <p class="mt-auto text-text-lg-medium text-text-white">{card.title}</p>
+                    <p class="mt-2 text-text-md-regular text-text-white/60">{card.body}</p>
+                  </div>
+                ))}
+              </div>
+              <a href={menu.tabs[i].more} class="mega-more mt-6 inline-flex items-center gap-2 px-[9px] text-text-md-medium text-text-color-accent">
+                {tab.more}
+                <svg width="6" height="10" viewBox="0 0 6 10" fill="none" aria-hidden="true">
+                  <path d="M1 1l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+              </a>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  ))
+}
+
+<style is:global>
+  /* The panel hangs under the pill (77px) with an 8px gap, as wide as the pill. */
+  .mega {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: calc(77px + 8px);
+    z-index: 5;
+    padding: 0 37px;
+    border-radius: 40px;
+    background: #0b0d12;
+    box-shadow: 0 0 0 1px rgb(255 255 255 / 0.08), 0 24px 60px rgb(0 0 0 / 0.35);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-8px);
+    transition:
+      opacity 0.18s ease,
+      transform 0.18s ease,
+      visibility 0s linear 0.18s;
+  }
+  .mega[data-open="true"] {
+    opacity: 1;
+    visibility: visible;
+    transform: none;
+    transition-delay: 0s;
+  }
+  /* An invisible bridge over the gap, so the pointer can travel from the pill to the panel without closing it. */
+  .mega::before {
+    content: "";
+    position: absolute;
+    inset: -12px 0 auto 0;
+    height: 12px;
+  }
+  .mega-tab-row {
+    position: relative;
+    border-bottom: 1px solid rgb(255 255 255 / 0.1);
+  }
+  .mega-tab {
+    transition: color 0.2s;
+  }
+  .mega-tab[aria-selected="true"] {
+    color: theme("colors.text.color.accent");
+  }
+  /* The active tab's row has a soft blue/pink glow on its bottom line (design). */
+  .mega-tab-row:has(.mega-tab[aria-selected="true"])::after {
+    content: "";
+    position: absolute;
+    left: 10%;
+    right: 10%;
+    bottom: -1px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgb(59 130 246 / 0.55), rgb(226 63 140 / 0.45), transparent);
+    filter: blur(1px);
+  }
+  .mega-chev {
+    opacity: 0.9;
+  }
+  .mega-card {
+    transition: background-color 0.2s;
+  }
+  .mega-card:hover {
+    background-color: rgb(255 255 255 / 0.1);
+  }
+  .mega-more {
+    transition: opacity 0.2s;
+  }
+  .mega-more:hover {
+    opacity: 0.8;
+  }
+  .mega-icon svg {
+    width: 18px;
+    height: 18px;
+  }
+  /* The header's nav items that open a menu: accent while their menu is open. */
+  [data-mega-trigger][aria-expanded="true"] {
+    color: theme("colors.text.color.accent");
+  }
+  @media (max-width: 767px) {
+    .mega {
+      display: none; /* the mobile panel is the flat list in Header.astro */
+    }
+  }
+</style>
+
+<script>
+  // Icons are inline SVG strokes, filled in here so the markup above stays small.
+  const ICONS: Record<string, string> = {
+    layout: '<rect x="3" y="3" width="14" height="5" rx="1"/><rect x="3" y="11" width="6" height="6" rx="1"/><rect x="12" y="11" width="5" height="6" rx="1"/>',
+    cube: '<path d="M10 2.5l6.5 3.5v8L10 17.5 3.5 14V6z"/><path d="M3.5 6L10 9.5 16.5 6M10 9.5v8"/>',
+    palette: '<path d="M10 3a7 7 0 100 14c1.2 0 1.6-.8 1.2-1.7-.4-.9.1-1.8 1.1-1.8H14a3 3 0 003-3A7 7 0 0010 3z"/><circle cx="7" cy="9" r=".8"/><circle cx="10" cy="6.8" r=".8"/><circle cx="13" cy="9" r=".8"/>',
+    grid: '<rect x="3" y="3" width="5.5" height="5.5" rx="1.5"/><rect x="11.5" y="3" width="5.5" height="5.5" rx="1.5"/><rect x="3" y="11.5" width="5.5" height="5.5" rx="1.5"/><rect x="11.5" y="11.5" width="5.5" height="5.5" rx="1.5"/>',
+    download: '<path d="M10 3v9M6.5 8.5L10 12l3.5-3.5"/><path d="M4 15.5h12"/>',
+    sliders: '<path d="M3 6h14M3 14h14"/><circle cx="7" cy="6" r="2" fill="currentColor"/><circle cx="13" cy="14" r="2" fill="currentColor"/>',
+    cursor: '<path d="M5 3l11 5-4.7 1.7L9.6 14.5z"/>',
+    stack: '<path d="M3 8l7-4 7 4-7 4z"/><path d="M3 12l7 4 7-4"/>',
+    database: '<ellipse cx="10" cy="5" rx="6" ry="2.5"/><path d="M4 5v10c0 1.4 2.7 2.5 6 2.5s6-1.1 6-2.5V5"/><path d="M4 10c0 1.4 2.7 2.5 6 2.5s6-1.1 6-2.5"/>',
+    chat: '<path d="M4 4.5h12a1 1 0 011 1v7a1 1 0 01-1 1H9l-3.5 3v-3H4a1 1 0 01-1-1v-7a1 1 0 011-1z"/><path d="M6.5 8h7M6.5 10.5h4"/>',
+    sparkle: '<path d="M10 3l1.6 4.4L16 9l-4.4 1.6L10 15l-1.6-4.4L4 9l4.4-1.6z"/>',
+    bulb: '<path d="M7 14.5h6M8 17h4"/><path d="M10 3a5 5 0 00-2.6 9.2c.4.3.6.7.6 1.2v1.1h4v-1.1c0-.5.2-.9.6-1.2A5 5 0 0010 3z"/>',
+  };
+  document.querySelectorAll<HTMLElement>(".mega-icon").forEach((el) => {
+    el.innerHTML = `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[el.dataset.icon ?? "grid"] ?? ""}</svg>`;
+  });
+
+  const root = document.querySelector<HTMLElement>("[data-nav]");
+  const triggers = Array.from(document.querySelectorAll<HTMLElement>("[data-mega-trigger]"));
+  const panels = Array.from(document.querySelectorAll<HTMLElement>("[data-mega]"));
+  if (root && triggers.length && panels.length) {
+    const desktop = window.matchMedia("(min-width: 768px)");
+    let openKey: string | null = null;
+    let closeTimer = 0;
+
+    const setOpen = (key: string | null) => {
+      window.clearTimeout(closeTimer);
+      openKey = key;
+      panels.forEach((p) => (p.dataset.open = String(p.dataset.mega === key)));
+      triggers.forEach((tr) => tr.setAttribute("aria-expanded", String(tr.dataset.megaTrigger === key)));
+    };
+    const closeSoon = () => {
+      window.clearTimeout(closeTimer);
+      closeTimer = window.setTimeout(() => setOpen(null), 140);
+    };
+    const cancelClose = () => window.clearTimeout(closeTimer);
+
+    triggers.forEach((tr) => {
+      const key = tr.dataset.megaTrigger!;
+      tr.addEventListener("mouseenter", () => desktop.matches && setOpen(key));
+      tr.addEventListener("mouseleave", closeSoon);
+      tr.addEventListener("focus", () => desktop.matches && setOpen(key));
+      // A click (or tap) toggles the menu instead of following the link, so there is no dead page to land on.
+      tr.addEventListener("click", (event) => {
+        if (!desktop.matches) return;
+        event.preventDefault();
+        setOpen(openKey === key ? null : key);
+      });
+    });
+
+    panels.forEach((panel) => {
+      panel.addEventListener("mouseenter", cancelClose);
+      panel.addEventListener("mouseleave", closeSoon);
+      const tabs = Array.from(panel.querySelectorAll<HTMLElement>("[data-mega-tab]"));
+      const panes = Array.from(panel.querySelectorAll<HTMLElement>("[data-mega-pane]"));
+      const select = (i: string) => {
+        tabs.forEach((tb) => tb.setAttribute("aria-selected", String(tb.dataset.megaTab === i)));
+        panes.forEach((pn) => (pn.hidden = pn.dataset.megaPane !== i));
+      };
+      tabs.forEach((tb) => {
+        tb.addEventListener("mouseenter", () => select(tb.dataset.megaTab!));
+        tb.addEventListener("focus", () => select(tb.dataset.megaTab!));
+      });
+      // following any link inside closes the menu (the page scrolls to a section / navigates)
+      panel.addEventListener("click", (event) => {
+        if ((event.target as HTMLElement).closest("a")) setOpen(null);
+      });
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") setOpen(null);
+    });
+    // a tap / click outside the header closes it
+    document.addEventListener("pointerdown", (event) => {
+      if (openKey && !(event.target as HTMLElement).closest("[data-nav]")) setOpen(null);
+    });
+    desktop.addEventListener("change", () => setOpen(null));
+    // the other nav items close it as soon as the pointer is over them
+    document.querySelectorAll<HTMLElement>("[data-nav] nav a:not([data-mega-trigger]), [data-nav] .glass-border > a").forEach((a) =>
+      a.addEventListener("mouseenter", () => setOpen(null)),
+    );
+  }
+</script>

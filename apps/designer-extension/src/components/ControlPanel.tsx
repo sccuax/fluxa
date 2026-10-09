@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { memo, useEffect, useRef, useState, type ReactNode } from "react";
 import type { GradientConfig } from "@fluxa/gradient-core";
 import { useGradientStore } from "../store/gradientStore";
 import { formatSliderValue } from "../helpers/format";
 import { RangeSlider } from "./RangeSlider";
 import { Icon } from "./Icon";
+import { PanelTabs } from "@fluxa/ui";
 import { Tooltip } from "./Tooltip";
 import { SegmentedRow } from "./SegmentedRow";
 import { clamp, parseHex } from "./ColorPicker";
@@ -755,7 +756,7 @@ function ColorRow({ field, config, setConfig }: {
 //   (X/Y/Z), and field of view - mirroring @shadergradient/react's own
 //   reference "View" tab grouping (cameraAngle/position/rotation/canvas.fov),
 //   added to this app's Camera tab specifically.
-export function ControlPanel() {
+function ControlPanelImpl() {
   const config = useGradientStore((state) => state.config);
   const setConfig = useGradientStore((state) => state.setConfig);
   const [activeTab, setActiveTab] = useState<ControlTab>("shape");
@@ -769,25 +770,7 @@ export function ControlPanel() {
       {/* shrink-0: the tab bar itself never scrolls, only the fields below
           it do - see the "only the controls container scrolls" direction
           on EditorTab.tsx above this component. */}
-      <div className="flex shrink-0 bg-background-white-2 border-b border-border-border gap-4 px-[20px] pt-[12px]">
-        {TABS.map(({ tab, label }) => {
-          const isActive = tab === activeTab;
-          return (
-            <button
-              key={tab}
-              type="button"
-              onClick={() => setActiveTab(tab)}
-              className={`border-b pb-[8px] pt-[4px] font-display text-mobile-header-h1 ${
-                isActive
-                  ? "border-b-accent-500 text-text-black"
-                  : "border-b-transparent text-text-secondary"
-              }`}
-            >
-              {label}
-            </button>
-          );
-        })}
-      </div>
+      <PanelTabs tabs={TABS} active={activeTab} onChange={setActiveTab} />
 
       {/* The only scrolling region in the Editor tab - flex-1 min-h-0 to
           actually claim/be bounded by the remaining height, overflow-y-auto
@@ -846,7 +829,17 @@ export function ControlPanel() {
               description="Which shader variant renders the gradient."
               options={SHADER_OPTIONS}
               value={config.shader}
-              onChange={(value) => setConfig({ shader: value })}
+              // Cosmic renders far too bright with the default lighting, so
+              // switching to it also drops brightness to 0.3 (still adjustable
+              // afterwards). Only on the switch itself - re-clicking the
+              // already-active option never resets a value the user tuned.
+              onChange={(value) =>
+                setConfig(
+                  value === "cosmic" && config.shader !== "cosmic"
+                    ? { shader: value, brightness: 0.3 }
+                    : { shader: value }
+                )
+              }
             />
             <NumberFieldList fields={SHAPE_NUMBER_FIELDS} config={config} setConfig={setConfig} />
           </>
@@ -999,3 +992,9 @@ export function ControlPanel() {
     </div>
   );
 }
+
+// Memoized: EditorTab re-renders on its own state changes (selection polling,
+// applying flag, ...) and this panel takes no props, so those parent renders
+// should never re-render its whole field tree. It still re-renders on its own
+// store subscriptions.
+export const ControlPanel = memo(ControlPanelImpl);

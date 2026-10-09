@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { z } from "zod";
 import { desc, eq } from "drizzle-orm";
 import type { AppEnv } from "../types";
 import { createDb, type Database } from "../db/client";
@@ -13,10 +14,48 @@ import {
 
 export const billingRoutes = new Hono<AppEnv>();
 
-// The one plan this app currently sells - see scripts/seedProPlan.mjs, which
-// seeds the matching `plans` row by this same code. Hardcoded rather than
-// user-selectable since there's exactly one paid tier for now.
-const PRO_PLAN_CODE = "pro";
+// One paid tier, two billing intervals - see scripts/seedProPlan.mjs, which
+// seeds both `plans` rows (codes "pro" = monthly, "pro_yearly" = yearly), each
+// with its Lemon Squeezy variant id in provider_price_id. The webhook resolves
+// the row by the subscription's own variant_id, so a yearly customer is never
+// recorded as monthly.
+const checkoutBodySchema = z.object({ interval: z.enum(["monthly", "yearly"]).default("monthly") });
+
+// GET /billing/start?interval=monthly|yearly - the target of every "Upgrade to Pro" link on the website. A top-level
+// browser navigation (not JSON), so it works as a plain <a href> with no JS on the marketing site:
+//   - session cookie present -> create the Lemon Squeezy checkout for THIS user (user_id travels in custom_data, the
+//     webhook reads it) and 302 to it;
+//   - no session -> 302 to the website's /login with next= pointing back here, so after signing in the visitor lands
+//     straight on the checkout. The login page only accepts a next= that is exactly this route (see apps/website
+//     src/lib/auth/next.ts), so this is not an open redirect.
+// The Designer Extension does NOT use this: it has its own session and calls POST /api/billing/checkout directly.
+export const billingStartRoutes = new Hono<AppEnv>();
+
+billingStartRoutes.get("/start", async (c) => {
+  const parsed = checkoutBodySchema.safeParse({ interval: c.req.query("interval") ?? undefined });
+  if (!parsed.success) return c.json({ error: "invalid_request" }, 400);
+
+  const self = new URL(c.req.url);
+  const user = c.get("user");
+  if (!user) {
+    const login = new URL("/login", c.env.WEB_APP_URL);
+    login.searchParams.set("next", `${self.origin}/billing/start?interval=${parsed.data.interval}`);
+    return c.redirect(login.toString(), 302);
+  }
+
+  try {
+    const { url } = await createProCheckout(c.env, {
+      userId: user.id,
+      userEmail: user.email,
+      redirectUrl: `${self.origin}/billing-checkout-complete`,
+      interval: parsed.data.interval,
+    });
+    return c.redirect(url, 302);
+  } catch (err) {
+    console.error("Lemon Squeezy checkout creation failed", err);
+    return c.json({ error: "checkout_failed" }, 502);
+  }
+});
 
 // requireAuth is applied per-route below, never router-wide - /webhook is
 // called by Lemon Squeezy itself, never a logged-in browser, and must stay
@@ -25,12 +64,15 @@ const PRO_PLAN_CODE = "pro";
 billingRoutes.post("/checkout", requireAuth, async (c) => {
   const user = c.get("user")!;
   const redirectUrl = `${new URL(c.req.url).origin}/billing-checkout-complete`;
+  const parsed = checkoutBodySchema.safeParse(await c.req.json().catch(() => ({})));
+  if (!parsed.success) return c.json({ error: "invalid_request" }, 400);
 
   try {
     const { url } = await createProCheckout(c.env, {
       userId: user.id,
       userEmail: user.email,
       redirectUrl,
+      interval: parsed.data.interval,
     });
     return c.json({ url });
   } catch (err) {
@@ -137,6 +179,16 @@ billingRoutes.post("/webhook", async (c) => {
       .where(eq(paymentEvents.providerEventId, providerEventId));
     return c.json({ ok: true });
   } catch (err) {
+    if (err instanceof MissingUserError) {
+      // A checkout that never carried a Fluxa user_id (e.g. someone opened the product's raw Lemon Squeezy link
+      // instead of going through the app or the website). Retrying can't fix it, so keep the event for manual
+      // follow-up (errorMessage marks it) and acknowledge it instead of making Lemon Squeezy retry for days.
+      await db
+        .update(paymentEvents)
+        .set({ processed: true, processedAt: new Date(), errorMessage: MISSING_USER })
+        .where(eq(paymentEvents.providerEventId, providerEventId));
+      return c.json({ ok: true, unlinked: true });
+    }
     console.error("Lemon Squeezy webhook processing failed", eventName, err);
     await db
       .update(paymentEvents)
@@ -150,6 +202,14 @@ billingRoutes.post("/webhook", async (c) => {
 });
 
 // --- Payload shapes (only the fields this route actually reads) ----------
+
+const MISSING_USER = "missing_user_id";
+
+class MissingUserError extends Error {
+  constructor() {
+    super(MISSING_USER);
+  }
+}
 
 interface LemonSqueezyPayload {
   meta: { event_name: string; custom_data?: Record<string, string> };
@@ -185,10 +245,14 @@ async function dispatchLemonSqueezyEvent(db: Database, payload: LemonSqueezyPayl
   }
 }
 
-async function resolveProPlanId(db: Database): Promise<string> {
-  const [plan] = await db.select({ id: plans.id }).from(plans).where(eq(plans.code, PRO_PLAN_CODE)).limit(1);
+async function resolvePlanIdByVariant(db: Database, variantId: string | number): Promise<string> {
+  const [plan] = await db
+    .select({ id: plans.id })
+    .from(plans)
+    .where(eq(plans.providerPriceId, String(variantId)))
+    .limit(1);
   if (!plan) {
-    throw new Error(`No "${PRO_PLAN_CODE}" plan row found - run scripts/seedProPlan.mjs first`);
+    throw new Error(`No plan row for Lemon Squeezy variant ${variantId} - run scripts/seedProPlan.mjs first`);
   }
   return plan.id;
 }
@@ -196,16 +260,15 @@ async function resolveProPlanId(db: Database): Promise<string> {
 async function upsertSubscriptionFromPayload(db: Database, payload: LemonSqueezyPayload): Promise<void> {
   const attrs = payload.data.attributes as {
     status: string;
+    variant_id: number | string;
     renews_at: string | null;
     trial_ends_at: string | null;
     urls?: { customer_portal?: string | null };
   };
   const userId = payload.meta.custom_data?.user_id;
-  if (!userId) {
-    throw new Error("Lemon Squeezy subscription webhook missing meta.custom_data.user_id");
-  }
+  if (!userId) throw new MissingUserError();
 
-  const planId = await resolveProPlanId(db);
+  const planId = await resolvePlanIdByVariant(db, attrs.variant_id);
   const providerSubscriptionId = payload.data.id;
 
   const values = {
@@ -272,9 +335,7 @@ async function upsertSubscriptionFromInvoicePayload(
   // isn't there yet (rare, but not fatal - the subscription's own event will
   // still upsert its row separately).
   const userId = subscription?.userId ?? payload.meta.custom_data?.user_id;
-  if (!userId) {
-    throw new Error("Lemon Squeezy invoice webhook: could not resolve a userId");
-  }
+  if (!userId) throw new MissingUserError();
 
   await db
     .insert(payments)

@@ -2,6 +2,7 @@
 import { NAV, SITE, type Locale } from "@/config/site";
 import { localizedPath, useTranslations } from "@/i18n";
 import Logo from "@/components/ui/Logo.astro";
+import MegaMenu from "@/components/layout/MegaMenu.astro";
 import { ButtonPrimary } from "@fluxa/ui";
 
 interface Props {
@@ -13,7 +14,12 @@ const t = useTranslations(locale);
 const currentPath = Astro.url.pathname.replace(/\/$/, "") || "/";
 const items = NAV.map((item) => {
   const href = localizedPath(item.href, locale);
-  return { key: item.key, href, current: currentPath === href || currentPath.startsWith(`${href}/`) };
+  return {
+    key: item.key,
+    href,
+    current: !href.includes("#") && (currentPath === href || currentPath.startsWith(`${href}/`)),
+    menu: item.key === "shaders" || item.key === "solutions",
+  };
 });
 
 const linkClass =
@@ -40,14 +46,21 @@ const liftClass =
         <nav aria-label="Primary" class="hidden items-center gap-10 md:flex">
           {
             items.map((item) => (
-              <a href={item.href} aria-current={item.current ? "page" : undefined} class={linkClass}>
+              <a
+                href={item.href}
+                aria-current={item.current ? "page" : undefined}
+                class={linkClass}
+                data-mega-trigger={item.menu ? item.key : undefined}
+                aria-expanded={item.menu ? "false" : undefined}
+                aria-controls={item.menu ? `mega-${item.key}` : undefined}
+              >
                 {t.nav[item.key]}
               </a>
             ))
           }
         </nav>
         <span aria-hidden="true" class="ml-[40px] mr-[52px] hidden h-4 w-px bg-text-white/25 md:block"></span>
-        <a href={SITE.loginUrl} class={`${linkClass} mr-[52px] hidden md:inline`}>{t.nav.login}</a>
+        <a href={localizedPath("/login", locale)} class={`${linkClass} mr-[52px] hidden md:inline`}>{t.nav.login}</a>
 
         <span class={`${liftClass} hidden md:inline-block`}>
           <ButtonPrimary lazyRipple client:idle href={SITE.installUrl} size="md">
@@ -73,6 +86,8 @@ const liftClass =
       </div>
     </div>
 
+    <MegaMenu locale={locale} />
+
     <!-- Mobile panel -->
     <div
       id="mobile-nav"
@@ -87,7 +102,7 @@ const liftClass =
             </a>
           ))
         }
-        <a href={SITE.loginUrl} class={linkClass}>{t.nav.login}</a>
+        <a href={localizedPath("/login", locale)} class={linkClass}>{t.nav.login}</a>
         <span class={`${liftClass} flex justify-center`}>
           <ButtonPrimary lazyRipple client:idle href={SITE.installUrl} size="md">{t.nav.cta}</ButtonPrimary>
         </span>
